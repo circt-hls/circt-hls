@@ -1,10 +1,33 @@
 # circt-hls
 
+### What is this?
+A collection of repositories used to realise various end-to-end high-level synthesis (HLS) flows centering around the CIRCT project.
+
+The `fud` driver within Calyx is used as a general driver for the entire flow.
+
+## HLS flows
+
+These are the (intended) end-to-end flows that can be run from this directory:
+- C
+  - Polygeist
+    - CIRCT
+      - Staticlogic (Statically scheduled HLS)
+        - Calyx
+          - **Verilog**
+      - Handshake (dynamically scheduled HLS)
+        - FIRRTL
+          - HW
+            - **Verilog**
+  - Vivado ("Classical" HLS)
+    - **Verilog**
 
 # Setup
 
+## Build CIRCT
+Checkout https://github.com/llvm/circt and go through the instructions.
+
 ## Build Polygeist
-You are most likely a CIRCT developer, so it is recommended to point Polygeist to an existing MLIR/LLVM/Clang build:
+We'll build Polygeist using our existing MLIR/LLVM/Clang build:
 ```
 cd Polygeist
 mkdir build
@@ -57,3 +80,5 @@ make sure that the follwing things were available:
 - stages.vivado-hls.exec
 
 If any of these are missing, make sure you have the corresponding application installed and available in your path.
+
+## Usage
