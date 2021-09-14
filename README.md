@@ -150,22 +150,22 @@ fud exec "Polygeist/mlir-clang/Test/aff.c"  \
 
 ## Dynamically scheduled
 
-- [x] Polygeist to **mlir (handshake)**
-
+- [ ] Polygeist to **mlir (handshake)**  
+**Error:** issues in lowering the memref.alloc ops in standard to handshake. I think this goes back to what https://github.com/llvm/circt/pull/1538 is trying to solve.
 ```
-fud exec "Polygeist/mlir-clang/Test/aff.c" \
-  --from c                                 \
-  --to mlir-handshake                      \
-  -s circt_hls.toplevel "kernel_deriche"
+fud exec "examples/c/fir/fir.c" \
+  --from c                      \
+  --to mlir-handshake           \
+  -s circt_hls.toplevel fir
 ```
 
 - [ ] Polygeist to **mlir (FIRRTL)**  
 **error:** issues in FIRRTL with unbounded memories
 ```
-fud exec "Polygeist/mlir-clang/Test/aff.c" \
-  --from c                                 \
-  --to mlir-firrtl                         \
-  -s circt_hls.toplevel "kernel_deriche"
+fud exec "examples/c/fir/fir.c" \
+  --from c                      \
+  --to mlir-firrtl              \
+  -s circt_hls.toplevel fir
 ```
 
 ## Vivado

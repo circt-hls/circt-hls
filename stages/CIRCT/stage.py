@@ -64,7 +64,7 @@ class CIRCTSCFToDataflow(CIRCTStageBase):
             "circt-opt",
             config,
             "Lower MLIR SCF to MLIR Handshake dialect",
-            "-create-dataflow | circt-opt -canonicalize-dataflow | circt-opt -remove-block-structure | circt-opt -handshake-insert-buffer"
+            "-create-dataflow" # | circt-opt -canonicalize-dataflow | circt-opt -remove-block-structure | circt-opt -handshake-insert-buffer"
         )
 
 class CIRCTHandshakeToFIRRTL(CIRCTStageBase):
