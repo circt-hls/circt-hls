@@ -49,8 +49,7 @@ class CIRCTStageBase(Stage):
             """
             return shell(
                 cmd,
-                stdin=input_stream,
-                stdout_as_debug=True,
+                stdin=input_stream
             )
 
         # Schedule

@@ -103,10 +103,11 @@ fud register polygeist -p $(pwd)/stages/Polygeist/stage.py
 fud config external-stages.polygeist.exec $(pwd)/Polygeist/build/mlir-clang/mlir-clang
 ```
 
-setup CIRCT stage: **modify to point to your own circt build**
+setup CIRCT/MLIR stage: **modify to point to your own circt build**
 ```
 fud register circt -p $(pwd)/stages/CIRCT/stage.py
 fud config external-stages.circt.bin_dir $(pwd)/../circt/build/bin
+fud config external-stages.circt.llvm_bin_dir $(pwd)/../circt/llvm/build/bin
 ```
 
 We use the setting
