@@ -1,9 +1,20 @@
 # circt-hls
 
-### What is this?
+**What is this?**:
 A collection of repositories used to realise various end-to-end high-level synthesis (HLS) flows centering around the CIRCT project.
 
 The `fud` driver within Calyx is used as a general driver for the entire flow.
+
+- [circt-hls](#circt-hls)
+  - [HLS flows](#hls-flows)
+- [Setup](#setup)
+  - [Build CIRCT](#build-circt)
+  - [Build Polygeist](#build-polygeist)
+  - [Build Calyx](#build-calyx)
+    - [building the rust compiler:](#building-the-rust-compiler)
+    - [building the Calyx driver:](#building-the-calyx-driver)
+  - [Setting up the HLS `fud` stages](#setting-up-the-hls-fud-stages)
+- [Usage](#usage)
 
 ## HLS flows
 
@@ -13,7 +24,8 @@ These are the (intended) end-to-end flows that can be run from this directory:
     - CIRCT
       - Staticlogic (Statically scheduled HLS)
         - Calyx
-          - **Verilog**
+          - *Calyx native compiler* (**not circt**)
+            - **Verilog**
       - Handshake (dynamically scheduled HLS)
         - FIRRTL
           - HW
@@ -27,7 +39,7 @@ These are the (intended) end-to-end flows that can be run from this directory:
 Checkout https://github.com/llvm/circt and go through the instructions.
 
 ## Build Polygeist
-We'll build Polygeist using our existing MLIR/LLVM/Clang build:
+We'll build Polygeist using our existing MLIR/LLVM/Clang build. **modify these paths to point to where you built the project**.
 ```
 cd Polygeist
 mkdir build
@@ -81,4 +93,31 @@ make sure that the follwing things were available:
 
 If any of these are missing, make sure you have the corresponding application installed and available in your path.
 
-## Usage
+## Setting up the HLS `fud` stages
+Setup polygeist stage:
+```
+fud register polygeist -p $(pwd)/stages/Polygeist/stage.py
+fud config external-stages.polygeist.exec $(pwd)/Polygeist/build/mlir-clang/mlir-clang
+```
+
+setup CIRCT stage: **modify to point to your own circt build**
+```
+fud register circt -p $(pwd)/stages/CIRCT/stage.py
+fud config external-stages.circt.exec $(pwd)/../circt/build/bin/circt-opt
+```
+
+We use the setting
+> `fud config stages.circt.toplevel ${toplevel}`
+
+to keep track of the top-level function to be compiled. This should match the function name in the input `.c` file. This will further be used as the top-level function when lowering `SCFToCalyx`. (not bundled in with the `external-stages` key due to variable overriding only working for "built-in" stages in `fud`).
+
+To initialize this, please run:
+```
+fud config stages.circt.toplevel ""
+```
+
+# Usage
+
+Run Polygeist through fud
+> `fud exec "Polygeist/mlir-clang/Test/aff.c" --from c --to mlir-scf -s circt.toplevel "kernel_deriche"`
+
