@@ -3,4 +3,4 @@
 	url = https://github.com/circt-hls/Polygeist.git
 [submodule "calyx"]
 	path = calyx
-	url = https://github.com/circt-hls/calyx
+	url = https://github.com/cucapra/calyx
