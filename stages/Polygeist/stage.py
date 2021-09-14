@@ -40,34 +40,4 @@ class PolygeistStage(Stage):
         # Schedule
         return compile_with_polygeist(input_file)
 
-
-class LowerAffineStage(Stage):
-    def __init__(self, config):
-        super().__init__(
-            "mlir-affine",
-            "mlir-scf",
-            SourceType.Stream,
-            SourceType.Stream,
-            config,
-            "Lowers a polygeist output to a point suitable for CIRCT ingress"
-        )
-        self.executable = os.path.join(
-            self.config["external-stages", "circt", "llvm_bin_dir"], "mlir-opt")
-        self.setup()
-
-    def _define_steps(self, input_stream):
-        cmd = " ".join([self.executable, "--lower-affine"])
-
-        @self.step()
-        def compile_with_mlir(input_stream: SourceType.Stream) -> SourceType.Stream:
-            """
-            Lowers an input program using MLIR.
-            """
-            stream = shell(cmd, stdin=input_stream)
-            return stream
-
-        # Schedule
-        return compile_with_mlir(input_stream)
-
-
-__STAGES__ = [PolygeistStage, LowerAffineStage]
+__STAGES__ = [PolygeistStage]

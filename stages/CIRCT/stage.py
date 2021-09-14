@@ -56,6 +56,40 @@ class CIRCTStageBase(Stage):
         return compile_with_circt(input_file)
 
 
+class CIRCTSCFToDataflow(CIRCTStageBase):
+    def __init__(self, config):
+        super().__init__(
+            "mlir-std",
+            "mlir-handshake",
+            "circt-opt",
+            config,
+            "Lower MLIR SCF to MLIR Handshake dialect",
+            "-create-dataflow | circt-opt -canonicalize-dataflow | circt-opt -remove-block-structure | circt-opt -handshake-insert-buffer"
+        )
+
+class CIRCTHandshakeToFIRRTL(CIRCTStageBase):
+    def __init__(self, config):
+        super().__init__(
+            "mlir-handshake",
+            "mlir-firrtl",
+            "circt-opt",
+            config,
+            "Lower MLIR Handshake to MLIR FIRRTL",
+            "-lower-handshake-to-firrtl"
+        )
+
+class CIRCTFIRRTLToHW(CIRCTStageBase):
+    def __init__(self, config):
+        super().__init__(
+            "mlir-firrtl",
+            "mlir-hw",
+            "circt-opt",
+            config,
+            "Lower MLIR FIRRTL to MLIR HW",
+            "-lower-firrtl-to-hw"
+        )
+
+
 class CIRCTSCFToCalyxStage(CIRCTStageBase):
     def __init__(self, config):
         toplevel = config["stages", "circt", "toplevel"]
@@ -70,7 +104,6 @@ class CIRCTSCFToCalyxStage(CIRCTStageBase):
 
 class CIRCTEmitCalyxStage(CIRCTStageBase):
     def __init__(self, config):
-        toplevel = config["stages", "circt", "toplevel"]
         super().__init__(
             "mlir-calyx",
             "futil",
@@ -80,4 +113,11 @@ class CIRCTEmitCalyxStage(CIRCTStageBase):
             "--export-calyx"
         )
 
-__STAGES__ = [CIRCTSCFToCalyxStage, CIRCTEmitCalyxStage]
+
+__STAGES__ = [
+    CIRCTSCFToCalyxStage,
+    CIRCTEmitCalyxStage,
+    CIRCTFIRRTLToHW,
+    CIRCTHandshakeToFIRRTL,
+    CIRCTSCFToDataflow
+]
