@@ -92,7 +92,7 @@ class CIRCTFIRRTLToHW(CIRCTStageBase):
 
 class CIRCTSCFToCalyxStage(CIRCTStageBase):
     def __init__(self, config):
-        toplevel = config["stages", "circt", "toplevel"]
+        toplevel = config["stages", "circt_hls", "toplevel"]
         super().__init__(
             "mlir-scf",
             "mlir-calyx",

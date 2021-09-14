@@ -19,7 +19,7 @@ class PolygeistStage(Stage):
         self.setup()
 
     def _define_steps(self, input_file):
-        function = self.config["stages", "circt", "toplevel"]
+        function = self.config["stages", "circt_hls", "toplevel"]
         cmd = " ".join(
             [
               self.config["external-stages", "polygeist", "exec"],

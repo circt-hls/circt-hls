@@ -39,7 +39,7 @@ These are the (intended) end-to-end flows that can be run from this directory:
 # Setup
 
 ## Build CIRCT
-Checkout https://github.com/llvm/circt and go through the instructions.
+If you don't already have a CIRCT/MLIR build locally, checkout https://github.com/llvm/circt and go follow the instructions.
 
 ## Build Polygeist
 We'll build Polygeist using our existing MLIR/LLVM/Clang build.  
@@ -59,6 +59,7 @@ ninja check-mlir-clang
 ```
 
 ## Build Calyx
+**Note: skip this step if you already have a Calyx build available.**
 
 ### building the rust compiler:
 ```
@@ -115,8 +116,10 @@ To initialize this, please run:
 fud config stages.circt_hls.toplevel ""
 ```
 
+finally, run `fud config` to ensure that the variables were written correctly.
+
 # Usage
-The following lists example commands for exercising the available flows.
+The following lists example commands for exercising the available flows. If you're interested about the specific passes that are getting executed through `fud`, add `--verbose` to the command line.
 
 ## Statically scheduled
 - [x] Polygeist to **mlir (scf)**
@@ -124,15 +127,16 @@ The following lists example commands for exercising the available flows.
 fud exec "Polygeist/mlir-clang/Test/aff.c"  \
   --from c                                  \
   --to mlir-scf                             \
-  -s circt_hls.toplevel "kernel_deriche"`
+  -s circt_hls.toplevel "kernel_deriche"
 ```
 
-- [x] Polygeist to **mlir (calyx)**
+- [ ] Polygeist to **mlir (calyx)**  
+**Error:** need to lower for-to-while loops (still waiting for https://reviews.llvm.org/D108454).
 ```
 fud exec "Polygeist/mlir-clang/Test/aff.c"  \
   --from c                                  \
   --to mlir-calyx                           \
-  -s circt_hls.toplevel "kernel_deriche"`
+  -s circt_hls.toplevel "kernel_deriche"
 ```
 
 - [ ] Polygeist to **calyx**  
@@ -140,8 +144,8 @@ fud exec "Polygeist/mlir-clang/Test/aff.c"  \
 ```
 fud exec "Polygeist/mlir-clang/Test/aff.c"  \
   --from c                                  \
-  --to calyx                                \
-  -s circt_hls.toplevel "kernel_deriche"`
+  --to futil                                \
+  -s circt_hls.toplevel "kernel_deriche"
 ```
 
 ## Dynamically scheduled
@@ -152,7 +156,7 @@ fud exec "Polygeist/mlir-clang/Test/aff.c"  \
 fud exec "Polygeist/mlir-clang/Test/aff.c" \
   --from c                                 \
   --to mlir-handshake                      \
-  -s circt.toplevel "kernel_deriche"
+  -s circt_hls.toplevel "kernel_deriche"
 ```
 
 - [ ] Polygeist to **mlir (FIRRTL)**  
@@ -161,7 +165,7 @@ fud exec "Polygeist/mlir-clang/Test/aff.c" \
 fud exec "Polygeist/mlir-clang/Test/aff.c" \
   --from c                                 \
   --to mlir-firrtl                         \
-  -s circt.toplevel "kernel_deriche"
+  -s circt_hls.toplevel "kernel_deriche"
 ```
 
 ## Vivado
