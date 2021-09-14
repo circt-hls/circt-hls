@@ -15,6 +15,7 @@ class CIRCTStageBase(Stage):
         self,
         src,
         dst,
+        executable,
         config,
         description,
         flags
@@ -27,13 +28,16 @@ class CIRCTStageBase(Stage):
             config,
             description
         )
+        self.executable = os.path.join(
+            self.config["external-stages", "circt", "bin_dir"],
+            executable)
         self.flags = flags
         self.setup()
 
     def _define_steps(self, input_file):
         cmd = " ".join(
             [
-                self.config["external-stages", "circt", "exec"],
+                self.executable,
                 self.flags
             ]
         )
@@ -55,13 +59,26 @@ class CIRCTStageBase(Stage):
 
 class CIRCTSCFToCalyxStage(CIRCTStageBase):
     def __init__(self, config):
+        toplevel = config["stages", "circt", "toplevel"]
         super().__init__(
             "mlir-scf",
             "mlir-calyx",
+            "circt-opt",
             config,
             "Lower MLIR SCF to MLIR Calyx",
-            "--lower-scf-to-calyx"
+            f"--lower-scf-to-calyx=top-level-component={toplevel}"
         )
 
+class CIRCTEmitCalyxStage(CIRCTStageBase):
+    def __init__(self, config):
+        toplevel = config["stages", "circt", "toplevel"]
+        super().__init__(
+            "mlir-calyx",
+            "futil",
+            "circt-translate",
+            config,
+            "Emit MLIR Calyx to native Calyx",
+            "--export-calyx"
+        )
 
-__STAGES__ = [CIRCTSCFToCalyxStage]
+__STAGES__ = [CIRCTSCFToCalyxStage, CIRCTEmitCalyxStage]

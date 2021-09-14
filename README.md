@@ -15,6 +15,9 @@ The `fud` driver within Calyx is used as a general driver for the entire flow.
     - [building the Calyx driver:](#building-the-calyx-driver)
   - [Setting up the HLS `fud` stages](#setting-up-the-hls-fud-stages)
 - [Usage](#usage)
+  - [Statically scheduled](#statically-scheduled)
+  - [Dynamically scheduled](#dynamically-scheduled)
+  - [Vivado](#vivado)
 
 ## HLS flows
 
@@ -103,13 +106,13 @@ fud config external-stages.polygeist.exec $(pwd)/Polygeist/build/mlir-clang/mlir
 setup CIRCT stage: **modify to point to your own circt build**
 ```
 fud register circt -p $(pwd)/stages/CIRCT/stage.py
-fud config external-stages.circt.exec $(pwd)/../circt/build/bin/circt-opt
+fud config external-stages.circt.bin_dir $(pwd)/../circt/build/bin
 ```
 
 We use the setting
 > `fud config stages.circt.toplevel ${toplevel}`
 
-to keep track of the top-level function to be compiled. This should match the function name in the input `.c` file. This will further be used as the top-level function when lowering `SCFToCalyx`. (not bundled in with the `external-stages` key due to variable overriding only working for "built-in" stages in `fud`).
+to keep track of the top-level function to be compiled. This should match a function name in the input `.c` file. This will further be used as the top-level function when lowering `SCFToCalyx`.
 
 To initialize this, please run:
 ```
@@ -118,6 +121,32 @@ fud config stages.circt.toplevel ""
 
 # Usage
 
-Run Polygeist through fud
-> `fud exec "Polygeist/mlir-clang/Test/aff.c" --from c --to mlir-scf -s circt.toplevel "kernel_deriche"`
+## Statically scheduled
+Polygeist to **mlir (scf)**
+```
+fud exec "Polygeist/mlir-clang/Test/aff.c"  \
+  --from c                                  \
+  --to mlir-scf                             \
+  -s circt.toplevel "kernel_deriche"`
+```
 
+Polygeist to **mlir (calyx)**
+```
+fud exec "Polygeist/mlir-clang/Test/aff.c"  \
+  --from c                                  \
+  --to mlir-calyx                           \
+  -s circt.toplevel "kernel_deriche"`
+```
+
+Polygeist to **calyx**
+```
+fud exec "Polygeist/mlir-clang/Test/aff.c"  \
+  --from c                                  \
+  --to calyx                                \
+  -s circt.toplevel "kernel_deriche"`
+```
+
+## Dynamically scheduled
+...
+## Vivado
+...
