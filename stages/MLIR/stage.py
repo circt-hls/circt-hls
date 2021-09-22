@@ -57,17 +57,28 @@ class MLIRAffineToSCFStage(MLIRStageBase):
     def __init__(self, config):
         super().__init__(
             "mlir-affine",
-            "mlir-scf",
+            "mlir-scf-for",
             "mlir-opt",
             config,
             "Lower MLIR affine to MLIR scf",
             "--lower-affine"
         )
 
+class MLIRSCFForToSCFWhile(MLIRStageBase):
+    def __init__(self, config):
+        super().__init__(
+            "mlir-scf-for",
+            "mlir-scf-while",
+            "mlir-opt",
+            config,
+            "Lower MLIR SCF for loops to SCF while loops",
+            "--scf-for-to-while"
+        )
+
 class MLIRSCFToStandardStage(MLIRStageBase):
     def __init__(self, config):
         super().__init__(
-            "mlir-scf",
+            "mlir-scf-while",
             "mlir-std",
             "mlir-opt",
             config,
@@ -77,5 +88,6 @@ class MLIRSCFToStandardStage(MLIRStageBase):
 
 __STAGES__ = [
     MLIRAffineToSCFStage,
-    MLIRSCFToStandardStage
+    MLIRSCFToStandardStage,
+    MLIRSCFForToSCFWhile
 ]

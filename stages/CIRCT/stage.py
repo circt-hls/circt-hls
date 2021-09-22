@@ -94,7 +94,7 @@ class CIRCTSCFToCalyxStage(CIRCTStageBase):
     def __init__(self, config):
         toplevel = config["stages", "circt_hls", "toplevel"]
         super().__init__(
-            "mlir-scf",
+            "mlir-scf-while",
             "mlir-calyx",
             "circt-opt",
             config,
