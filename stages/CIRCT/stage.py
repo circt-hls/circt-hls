@@ -85,10 +85,11 @@ class CIRCTFIRRTLToHW(CIRCTStageBase):
             "mlir-hw",
             "circt-opt",
             config,
-            "Lower MLIR FIRRTL to MLIR HW",
-            "-lower-firrtl-to-hw"
+            "Lower FIRRTL types to ground types",
+            "-pass-pipeline='module(firrtl.circuit(firrtl-lower-types), " +
+            "firrtl.circuit(firrtl-infer-widths), "+ 
+            "builtin.module(lower-firrtl-to-hw))'"
         )
-
 
 class CIRCTSCFToCalyxStage(CIRCTStageBase):
     def __init__(self, config):
@@ -113,11 +114,22 @@ class CIRCTEmitCalyxStage(CIRCTStageBase):
             "--export-calyx"
         )
 
+class CIRCTHWToVerilog(CIRCTStageBase):
+    def __init__(self, config):
+        super().__init__(
+            "mlir-hw",
+            "verilog",
+            "circt-translate",
+            config,
+            "Export Verilog from HW",
+            "--export-verilog"
+        )
 
 __STAGES__ = [
     CIRCTSCFToCalyxStage,
     CIRCTEmitCalyxStage,
     CIRCTFIRRTLToHW,
     CIRCTHandshakeToFIRRTL,
-    CIRCTSCFToDataflow
+    CIRCTSCFToDataflow,
+    CIRCTHWToVerilog
 ]
