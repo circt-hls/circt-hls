@@ -100,7 +100,7 @@ class CIRCTSCFToCalyxStage(CIRCTStageBase):
             "circt-opt",
             config,
             "Lower MLIR SCF to MLIR Calyx",
-            f"--lower-scf-to-calyx=top-level-component={toplevel}"
+            f"--lower-scf-to-calyx=top-level-function={toplevel}"
         )
 
 class CIRCTEmitCalyxStage(CIRCTStageBase):
