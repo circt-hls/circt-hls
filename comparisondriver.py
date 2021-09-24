@@ -11,6 +11,8 @@ def print_header(string, width=80):
 
 
 def run_fud(fn, argFrom, argTo, flags=""):
+    cmd = ["fud", "exec", "--from", argFrom, "--to", argTo, flags, str(fn)]
+    print("Running fud with: " + " ".join(cmd))
     subprocess.run(["fud", "exec", "--from", argFrom,
                     "--to", argTo, flags, fn])
 
@@ -20,7 +22,7 @@ def run_vivado(path):
     # run_fud(path + ".c", "vivado-hls", "synth-files", "-o " + str(OUTDIR))
 
 
-def run_dynamic(path):
+def run_circt_dynamic(path):
     print_header("Dynamic run")
     dynamic_dir = OUTDIR / "dynamic"
     dynamic_dir.mkdir(parents=True, exist_ok=True)
@@ -30,7 +32,7 @@ def run_dynamic(path):
     #run_fud(tmpfile, "mlir-handshake", "synth-files", "-o " + str(dynamic_dir))
 
 
-def run_static(path):
+def run_circt_static(path):
     print_header("Static run")
     static_dir = OUTDIR / "static"
     static_dir.mkdir(parents=True, exist_ok=True)
@@ -54,9 +56,10 @@ if __name__ == "__main__":
     parser.add_argument(
         "--vivado-hls", help="Executes Vivado HLS", action="store_true")
     parser.add_argument(
-        "--dynamic", help="Executes the dynamically scheduled flow", action="store_true")
+        "--circt-dynamic", help="Executes the CIRCT-based dynamically scheduled flow", action="store_true")
     parser.add_argument(
-        "--static", help="Executes the statically scheduled flow", action="store_true")
+        "--circt-static", help="Executes the CIRCT-based statically scheduled flow", action="store_true")
+
 
     args = parser.parse_args()
     dir_base = os.path.basename(args.dir)
@@ -67,8 +70,8 @@ if __name__ == "__main__":
     if args.vivado_hls:
         run_vivado(dir_path)
 
-    if args.dynamic:
-        run_dynamic(dir_path)
+    if args.circt_dynamic:
+        run_circt_dynamic(dir_path)
 
-    if args.static:
-        run_static(dir_path)
+    if args.circt_static:
+        run_circt_static(dir_path)

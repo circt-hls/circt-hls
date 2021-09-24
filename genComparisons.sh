@@ -10,7 +10,7 @@ comparisons=(
 for d in ${comparisons[*]}; do
   python3 comparisondriver.py \
     --vivado-hls              \
-    --static                  \
-    --dynamic                 \
+    --circt-static            \
+    --circt-dynamic           \
     $d
 done
