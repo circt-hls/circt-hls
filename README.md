@@ -168,5 +168,18 @@ fud exec "examples/c/fir/fir.c" \
   -s circt_hls.toplevel fir
 ```
 
+- [X] Handshake to Verilog
+```
+fud exec ${handshake MLIR file} \
+  --from mlir-handshake         \
+  --to synth-verilog
+
+- [X] Handshake to synthesized
+```
+fud exec ${handshake MLIR file} \
+  --from mlir-handshake         \
+  --to synth-files -o ${outdir}
+
+
 ## Vivado
 ...

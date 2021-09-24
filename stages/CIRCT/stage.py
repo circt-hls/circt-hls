@@ -114,22 +114,21 @@ class CIRCTEmitCalyxStage(CIRCTStageBase):
             "--export-calyx"
         )
 
-class CIRCTHWToVerilog(CIRCTStageBase):
+class CIRCTFIRRTLToVerilog(CIRCTStageBase):
     def __init__(self, config):
         super().__init__(
-            "mlir-hw",
-            "verilog",
-            "circt-translate",
+            "mlir-firrtl",
+            "synth-verilog",
+            "firtool",
             config,
-            "Export Verilog from HW",
-            "--export-verilog"
+            "Convert FIRRTL to verilog",
+            "--verilog --format=mlir"
         )
 
 __STAGES__ = [
     CIRCTSCFToCalyxStage,
     CIRCTEmitCalyxStage,
-    CIRCTFIRRTLToHW,
     CIRCTHandshakeToFIRRTL,
     CIRCTSCFToDataflow,
-    CIRCTHWToVerilog
+    CIRCTFIRRTLToVerilog
 ]
