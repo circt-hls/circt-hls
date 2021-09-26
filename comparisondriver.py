@@ -11,35 +11,79 @@ def print_header(string, width=80):
 
 
 def run_fud(fn, argFrom, argTo, flags=""):
-    cmd = ["fud", "exec", "--from", argFrom, "--to", argTo, flags, str(fn)]
+    cmd = ["fud", "exec", "--from", argFrom,
+           "--to", argTo, flags, str(fn), "--verbose"]
     print("Running fud with: " + " ".join(cmd))
-    subprocess.run(["fud", "exec", "--from", argFrom,
-                    "--to", argTo, flags, fn])
+    subprocess.run(cmd)
 
 
-def run_vivado(path):
-    print_header("Vivado run")
-    # run_fud(path + ".c", "vivado-hls", "synth-files", "-o " + str(OUTDIR))
+class FUDRunner():
+    def __init__(self, testPath, name):
+        print_header(f"{name} run")
+        self.dir = OUTDIR / name
+        newDir = self.dir
+        i = 1
+        while newDir.exists():
+            newDir = Path(str(self.dir) + f"_{i}")
+            i += 1
+        self.dir = newDir
+
+        self.dir.mkdir(parents=True, exist_ok=True)
+        self.fudRuns = []
+        self.testPath = testPath
+
+    def run(self):
+        for run in self.fudRuns:
+            run_fud(*run)
+
+    def getTempFile(self, suffix):
+        tmpfile = self.dir / os.path.basename(self.testPath)
+        return str(tmpfile) + suffix
 
 
-def run_circt_dynamic(path):
-    print_header("Dynamic run")
-    dynamic_dir = OUTDIR / "dynamic"
-    dynamic_dir.mkdir(parents=True, exist_ok=True)
-    tmpfile = dynamic_dir / os.path.basename(path)
-    run_fud(path / "main.mlir", "mlir-affine", "mlir-handshake",
-            "-o" + str(tmpfile) + "_handshake.mlir")
-    #run_fud(tmpfile, "mlir-handshake", "synth-files", "-o " + str(dynamic_dir))
+class VivadoHLSRunner(FUDRunner):
+    def __init__(self, path):
+        super().__init__(
+            name="Vivado HLS",
+            testPath=path
+        )
+        self.fudRuns.append(
+            [path / ".c", "vivado-hls", "synth-files",
+                "-o" + str(self.dir)]
+        )
 
 
-def run_circt_static(path):
-    print_header("Static run")
-    static_dir = OUTDIR / "static"
-    static_dir.mkdir(parents=True, exist_ok=True)
-    tmpfile = static_dir / os.path.basename(path)
-    run_fud(path / "main.mlir", "mlir-affine",
-            "futil", "-o" + str(tmpfile) + ".futil")
-    #run_fud(tmpfile, "futil", "synth-files", "-o " + str(static_dir))
+class DynamicRunner(FUDRunner):
+    def __init__(self, path):
+        super().__init__(
+            name="Dynamic",
+            testPath=path
+        )
+        handshake_tmpfile = self.getTempFile("_handshake.mlir")
+        self.fudRuns.append(
+            [path / "main.mlir", "mlir-affine", "mlir-handshake",
+                "-o" + handshake_tmpfile]
+        )
+
+        self.fudRuns.append(
+            [handshake_tmpfile, "mlir-handshake",
+                "synth-files", "-o " + str(self.dir)]
+        )
+
+
+class StaticRunner(FUDRunner):
+    def __init__(self, path):
+        super().__init__(
+            name="Static",
+            testPath=path
+        )
+        futil_tmpfile = self.getTempFile(".futil")
+        self.fudRuns.append(
+            [path / "main.mlir", "mlir-affine", "futil", "-o" + futil_tmpfile]
+        )
+        self.fudRuns.append(
+            [futil_tmpfile, "futil", "synth-files", "-o " + str(self.dir)]
+        )
 
 
 if __name__ == "__main__":
@@ -60,7 +104,6 @@ if __name__ == "__main__":
     parser.add_argument(
         "--circt-static", help="Executes the CIRCT-based statically scheduled flow", action="store_true")
 
-
     args = parser.parse_args()
     dir_base = os.path.basename(args.dir)
     OUTDIR = Path.cwd() / "out" / "comparisons" / dir_base
@@ -68,10 +111,10 @@ if __name__ == "__main__":
     dir_path = Path(args.dir)
 
     if args.vivado_hls:
-        run_vivado(dir_path)
+        VivadoHLSRunner(dir_path).run()
 
     if args.circt_dynamic:
-        run_circt_dynamic(dir_path)
+        DynamicRunner(dir_path).run()
 
     if args.circt_static:
-        run_circt_static(dir_path)
+        StaticRunner(dir_path).run()
