@@ -29,10 +29,14 @@ class MLIRStageBase(Stage):
             description
         )
         self.executable = os.path.join(
-            self.config["external-stages", "mlir", "bin_dir"],
+            self.config["stages", "mlir", "bin_dir"],
             executable)
         self.flags = flags
         self.setup()
+
+    @staticmethod
+    def defaults():
+        return {}
 
     def _define_steps(self, input_file):
         cmd = " ".join(

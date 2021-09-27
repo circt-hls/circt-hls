@@ -97,13 +97,13 @@ Setup Polygeist/MLIR/CIRCT stages:
 **NOTE: modify these paths to point to your own CIRCT/MLIR builds**.
 ```
 fud register polygeist -p $(pwd)/stages/Polygeist/stage.py
-fud config external-stages.polygeist.exec $(pwd)/Polygeist/build/mlir-clang/mlir-clang
+fud config stages.polygeist.exec $(pwd)/Polygeist/build/mlir-clang/mlir-clang
 
 fud register circt -p $(pwd)/stages/CIRCT/stage.py
-fud config external-stages.circt.bin_dir $(pwd)/../circt/build/bin
+fud config stages.circt.bin_dir $(pwd)/../circt/build/bin
 
 fud register mlir -p $(pwd)/stages/MLIR/stage.py
-fud config external-stages.mlir.bin_dir $(pwd)/../circt/llvm/build/bin
+fud config stages.mlir.bin_dir $(pwd)/../circt/llvm/build/bin
 ```
 
 We use the setting

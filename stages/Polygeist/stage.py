@@ -18,11 +18,17 @@ class PolygeistStage(Stage):
         )
         self.setup()
 
+    @staticmethod
+    def defaults():
+        return {
+            "exec" : "mlir-clang"
+        }
+
     def _define_steps(self, input_file):
         function = self.config["stages", "circt_hls", "toplevel"]
         cmd = " ".join(
             [
-              self.config["external-stages", "polygeist", "exec"],
+              self.config["stages", "polygeist", "exec"],
                 f"--function={function}",
                 "{input_path}"
             ]

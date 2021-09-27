@@ -29,10 +29,14 @@ class CIRCTStageBase(Stage):
             description
         )
         self.executable = os.path.join(
-            self.config["external-stages", "circt", "bin_dir"],
+            self.config["stages", "circt", "bin_dir"],
             executable)
         self.flags = flags
         self.setup()
+
+    @staticmethod
+    def defaults():
+        return {}
 
     def _define_steps(self, input_file):
         cmd = " ".join(
@@ -64,8 +68,9 @@ class CIRCTSCFToDataflow(CIRCTStageBase):
             "circt-opt",
             config,
             "Lower MLIR SCF to MLIR Handshake dialect",
-            "-create-dataflow" # | circt-opt -canonicalize-dataflow | circt-opt -remove-block-structure | circt-opt -handshake-insert-buffer"
+            "-create-dataflow"  # | circt-opt -canonicalize-dataflow | circt-opt -remove-block-structure | circt-opt -handshake-insert-buffer"
         )
+
 
 class CIRCTHandshakeToFIRRTL(CIRCTStageBase):
     def __init__(self, config):
@@ -78,6 +83,7 @@ class CIRCTHandshakeToFIRRTL(CIRCTStageBase):
             "-lower-handshake-to-firrtl"
         )
 
+
 class CIRCTFIRRTLToHW(CIRCTStageBase):
     def __init__(self, config):
         super().__init__(
@@ -87,9 +93,10 @@ class CIRCTFIRRTLToHW(CIRCTStageBase):
             config,
             "Lower FIRRTL types to ground types",
             "-pass-pipeline='module(firrtl.circuit(firrtl-lower-types), " +
-            "firrtl.circuit(firrtl-infer-widths), "+ 
+            "firrtl.circuit(firrtl-infer-widths), " +
             "builtin.module(lower-firrtl-to-hw))'"
         )
+
 
 class CIRCTSCFToCalyxStage(CIRCTStageBase):
     def __init__(self, config):
@@ -103,6 +110,7 @@ class CIRCTSCFToCalyxStage(CIRCTStageBase):
             f"--lower-scf-to-calyx=top-level-function={toplevel}"
         )
 
+
 class CIRCTEmitCalyxStage(CIRCTStageBase):
     def __init__(self, config):
         super().__init__(
@@ -114,6 +122,7 @@ class CIRCTEmitCalyxStage(CIRCTStageBase):
             "--export-calyx"
         )
 
+
 class CIRCTFIRRTLToVerilog(CIRCTStageBase):
     def __init__(self, config):
         super().__init__(
@@ -124,6 +133,7 @@ class CIRCTFIRRTLToVerilog(CIRCTStageBase):
             "Convert FIRRTL to verilog",
             "--verilog --format=mlir"
         )
+
 
 __STAGES__ = [
     CIRCTSCFToCalyxStage,
