@@ -8,6 +8,9 @@ comparisons=(
 )
 
 for d in ${comparisons[*]}; do
+  echo "================================================================================="
+  echo "= Generating: ${d}"
+  echo "================================================================================="
   python3 comparisondriver.py \
     --vivado-hls              \
     --circt-static            \
