@@ -48,7 +48,6 @@ class FUDRunner():
         self.runs = []
         self.testPath = testPath
         self.testName = os.path.basename(testPath)
-        self.vivadoDir = self.dir / "vivado"
 
     def run(self):
         [runner.run() for runner in self.runs]
@@ -57,14 +56,37 @@ class FUDRunner():
         tmpfile = self.dir / suffix
         return str(tmpfile)
 
-    def getResourceEstimateRun(self):
-        resourcesFile = self.getFilename("resources.json")
+    def getResourcesFile(self):
+        return self.getFilename("resources.json")
+
+    def getSynthResourceEstimateRun(self, synthDir):
         return FUDRun(
-            str(self.vivadoDir),
+            str(self.dir / synthDir),
             "synth-files",
             "resource-estimate",
-            [f"-o{resourcesFile}"]
+            [f"-o{self.getResourcesFile()}"]
         )
+
+    def getInlineRun(self, inlineDir, extension, toplevel):
+        """ Inlines all files in inlineDir with the provided extension into the
+        top-level file.
+        """
+        def inlineFunc():
+            toInline = ""
+            for srcfile in os.scandir(inlineDir):
+                if srcfile.name == toplevel:
+                    continue
+
+                if srcfile.name.endswith(f".{extension}"):
+                    with open(srcfile) as f:
+                        toInline = toInline + f.read() + "\n"
+
+            with open(inlineDir / toplevel, "r+") as topFile:
+                toInline += topFile.read()
+                topFile.seek(0, 0)
+                topFile.write(toInline)
+
+        return CustomRun(inlineFunc)
 
     def getTmpFolderRenameRun(self, renameTo):
         """Renames any temporary folder within the output directory to
@@ -76,7 +98,7 @@ class FUDRunner():
                 print("ERROR: Expected a single temporary directory")
                 sys.exit(1)
             tmpdir = tmpdir[0]
-            shutil.move(tmpdir, renameTo)
+            shutil.move(tmpdir, self.dir / renameTo)
 
         return CustomRun(runFunc)
 
@@ -91,52 +113,77 @@ class FUDRunner():
 class VivadoHLSRunner(FUDRunner):
     def __init__(self, path):
         super().__init__(
-            name="Vivado HLS",
+            name="vivado-hls",
             testPath=path
         )
+        # Generate HLS files
         self.runs.append(
-            FUDRun(path / ".c", "vivado-hls", "synth-files",
-                   [f"-o{self.dir}"])
-        )
-        self.runs.append(self.getTmpFolderRenameRun(self.vivadoDir))
-        self.runs.append(self.getResourceEstimateRun())
+            FUDRun(path / "main.c", "vivado-hls", "hls-files",
+                   [f"-o{self.dir}"]))
+        # Rename the temporary hls folder
+        self.runs.append(self.getTmpFolderRenameRun("hls_output"))
+
+        # Since fud only accepts a single verilog file, inline any additional
+        # generated verilog files into the top-level, and hope for the best!
+        hls_verilogDir = self.dir / "hls_output" / \
+            "benchmark.prj" / "solution1" / "syn" / "verilog"
+        self.runs.append(self.getInlineRun(hls_verilogDir, "v", "main.v"))
+
+        # Synthesize the top-level verilog file
+        self.runs.append(
+            FUDRun(hls_verilogDir / "main.v",
+                   "synth-verilog", "synth-files", [f"-o{self.dir}"]))
+
+        # Rename temporary folder, run synthesis, and get resource estimate
+        self.runs.append(self.getTmpFolderRenameRun("vivado"))
+        self.runs.append(self.getSynthResourceEstimateRun("vivado"))
 
 
 class DynamicRunner(FUDRunner):
     def __init__(self, path):
         super().__init__(
-            name="Dynamic",
+            name="circt-dynamic",
             testPath=path
         )
+        # Run affine to handshake
         handshake_tmpfile = self.getFilename(f"{self.testName}_handshake.mlir")
         self.runs.append(
             FUDRun(path / "main.mlir", "mlir-affine", "mlir-handshake",
                    [f"-o{handshake_tmpfile}"])
         )
+        # Run handshake to synth-files; this goes through FIRRTL -> verilog
         self.runs.append(
             FUDRun(handshake_tmpfile, "mlir-handshake",
                    "synth-files", [f"-o{self.dir}"])
         )
-        self.runs.append(self.getTmpFolderRenameRun(self.vivadoDir))
-        self.runs.append(self.getResourceEstimateRun())
+
+        # Rename temporary folder, run synthesis, and get resource estimate
+        self.runs.append(self.getTmpFolderRenameRun("vivado"))
+        self.runs.append(self.getSynthResourceEstimateRun("vivado"))
 
 
 class StaticRunner(FUDRunner):
     def __init__(self, path):
         super().__init__(
-            name="Static",
+            name="circt-static",
             testPath=path
         )
+
+        # Run affine to futil
         futil_tmpfile = self.getFilename(f"{self.testName}.futil")
         self.runs.append(
             FUDRun(path / "main.mlir", "mlir-affine",
                    "futil", [f"-o{futil_tmpfile}"])
         )
+
+        # Run futil to synth files; this goes through the native calyx compiler
         self.runs.append(
             FUDRun(futil_tmpfile, "futil", "synth-files", [f"-o{self.dir}"])
         )
-        self.runs.append(self.getTmpFolderRenameRun(self.vivadoDir))
-        self.runs.append(self.getResourceEstimateRun())
+
+        # Rename temporary folder, run synthesis, and get resource estimate
+        self.runs.append(self.getTmpFolderRenameRun("vivado"))
+        self.runs.append(self.getSynthResourceEstimateRun("vivado"))
 
 
 if __name__ == "__main__":
