@@ -1,6 +1,6 @@
 [submodule "Polygeist"]
 	path = Polygeist
-	url = https://github.com/circt-hls/Polygeist.git
+	url = https://github.com/wsmoses/Polygeist
 [submodule "calyx"]
 	path = calyx
 	url = https://github.com/cucapra/calyx
