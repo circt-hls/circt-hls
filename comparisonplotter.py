@@ -71,20 +71,30 @@ def plotTests(tests, runs, resourceName, normalizeTo):
     X = np.arange(NTests)
     fig = plt.figure()
     ax = fig.add_subplot(111)
-    d = 1.0/NTests
+    d = 1.0/NRuns
 
     patterns = [ "**", "||" , "\\\\" , "//" , "++" , "--", "..","xx", "oo", "OO" ]
     for i, run in enumerate(runs):
-        ax.bar(X + i*d - 1 / NRuns, resultsUnpacked[run],
-        width = d,
-        color='white',
-        edgecolor='black',
-        hatch=patterns[i]
+        xPos = X + i*d - (1.0 / NRuns)
+        yVals = resultsUnpacked[run]
+        ax.bar(xPos, yVals,
+            width = d,
+            color='white',
+            edgecolor='black',
+            hatch=patterns[i]
         )
+
+        for j, val in enumerate(yVals):
+            ax.text(xPos[j], val, str(round(val, 2)),
+                horizontalalignment='center',
+                verticalalignment='bottom'
+            )
 
     ax.legend(labels=runs)
     plt.xticks(X, [prettifyTestName(test) for test in tests])
     plt.title(prettifyResourceName(resourceName))
+    plt.ylabel("Norm. (Vivado)")
+    plt.xlabel("Test")
     plt.tight_layout()
     plt.show()
 
@@ -95,12 +105,13 @@ def getRunNames(args):
     These are identical to the names generated in the out/comparisons/... directory.
     """
     runs = []
-    if args.circt_dynamic:
-        runs.append("Dynamic")
-    if args.circt_static:
-        runs.append("Static")
-    if args.vivado_hls:
-        runs.append("Vivado")
+    def appendIfExists(flag, val):
+        if flag:
+            runs.append(val)
+
+    appendIfExists(args.circt_dynamic, "circt-dynamic")
+    appendIfExists(args.circt_static, "circt-static")
+    appendIfExists(args.vivado_hls, "vivado-hls")
     return runs
 
 
@@ -116,7 +127,7 @@ if __name__ == "__main__":
     parser.add_argument(
         "--resources", type=str, help="resources to plot (comma separated). "
         "Valid keys are everything which is present in the output "
-        "resources.json file from a compilation run.")
+        "resources.json file from a compilation run.", required=True)
     parser.add_argument(
         "--vivado-hls", help="Plots Vivado HLS", action="store_true")
     parser.add_argument(
@@ -142,7 +153,7 @@ if __name__ == "__main__":
         sys.exit(1)
     
     if args.normalize and args.normalize not in runs:
-        fatalError(f"Requested normalization wrt. run '{args.normalize}'', but no run exists with that name")
+        fatalError(f"Requested normalization wrt. run '{args.normalize}', but no run exists with that name")
 
     resources = args.resources.split(",")
     for resource in resources:
