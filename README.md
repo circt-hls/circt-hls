@@ -22,19 +22,19 @@ The `fud` driver within Calyx is used as a general driver for the entire flow.
 ## HLS flows
 
 These are the (intended) end-to-end flows that can be run from this directory:
-- C
-  - Polygeist
-    - CIRCT
-      - Staticlogic (Statically scheduled HLS)
-        - Calyx
-          - *Calyx native compiler* (**not circt**)
-            - **Verilog**
-      - Handshake (dynamically scheduled HLS)
-        - FIRRTL
-          - HW
-            - **Verilog**
-  - Vivado ("Classical" HLS)
-    - **Verilog**
+- [C](https://en.wikipedia.org/wiki/C_(programming_language))
+  - [Polygeist](https://c.wsmoses.com/papers/Polygeist_PACT.pdf)
+    - [CIRCT](https://circt.llvm.org/)
+      - [Staticlogic Dialect](https://circt.llvm.org/docs/Dialects/StaticLogic/) (statically scheduled HLS)
+        - [Calyx Dialect](https://circt.llvm.org/docs/Dialects/Calyx/)
+          - [Calyx *native compiler*](https://capra.cs.cornell.edu/calyx/) (**not** a component of CIRCT)
+            - [**SystemVerilog**](https://en.wikipedia.org/wiki/SystemVerilog)
+      - [Handshake Dialect](https://circt.llvm.org/docs/Dialects/Handshake/) (dynamically scheduled HLS)
+        - [FIRRTL Dialect](https://circt.llvm.org/docs/Dialects/FIRRTL/)
+          - [HW Dialect](https://circt.llvm.org/docs/Dialects/HW/)
+            - [**SystemVerilog**](https://en.wikipedia.org/wiki/SystemVerilog)
+  - [Vivado](https://en.wikipedia.org/wiki/Xilinx_Vivado) ("Classical" HLS)
+    -  [**SystemVerilog**](https://en.wikipedia.org/wiki/SystemVerilog)
 
 # Setup
 
