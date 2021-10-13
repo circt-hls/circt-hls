@@ -68,14 +68,24 @@ class CIRCTSCFToDataflow(CIRCTStageBase):
             "circt-opt",
             config,
             "Lower MLIR SCF to MLIR Handshake dialect",
-            "-create-dataflow"  # | circt-opt -canonicalize-dataflow | circt-opt -remove-block-structure | circt-opt -handshake-insert-buffer"
+            "-lower-std-to-handshake"
         )
 
+class CIRCTHandshakeBufferize(CIRCTStageBase):
+    def __init__(self, config):
+        super().__init__(
+            "mlir-handshake",
+            "mlir-handshake-buffered",
+            "circt-opt",
+            config,
+            "Add buffers to handshake MLIR",
+            "-handshake-insert-buffer"
+        )
 
 class CIRCTHandshakeToFIRRTL(CIRCTStageBase):
     def __init__(self, config):
         super().__init__(
-            "mlir-handshake",
+            "mlir-handshake-buffered",
             "mlir-firrtl",
             "circt-opt",
             config,
@@ -140,5 +150,6 @@ __STAGES__ = [
     CIRCTEmitCalyxStage,
     CIRCTHandshakeToFIRRTL,
     CIRCTSCFToDataflow,
-    CIRCTFIRRTLToVerilog
+    CIRCTFIRRTLToVerilog,
+    CIRCTHandshakeBufferize
 ]
