@@ -68,8 +68,9 @@ class CIRCTSCFToDataflow(CIRCTStageBase):
             "circt-opt",
             config,
             "Lower MLIR SCF to MLIR Handshake dialect",
-            "-lower-std-to-handshake"
+            "-lower-std-to-handshake --handshake-canonicalize"
         )
+
 
 class CIRCTHandshakeBufferize(CIRCTStageBase):
     def __init__(self, config):
@@ -82,6 +83,7 @@ class CIRCTHandshakeBufferize(CIRCTStageBase):
             "-handshake-insert-buffer"
         )
 
+
 class CIRCTHandshakeToFIRRTL(CIRCTStageBase):
     def __init__(self, config):
         super().__init__(
@@ -90,7 +92,7 @@ class CIRCTHandshakeToFIRRTL(CIRCTStageBase):
             "circt-opt",
             config,
             "Lower MLIR Handshake to MLIR FIRRTL",
-            "-lower-handshake-to-firrtl"
+            "--canonicalize -lower-handshake-to-firrtl"
         )
 
 
