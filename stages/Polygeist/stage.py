@@ -21,15 +21,19 @@ class PolygeistStage(Stage):
     @staticmethod
     def defaults():
         return {
-            "exec" : "mlir-clang"
+            "exec": "mlir-clang"
         }
 
     def _define_steps(self, input_file):
         function = self.config["stages", "circt_hls", "toplevel"]
         cmd = " ".join(
             [
+                # Arguments are:
+                # --function= all functions in file
+                # --S = emit assembly
+                # --memref-fullrank = emit fullrank memrefs (non-dynamic memref sizes).
               self.config["stages", "polygeist", "exec"],
-                f"--function={function}",
+                f"--function=* -S -memref-fullrank",
                 "{input_path}"
             ]
         )
@@ -45,5 +49,6 @@ class PolygeistStage(Stage):
 
         # Schedule
         return compile_with_polygeist(input_file)
+
 
 __STAGES__ = [PolygeistStage]
