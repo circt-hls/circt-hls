@@ -10,10 +10,7 @@ The `fud` driver within Calyx is used as a general driver for the entire flow.
 - [Setup](#setup)
   - [Build CIRCT](#build-circt)
   - [Build Polygeist](#build-polygeist)
-  - [Build Calyx](#build-calyx)
-    - [building the rust compiler:](#building-the-rust-compiler)
-    - [building the Calyx driver:](#building-the-calyx-driver)
-  - [Setting up the HLS `fud` stages](#setting-up-the-hls-fud-stages)
+  - [Setup Calyx and the HLS fud stages](#setup-calyx-and-the-hls-fud-stages)
 - [Usage](#usage)
   - [Statically scheduled](#statically-scheduled)
   - [Dynamically scheduled](#dynamically-scheduled)
@@ -58,53 +55,9 @@ ninja
 ninja check-mlir-clang
 ```
 
-## Build Calyx
-**Note: skip this step if you already have a Calyx build available.**
+## Setup Calyx and the HLS fud stages
 
-### building the rust compiler:
-```
-cd calyx
-cargo build
-```
-
-### building the Calyx driver:
-Install Flit:
-```
-pip3 install flit
-```
-Install fud:
-
-```
-cd calyx
-flit -f fud/pyproject.toml install -s
-```
-
-Configure fud:
-```
-cd calyx
-fud config global.futil_directory $(pwd)/target/debug/futil
-```
-
-Check the fud configuration:
-```
-fud check
-```
-
-If anything relevant is missing, make sure you have the corresponding application installed and available in your path.
-
-## Setting up the HLS `fud` stages
-Setup Polygeist/MLIR/CIRCT stages:  
-**NOTE: modify these paths to point to your own CIRCT/MLIR builds**.
-```
-fud register polygeist -p $(pwd)/stages/Polygeist/stage.py
-fud config stages.polygeist.exec $(pwd)/Polygeist/build/bin/mlir-clang
-
-fud register circt -p $(pwd)/stages/CIRCT/stage.py
-fud config stages.circt.bin_dir $(pwd)/../circt/build/bin
-
-fud register mlir -p $(pwd)/stages/MLIR/stage.py
-fud config stages.mlir.bin_dir $(pwd)/../circt/llvm/build/bin
-```
+run the `calyx_setup.sh` script from the root repository folder. If any step fails due to missing dependencies, download the dependencies and rerun the script.
 
 We use the setting
 > `fud config stages.circt_hls.toplevel ${toplevel}`
@@ -115,8 +68,6 @@ To initialize this, please run:
 ```
 fud config stages.circt_hls.toplevel ""
 ```
-
-finally, run `fud config` to ensure that the variables were written correctly.
 
 # Usage
 The following lists example commands for exercising the available flows. If you're interested about the specific passes that are getting executed through `fud`, add `--verbose` to the command line.
