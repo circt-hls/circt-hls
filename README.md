@@ -77,7 +77,7 @@ The following lists example commands for exercising the available flows. If you'
 ```
 fud exec "Polygeist/mlir-clang/Test/aff.c"  \
   --from c                                  \
-  --to mlir-scf                             \
+  --to mlir-scf-while                       \
   -s circt_hls.toplevel "kernel_deriche"
 ```
 
