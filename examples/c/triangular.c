@@ -1,6 +1,6 @@
 
 #define N 8
-int main(int i) {
+int triangular(int i) {
   int acc = 0;
   int arr[N];
   for(int j = 0; j < i; ++j)

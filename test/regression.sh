@@ -7,47 +7,38 @@ set -e
 SCRIPT_DIR=$(cd $(dirname "${BASH_SOURCE[0]}") && pwd)
 cd $SCRIPT_DIR/..
 
-## Statically scheduled
-fud exec "examples/c/fir/fir.c"             \
-  --from c                                  \
-  --to mlir-scf-while                       \
-  -s circt_hls.toplevel "fir"
+# Create directory for test results
+resultDir=${SCRIPT_DIR}/results
+mkdir -p $resultDir
 
+## End-to-end dynamically scheduled path
+c_to_sv_dyn() {
+    # The first argument of this function is a full path to a file;
+    # get the basename of the file without the extension.
+    local basename=${1##*/}
+    basename=${basename%.*}
 
-### Polygeist to **mlir (calyx)**  
-fud exec "examples/c/fir/fir.c"             \
-  --from c                                  \
-  --to mlir-calyx                           \
-  -s circt_hls.toplevel "fir"
+    printf "\tDynamically scheduled HLS'ing $1...\n"
+    fud exec --from c --to mlir-scf-while -o $resultDir/${basename}_scf.mlir $1
+    printf "\tLowered to scf...!\n"
+    fud exec --from mlir-scf-while --to mlir-handshake -o $resultDir/${basename}_handshake.mlir $resultDir/${basename}_scf.mlir
+    printf "\tLowered to handshake...!\n"
+    fud exec --from mlir-handshake --to synth-verilog -o $resultDir/${basename}_sv.sv $resultDir/${basename}_handshake.mlir
+    printf "\tLowered to verilog...!\n"
+    printf "\tSuccess!\n"
+}
 
+## End-to-end statically scheduled path
+c_to_sv_stat() {
+    printf "\tStatically scheduled HLS'ing $1\n"
+    fud exec --from c --to synth-verilog --through mlir-calyx $1
+}
 
-### Polygeist to **calyx**  
-fud exec "examples/c/fir/fir.c"             \
-  --from c                                  \
-  --to futil                                \
-  -s circt_hls.toplevel "fir"
+Filelist=$SCRIPT_DIR/filelist.lst
 
-## Dynamically scheduled
-### Polygeist to **mlir (handshake)**  
-fud exec "examples/c/fir/fir.c" \
-  --from c                      \
-  --to mlir-handshake           \
-  -s circt_hls.toplevel fir
+echo "Iterating over files in $Filelist"
+while read fn; do
+    c_to_sv_dyn ${fn}
+done <$Filelist
 
-
-### Polygeist to **mlir (FIRRTL)**  
-fud exec "examples/c/fir/fir.c" \
-  --from c                      \
-  --to mlir-firrtl              \
-  -s circt_hls.toplevel fir
-
-
-### Handshake to Verilog
-fud exec ${handshake MLIR file} \
-  --from mlir-handshake         \
-  --to synth-verilog
-
-### Handshake to synthesized
-fud exec ${handshake MLIR file} \
-  --from mlir-handshake         \
-  --to synth-files -o ${outdir}
+echo "Done; all regression tests passed!"
