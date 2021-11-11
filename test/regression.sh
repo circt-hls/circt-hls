@@ -18,19 +18,18 @@ c_to_sv_dyn() {
     local basename=${1##*/}
     basename=${basename%.*}
 
-    printf "\tDynamically scheduled HLS'ing $1...\n"
+    printf "= Dynamically scheduled HLS'ing $1...\n"
     fud exec --from c --to mlir-scf-while -o $resultDir/${basename}_scf.mlir $1
     printf "\tLowered to scf...!\n"
-    fud exec --from mlir-scf-while --to mlir-handshake -o $resultDir/${basename}_handshake.mlir $resultDir/${basename}_scf.mlir
+    fud exec --from mlir-scf-while --to mlir-handshake-buffered -o $resultDir/${basename}_handshake.mlir $resultDir/${basename}_scf.mlir
     printf "\tLowered to handshake...!\n"
     fud exec --from mlir-handshake --to synth-verilog -o $resultDir/${basename}_sv.sv $resultDir/${basename}_handshake.mlir
     printf "\tLowered to verilog...!\n"
-    printf "\tSuccess!\n"
 }
 
 ## End-to-end statically scheduled path
 c_to_sv_stat() {
-    printf "\tStatically scheduled HLS'ing $1\n"
+    printf "= Statically scheduled HLS'ing $1\n"
     fud exec --from c --to synth-verilog --through mlir-calyx $1
 }
 
@@ -41,4 +40,4 @@ while read fn; do
     c_to_sv_dyn ${fn}
 done <$Filelist
 
-echo "Done; all regression tests passed!"
+echo "Done - all regression tests passed!"

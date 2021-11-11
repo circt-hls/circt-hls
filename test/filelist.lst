@@ -1,2 +1,4 @@
 examples/c/histogram.c
 examples/c/fir.c
+examples/c/triangular.c
+examples/c/exponent.c
