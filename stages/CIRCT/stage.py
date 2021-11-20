@@ -68,7 +68,7 @@ class CIRCTSCFToDataflow(CIRCTStageBase):
             "circt-opt",
             config,
             "Lower MLIR SCF to MLIR Handshake dialect",
-            "-lower-std-to-handshake --handshake-canonicalize"
+            "-lower-std-to-handshake --canonicalize"
         )
 
 
@@ -80,7 +80,7 @@ class CIRCTHandshakeBufferize(CIRCTStageBase):
             "circt-opt",
             config,
             "Add buffers to handshake MLIR",
-            "-handshake-insert-buffer"
+            "-handshake-insert-buffer=strategies=\"all\""
         )
 
 
