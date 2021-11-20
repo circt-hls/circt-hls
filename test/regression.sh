@@ -19,11 +19,11 @@ c_to_sv_dyn() {
     basename=${basename%.*}
 
     printf "= Dynamically scheduled HLS'ing $1...\n"
-    fud exec --from c --to mlir-scf-while -o $resultDir/${basename}_scf.mlir $1
+    fud exec --from c --to mlir-scf-while -o $resultDir/${basename}_scf.mlir $1 --verbose
     printf "\tLowered to scf...!\n"
-    fud exec --from mlir-scf-while --to mlir-handshake-buffered -o $resultDir/${basename}_handshake.mlir $resultDir/${basename}_scf.mlir
+    fud exec --from mlir-scf-while --to mlir-handshake-buffered -o $resultDir/${basename}_handshake.mlir $resultDir/${basename}_scf.mlir --verbose
     printf "\tLowered to handshake...!\n"
-    fud exec --from mlir-handshake --to synth-verilog -o $resultDir/${basename}_sv.sv $resultDir/${basename}_handshake.mlir
+    fud exec --from mlir-handshake --to synth-verilog -o $resultDir/${basename}_sv.sv $resultDir/${basename}_handshake.mlir --verbose
     printf "\tLowered to verilog...!\n"
 }
 

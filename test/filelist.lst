@@ -1,3 +1,5 @@
+examples/c/if_loop_1/if_loop_1.c
+examples/c/if_loop_3/if_loop_3.c
 examples/c/histogram.c
 examples/c/fir.c
 examples/c/triangular.c
