@@ -13,7 +13,11 @@ The `fud` driver within Calyx is used as a general driver for the entire flow.
   - [Setup Calyx and the HLS fud stages](#setup-calyx-and-the-hls-fud-stages)
 - [Usage](#usage)
   - [Statically scheduled](#statically-scheduled)
+    - [Pipeline:](#pipeline)
+    - [Status](#status)
   - [Dynamically scheduled](#dynamically-scheduled)
+    - [Compilation pipeline](#compilation-pipeline)
+    - [Status](#status-1)
   - [Vivado](#vivado)
 
 ## HLS flows
@@ -73,6 +77,19 @@ fud config stages.circt_hls.toplevel ""
 The following lists example commands for exercising the available flows. If you're interested about the specific passes that are getting executed through `fud`, add `--verbose` to the command line.
 
 ## Statically scheduled
+
+### Pipeline:
+
+- Polygeist
+- MLIR SCF for-to-while
+  - SCFtoCalyx only supports while loops
+- MLIR SCF to Calyx
+- Export Calyx IR
+- Calyx Native compilation
+
+### Status
+<details>
+  <summary>Click to expand</summary>
 - [x] Polygeist to **mlir (scf)**
 ```
 fud exec "Polygeist/mlir-clang/Test/aff.c"  \
@@ -98,8 +115,26 @@ fud exec "Polygeist/mlir-clang/Test/aff.c"  \
   --to futil                                \
   -s circt_hls.toplevel "kernel_deriche"
 ```
+</details>
 
 ## Dynamically scheduled
+
+### Compilation pipeline
+
+- Polygeist
+- MLIR SCF to std
+- CIRCT flatten memrefs
+  - Ensures multidimensional memories are flatten to unidimensional memories (what is currently supported in Handshake-to-FIRRTL lowering)
+- CIRCT std to handshake + canonicalization
+- CIRCT handshake bufferization
+  - Currently, the `all` mode is used since `cycles` introduces deadlocks in the majority of circuits.
+- CIRCT Handshake to FIRRTL
+- CIRCT Firtool FIRRTL to sv
+  - We trust firtool to do the right things in the right order to bring our FIRRTL code all the way to hardware.
+### Status
+
+<details>
+  <summary>Click to expand</summary>
 
 - [ ] Polygeist to **mlir (handshake)**  
 **Error:** issues in lowering the memref.alloc ops in standard to handshake. I think this goes back to what https://github.com/llvm/circt/pull/1538 is trying to solve.
@@ -131,6 +166,7 @@ fud exec ${handshake MLIR file} \
   --from mlir-handshake         \
   --to synth-files -o ${outdir}
 
+</details>
 
 ## Vivado
 ...
