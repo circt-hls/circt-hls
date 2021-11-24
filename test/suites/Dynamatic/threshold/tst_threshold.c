@@ -1,6 +1,8 @@
 #include "threshold.h"
 
+#ifndef AMOUNT_OF_TEST
 #define AMOUNT_OF_TEST 1
+#endif
 
 int main(void) {
   int red[AMOUNT_OF_TEST][1000];
@@ -18,7 +20,6 @@ int main(void) {
   }
 
   for (int i = 0; i < AMOUNT_OF_TEST; ++i) {
-    int i = 0;
     threshold(red[i], green[i], blue[i], th[i]);
   }
 }

@@ -1,5 +1,7 @@
 #include "kernel_3mm.h"
+#ifndef AMOUNT_OF_TEST
 #define AMOUNT_OF_TEST 1
+#endif
 
 int main(void) {
   int A[AMOUNT_OF_TEST][N][N];
@@ -25,7 +27,6 @@ int main(void) {
   }
 
   for (int i = 0; i < AMOUNT_OF_TEST; ++i) {
-
     kernel_3mm(A[0], B[0], C[0], D[0], E[0], F[0], G[0]);
   }
 }

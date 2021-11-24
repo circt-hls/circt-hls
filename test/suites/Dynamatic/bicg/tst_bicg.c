@@ -1,4 +1,10 @@
 #include "bicg.h"
+#include <stdlib.h>
+
+#ifndef AMOUNT_OF_TEST
+#define AMOUNT_OF_TEST 1
+#endif
+
 int main(void) {
   int A[AMOUNT_OF_TEST][N][N];
   int s[AMOUNT_OF_TEST][N];
@@ -18,8 +24,7 @@ int main(void) {
     }
   }
 
-  // for(int i = 0; i < AMOUNT_OF_TEST; ++i){
-  int i = 0;
-  bicg(A[i], s[i], q[i], p[i], r[i]);
-}
+  for (int i = 0; i < AMOUNT_OF_TEST; ++i) {
+    bicg(A[i], s[i], q[i], p[i], r[i]);
+  }
 }

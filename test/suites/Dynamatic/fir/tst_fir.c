@@ -1,5 +1,9 @@
 #include "fir.h"
 
+#ifndef AMOUNT_OF_TEST
+#define AMOUNT_OF_TEST 1
+#endif
+
 int main(void) {
   int d_i[AMOUNT_OF_TEST][1000];
   int idx[AMOUNT_OF_TEST][1000];

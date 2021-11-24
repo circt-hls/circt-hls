@@ -1,6 +1,8 @@
 #include "loop_array.h"
 
+#ifndef AMOUNT_OF_TEST
 #define AMOUNT_OF_TEST 1
+#endif
 
 int main(void) {
   int k[AMOUNT_OF_TEST];
@@ -17,7 +19,6 @@ int main(void) {
   }
 
   for (int i = 0; i < AMOUNT_OF_TEST; ++i) {
-    int i = 0;
     loop_array(n[i], k[i], c[i]);
   }
 }

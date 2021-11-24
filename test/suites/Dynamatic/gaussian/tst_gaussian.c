@@ -1,4 +1,9 @@
 #include "gaussian.h"
+
+#ifndef AMOUNT_OF_TEST
+#define AMOUNT_OF_TEST 1
+#endif
+
 int main(void) {
   int c[AMOUNT_OF_TEST][20];
   int A[AMOUNT_OF_TEST][20][20];

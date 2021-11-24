@@ -1,6 +1,8 @@
 #include "simple_example_2.h"
 
+#ifndef AMOUNT_OF_TEST
 #define AMOUNT_OF_TEST 1
+#endif
 
 int main(void) {
   int a[AMOUNT_OF_TEST][100];

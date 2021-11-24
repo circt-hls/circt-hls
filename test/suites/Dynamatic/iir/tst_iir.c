@@ -16,7 +16,6 @@ int main(void) {
   }
 
   for (int i = 0; i < AMOUNT_OF_TEST; ++i) {
-    int i = 0;
     iir(y[i], x[i], a[i], b[i]);
   }
 }

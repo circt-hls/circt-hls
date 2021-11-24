@@ -1,4 +1,9 @@
 #include "gemver.h"
+
+#ifndef AMOUNT_OF_TEST
+#define AMOUNT_OF_TEST 1
+#endif
+
 int main(void) {
   int alpha[AMOUNT_OF_TEST];
   int beta[AMOUNT_OF_TEST];

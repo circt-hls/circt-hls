@@ -1,6 +1,8 @@
 #include "memory_loop.h"
 
+#ifndef AMOUNT_OF_TEST
 #define AMOUNT_OF_TEST 1
+#endif
 
 int main(void) {
   int x[AMOUNT_OF_TEST][1000];
@@ -14,7 +16,6 @@ int main(void) {
   }
 
   for (int i = 0; i < AMOUNT_OF_TEST; ++i) {
-    int i = 0;
     memory_loop(x[i], y[i]);
   }
 }

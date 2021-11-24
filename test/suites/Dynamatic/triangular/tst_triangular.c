@@ -1,6 +1,8 @@
 #include "triangular.h"
 
+#ifndef AMOUNT_OF_TEST
 #define AMOUNT_OF_TEST 1
+#endif
 
 int main(void) {
   int xArray[AMOUNT_OF_TEST][10];
@@ -18,7 +20,6 @@ int main(void) {
   }
 
   for (int i = 0; i < AMOUNT_OF_TEST; ++i) {
-    int i = 0;
     triangular(xArray[i], A[i], n[i]);
   }
 }

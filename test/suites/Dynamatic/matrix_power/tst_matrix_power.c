@@ -1,5 +1,7 @@
 #include "matrix_power.h"
+#ifndef AMOUNT_OF_TEST
 #define AMOUNT_OF_TEST 1
+#endif
 
 int main(void) {
   int mat[AMOUNT_OF_TEST][20][20];
@@ -19,7 +21,6 @@ int main(void) {
   }
 
   for (int i = 0; i < AMOUNT_OF_TEST; ++i) {
-    int i = 0;
     matrix_power(mat[i], row[i], col[i], a[i]);
   }
 }
