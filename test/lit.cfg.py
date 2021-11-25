@@ -61,7 +61,7 @@ tool_dirs = [
     config.circt_tools_dir, config.mlir_tools_dir, config.llvm_tools_dir, config.circt_hls_tools_dir
 ]
 tools = [
-    'circt-hls'
+    'hls-opt'
 ]
 
 llvm_config.add_tool_substitutions(tools, tool_dirs)

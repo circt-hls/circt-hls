@@ -14,15 +14,20 @@
 #include "mlir/Conversion/LLVMCommon/ConversionTarget.h"
 #include "mlir/Conversion/LLVMCommon/Pattern.h"
 #include "mlir/Dialect/Arithmetic/IR/Arithmetic.h"
+#include "mlir/Dialect/MemRef/IR/MemRef.h"
 #include "mlir/Dialect/SCF/SCF.h"
 #include "mlir/Dialect/StandardOps/IR/Ops.h"
 #include "mlir/IR/BlockAndValueMapping.h"
+#include "mlir/IR/BuiltinDialect.h"
 #include "mlir/IR/BuiltinTypes.h"
 #include "mlir/IR/ImplicitLocOpBuilder.h"
 #include "mlir/IR/OperationSupport.h"
 #include "mlir/Transforms/DialectConversion.h"
 #include "mlir/Transforms/GreedyPatternRewriteDriver.h"
+#include "llvm/Support/Debug.h"
 #include "llvm/Support/MathExtras.h"
+
+#define DEBUG_TYPE "asyncify-calls"
 
 using namespace mlir;
 using namespace circt_hls;
@@ -49,7 +54,9 @@ static void mapAllResults(BlockAndValueMapping &mapping, Operation *from,
 // point. Each cloned operation extends the value mapping - this is necessary to
 // avoid re-cloning operations which fan-out to multiple operations.
 static void recurseCloneUpstream(ConversionPatternRewriter &rewriter,
-                                 BlockAndValueMapping &mapping, Operation *op) {
+                                 BlockAndValueMapping &mapping, Operation *op,
+                                 bool cloneOp = true) {
+  LLVM_DEBUG(llvm::dbgs() << "Upstream cloning: " << *op << "\n");
   for (auto operand : op->getOperands()) {
     if (mapping.contains(operand))
       continue;
@@ -60,38 +67,62 @@ static void recurseCloneUpstream(ConversionPatternRewriter &rewriter,
     // Recursively ensure that all operands of the producerOp are available in
     // the mapping (post-order traversal of the DFG).
     recurseCloneUpstream(rewriter, mapping, producerOp);
-
-    // All operands are now either available in the parent region or in the
-    // mapping.
-    auto clonedProducerOp = rewriter.clone(*producerOp, mapping);
-
-    // Extend mapping with the results of the cloned producer.
-    mapAllResults(mapping, producerOp, clonedProducerOp);
   }
+
+  if (cloneOp) {
+    // All operands are now either available in the parent region or in the
+    // mapping. Clone the current op
+    auto clonedOp = rewriter.clone(*op, mapping);
+
+    // Extend mapping with the results of the cloned op.
+    mapAllResults(mapping, op, clonedOp);
+  }
+  LLVM_DEBUG(llvm::dbgs() << "Finished upstream cloning: " << *op << "\n");
 }
 
 // Like recurseCloneUpstream, but clones based on the dataflow graph following
 // the result of operations.
 static void recurseCloneDownstream(ConversionPatternRewriter &rewriter,
-                                   BlockAndValueMapping &mapping,
-                                   Operation *op) {
+                                   BlockAndValueMapping &mapping, Operation *op,
+                                   bool cloneOp = true,
+                                   bool cloneUpstream = true) {
+  LLVM_DEBUG(llvm::dbgs() << "Downstream cloning: " << *op << "\n");
+
+  if (cloneUpstream) {
+    // Recursively ensure that all operands of the userOp are available in
+    // the mapping (post-order traversal of the DFG). Do not clone op since it
+    // will be cloned from here.
+    recurseCloneUpstream(rewriter, mapping, op, false);
+  }
+
+  if (cloneOp) {
+    // Clone operation into insertion point
+    auto clonedOp = rewriter.clone(*op, mapping);
+
+    // Extend mapping with the results of the cloned user.
+    mapAllResults(mapping, op, clonedOp);
+  }
+
+  // Recursively ensure that all downstream users of this op are cloned as well.
   for (auto operand : op->getResults()) {
     for (auto userOp : operand.getUsers()) {
-      // Recursively ensure that all operands of the userOp are available in
-      // the mapping (post-order traversal of the DFG).
-      recurseCloneUpstream(rewriter, mapping, userOp);
-
-      // All operands are now either available in the parent region or in the
-      // mapping. Clone the user
-      auto clonedUserOp = rewriter.clone(*userOp, mapping);
-
-      // Extend mapping with the results of the cloned user.
-      mapAllResults(mapping, clonedUserOp, clonedUserOp);
-
-      // Recursively ensure that downstream operations are cloned
       recurseCloneDownstream(rewriter, mapping, userOp);
     }
   }
+  LLVM_DEBUG(llvm::dbgs() << "Finished downstream cloning: " << *op << "\n");
+}
+
+// Recursively erases all downstream users of the results of op, and finally the
+// op itself.
+static void recurseCleanDownstream(ConversionPatternRewriter &rewriter,
+                                   Operation *op, bool eraseOp = true) {
+  for (auto res : op->getResults()) {
+    for (auto user : res.getUsers()) {
+      recurseCleanDownstream(rewriter, user);
+    }
+  }
+  if (eraseOp)
+    rewriter.eraseOp(op);
 }
 
 template <typename TOp>
@@ -133,6 +164,8 @@ struct ForOpConversion : public AsyncConversionPattern<scf::ForOp> {
 
     CallOp sourceCallOp = *callOps.begin();
 
+    rewriter.startRootUpdate(op);
+
     // Create the call and await ops within the source for loop, simplifying
     // result remapping.
     rewriter.setInsertionPoint(sourceCallOp);
@@ -141,18 +174,31 @@ struct ForOpConversion : public AsyncConversionPattern<scf::ForOp> {
     auto awaitOp = rewriter.replaceOpWithNewOp<CallOp>(sourceCallOp, awaitFunc,
                                                        ValueRange());
 
-    // Create the call and await loops
-    auto callLoop = rewriter.create<scf::ForOp>(op.getLoc(), op.lowerBound(),
-                                                op.upperBound(), op.step());
+    // Create the await loop after the call loop.
+    rewriter.setInsertionPointAfter(op);
     auto awaitLoop = rewriter.create<scf::ForOp>(op.getLoc(), op.lowerBound(),
                                                  op.upperBound(), op.step());
 
-    // Move argument dependencies of the call to the callLoop
+    // Move result dependencies (and upstream dependencies of downstream ops) of
+    // the call to the await loop.
     BlockAndValueMapping mapping;
-    addLoopToLoopMapping(mapping, op, callLoop);
+    addLoopToLoopMapping(mapping, op, awaitLoop);
+    rewriter.setInsertionPoint(awaitLoop.getBody(),
+                               awaitLoop.getBody()->begin());
+    auto clonedAwaitOp = rewriter.clone(*awaitOp, mapping);
+    mapAllResults(mapping, sourceCallOp, clonedAwaitOp);
+    // We recurse clone from the source call op since the SSA value replacements
+    // have yet to be materialized.
+    recurseCloneDownstream(rewriter, mapping, sourceCallOp, /*cloneOp=*/false,
+                           /*cloneUpstream=*/false);
 
-    // move downstream ops (and dependencies) to the awaitLoop
-
+    // Cleanup by erasing everything that is downstream from the sourceCallOp in
+    // the call loop. eraseOp is false due to sourceCallOp already being
+    // replaced by replaceOpWithNewOp.
+    recurseCleanDownstream(rewriter, sourceCallOp, /*eraseOp=*/false);
+    // erase the temporary await op.
+    rewriter.eraseOp(awaitOp);
+    rewriter.finalizeRootUpdate(op);
     return success();
   }
 };
@@ -163,8 +209,7 @@ struct CallOpConversion : public AsyncConversionPattern<mlir::CallOp> {
   LogicalResult
   matchAndRewrite(mlir::CallOp op, OpAdaptor adaptor,
                   ConversionPatternRewriter &rewriter) const override {
-
-    assert(op.callee() != targetName && "Legalizer should not allow this");
+    assert(op.callee().equals(targetName) && "Legalizer should not allow this");
     assert(isa<FuncOp>(op->getParentOp()) &&
            "Call ops nested within anything but a FuncOp should have been "
            "converted prior to this conversion pattern applying. This pattern "
@@ -186,8 +231,23 @@ public:
     auto module = getOperation();
 
     if (functionName.empty()) {
-      getOperation().emitError() << "Must provide a --function argument";
-      return signalPassFailure();
+      // Try to infer the callee function.
+      StringRef callee;
+      auto res = getOperation().walk([&](mlir::CallOp op) {
+        if (!callee.empty() && !callee.equals(op.callee()))
+          return WalkResult::interrupt();
+        callee = op.callee();
+        return WalkResult::advance();
+      });
+
+      if (res.wasInterrupted()) {
+        getOperation().emitError()
+            << "Multiple functions called within the body of a function. Must "
+               "provide a --function argument to determine the callee to be "
+               "asyncified.";
+        return signalPassFailure();
+      }
+      functionName = callee.str();
     }
 
     FuncOp source = module.lookupSymbol<FuncOp>(functionName);
@@ -209,6 +269,8 @@ public:
     if (failed(applyPartialConversion(getOperation(), target,
                                       std::move(patterns))))
       return signalPassFailure();
+
+    getOperation().dump();
   };
 
   void createExternalSymbols(FuncOp sourceOp);
@@ -221,15 +283,42 @@ private:
 
 void AsyncifyCallsPass::addTargetLegalizations(ConversionTarget &target) {
   target.addLegalDialect<scf::SCFDialect>();
+  target.addLegalDialect<memref::MemRefDialect>();
+  target.addLegalDialect<mlir::BuiltinDialect>();
+  target.addLegalDialect<mlir::StandardOpsDialect>();
+  target.addLegalDialect<arith::ArithmeticDialect>();
   target.addDynamicallyLegalOp<mlir::CallOp>([&](CallOp op) {
     // We expect the target function to be removed after asyncification.
     return op.callee() != functionName;
   });
   target.addDynamicallyLegalOp<scf::ForOp>([&](scf::ForOp op) {
-    // Loops are legal when they don't have a call to the target function.
+    // Loops are legal when they don't have a call to the target function OR
+    // there exists a _call/_await pair within the loop. The latter condition is
+    // true when the dynamic legalizer is called during conversion, where both
+    // the target function call and the decoupled function calls exist.
     auto callOps = op.getOps<CallOp>();
+    auto hasAsyncPair = [&](StringRef callee) {
+      bool call = llvm::any_of(callOps, [&](CallOp callOp) {
+        return callOp.callee().equals((callee + "_call").str());
+      });
+      bool await = llvm::any_of(callOps, [&](CallOp callOp) {
+        return callOp.callee().equals((callee + "_await").str());
+      });
+      return call && await;
+    };
+
+    for (auto callOp : callOps) {
+      if (!callOp.callee().equals(functionName))
+        continue;
+
+      // Is there an async call?
+      if (!hasAsyncPair(callOp.callee()))
+        return false;
+    }
+    return true;
+
     return llvm::none_of(callOps, [&](CallOp callOp) {
-      return callOp.callee() != functionName;
+      return callOp.callee().equals(functionName);
     });
   });
 }
@@ -240,12 +329,15 @@ void AsyncifyCallsPass::createExternalSymbols(FuncOp sourceOp) {
 
   FunctionType type = sourceOp.getType();
   ImplicitLocOpBuilder builder(module.getLoc(), ctx);
+  builder.setInsertionPoint(sourceOp);
   callOp = builder.create<FuncOp>(
       (sourceOp.getName() + "_call").str(),
       FunctionType::get(ctx, type.getInputs(), TypeRange()));
   awaitOp = builder.create<FuncOp>(
       (sourceOp.getName() + "_await").str(),
       FunctionType::get(ctx, TypeRange(), type.getResults()));
+  callOp.setPrivate();
+  awaitOp.setPrivate();
 }
 
 } // namespace

@@ -5,14 +5,14 @@ configure_lit_site_cfg(
   ${CMAKE_CURRENT_SOURCE_DIR}/lit.cfg.py
   )
 
-set(CIRCT_TEST_DEPENDS
+set(CIRCT_HLS_TEST_DEPENDS
   FileCheck count not
   hls-opt
   )
 
-add_lit_testsuite(check-circt-hls "Running the CIRCT regression tests"
+add_lit_testsuite(check-circt-hls "Running the CIRCT HLS regression tests"
   ${CMAKE_CURRENT_BINARY_DIR}
-  DEPENDS ${CIRCT_TEST_DEPENDS}
+  DEPENDS ${CIRCT_HLS_TEST_DEPENDS}
   )
 set_target_properties(check-circt-hls PROPERTIES FOLDER "Tests")
 

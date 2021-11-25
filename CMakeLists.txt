@@ -2,12 +2,27 @@ cmake_minimum_required(VERSION 3.13.4)
 
 project(circt-hls LANGUAGES CXX C)
 
-set(CMAKE_CXX_STANDARD 17 CACHE STRING "C++ standard to conform to")
+if(POLICY CMP0075)
+  cmake_policy(SET CMP0075 NEW)
+endif()
+
+if(POLICY CMP0077)
+  cmake_policy(SET CMP0077 NEW)
+endif()
+
+set(CMAKE_CXX_STANDARD 17)
+set(CMAKE_CXX_STANDARD_REQUIRED YES)
 
 find_package(CIRCT REQUIRED CONFIG)
 
 option(LLVM_INCLUDE_TOOLS "Generate build targets for the LLVM tools." ON)
 option(LLVM_BUILD_TOOLS "Build the LLVM tools. If OFF, just generate build targets." ON)
+
+if (MSVC)
+  set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} /EHs-c- /GR-")
+else ()
+  set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fno-exceptions -fno-rtti")
+endif ()
 
 message(STATUS "Using CIRCTConfig.cmake in: ${CIRCT_DIR}")
 message(STATUS "Using MLIRConfig.cmake in: ${MLIR_DIR}")
@@ -39,11 +54,6 @@ link_directories(${LLVM_BUILD_LIBRARY_DIR})
 
 add_definitions(${LLVM_DEFINITIONS})
 
-add_subdirectory(include/circt-hls)
-add_subdirectory(lib)
-add_subdirectory(tools)
-add_subdirectory(test)
-
 #-------------------------------------------------------------------------------
 # CIRCT HLS configuration
 #-------------------------------------------------------------------------------
@@ -65,3 +75,8 @@ list(APPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_SOURCE_DIR}/cmake/modules")
 # Add CIRCT HLS files to the include path
 include_directories(${CIRCT_HLS_MAIN_INCLUDE_DIR})
 include_directories(${CIRCT_HLS_INCLUDE_DIR})
+
+add_subdirectory(include/circt-hls)
+add_subdirectory(lib)
+add_subdirectory(tools)
+add_subdirectory(test)
