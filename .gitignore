@@ -1,2 +1,22 @@
-out
+/out*
+/outdir*
+/build*
+/install*
+/docker_build
+tags
 .vscode
+compile_commands.json
+.cache/
+#*
+*~
+.DS_Store
+__pycache__
+lit.site.cfg.py
+
+# Pip artifacts
+/lib/Bindings/Python/build
+*.egg-info
+*.whl
+
+# External software
+/ext

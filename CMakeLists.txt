@@ -1,0 +1,67 @@
+cmake_minimum_required(VERSION 3.13.4)
+
+project(circt-hls LANGUAGES CXX C)
+
+set(CMAKE_CXX_STANDARD 17 CACHE STRING "C++ standard to conform to")
+
+find_package(CIRCT REQUIRED CONFIG)
+
+option(LLVM_INCLUDE_TOOLS "Generate build targets for the LLVM tools." ON)
+option(LLVM_BUILD_TOOLS "Build the LLVM tools. If OFF, just generate build targets." ON)
+
+message(STATUS "Using CIRCTConfig.cmake in: ${CIRCT_DIR}")
+message(STATUS "Using MLIRConfig.cmake in: ${MLIR_DIR}")
+message(STATUS "Using LLVMConfig.cmake in: ${LLVM_DIR}")
+
+set(LLVM_RUNTIME_OUTPUT_INTDIR ${CMAKE_BINARY_DIR}/bin)
+set(LLVM_LIBRARY_OUTPUT_INTDIR ${CMAKE_BINARY_DIR}/lib)
+
+list(APPEND CMAKE_MODULE_PATH "${CIRCT_CMAKE_DIR}")
+list(APPEND CMAKE_MODULE_PATH "${MLIR_CMAKE_DIR}")
+list(APPEND CMAKE_MODULE_PATH "${LLVM_CMAKE_DIR}")
+
+include(TableGen)
+include(AddLLVM)
+include(AddMLIR)
+
+list(APPEND CMAKE_MODULE_PATH "${CIRCT_MAIN_SRC_DIR}/cmake/modules")
+include(AddCIRCT)
+include(HandleLLVMOptions)
+ 
+include_directories(${LLVM_INCLUDE_DIRS})
+include_directories(${MLIR_INCLUDE_DIRS})
+include_directories(${CIRCT_INCLUDE_DIRS})
+
+include_directories(${PROJECT_SOURCE_DIR}/include)
+include_directories(${PROJECT_BINARY_DIR}/include)
+
+link_directories(${LLVM_BUILD_LIBRARY_DIR})
+
+add_definitions(${LLVM_DEFINITIONS})
+
+add_subdirectory(include/circt-hls)
+add_subdirectory(lib)
+add_subdirectory(tools)
+add_subdirectory(test)
+
+#-------------------------------------------------------------------------------
+# CIRCT HLS configuration
+#-------------------------------------------------------------------------------
+
+# CIRCT HLS project.
+set(CIRCT_HLS_MAIN_SRC_DIR ${CMAKE_CURRENT_SOURCE_DIR} ) # --src-root
+set(CIRCT_HLS_MAIN_INCLUDE_DIR ${CIRCT_HLS_MAIN_SRC_DIR}/include)
+
+set(CIRCT_HLS_SOURCE_DIR ${CMAKE_CURRENT_SOURCE_DIR})
+set(CIRCT_HLS_BINARY_DIR ${CMAKE_CURRENT_BINARY_DIR})
+set(CIRCT_HLS_INCLUDE_DIR ${CMAKE_CURRENT_BINARY_DIR}/include )
+set(CIRCT_HLS_TOOLS_DIR ${CMAKE_BINARY_DIR}/bin)
+set(CIRCT_HLS_UTILS_DIR ${CMAKE_CURRENT_SOURCE_DIR}/utils)
+set(CIRCT_HLS_PYTHON_PACKAGES_DIR ${CIRCT_HLS_BINARY_DIR}/python_packages)
+
+list(APPEND CMAKE_MODULE_PATH "${MLIR_MAIN_SRC_DIR}/cmake/modules")
+list(APPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_SOURCE_DIR}/cmake/modules")
+
+# Add CIRCT HLS files to the include path
+include_directories(${CIRCT_HLS_MAIN_INCLUDE_DIR})
+include_directories(${CIRCT_HLS_INCLUDE_DIR})

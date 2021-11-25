@@ -11,6 +11,7 @@ The `fud` driver within Calyx is used as a general driver for the entire flow.
   - [Build CIRCT](#build-circt)
   - [Build Polygeist](#build-polygeist)
   - [Setup Calyx and the HLS fud stages](#setup-calyx-and-the-hls-fud-stages)
+  - [Build and test CIRCT-HLS](#build-and-test-circt-hls)
 - [Usage](#usage)
   - [Statically scheduled](#statically-scheduled)
     - [Pipeline:](#pipeline)
@@ -71,6 +72,23 @@ to keep track of the top-level function to be compiled. This should match a func
 To initialize this, please run:
 ```
 fud config stages.circt_hls.toplevel ""
+```
+
+## Build and test CIRCT-HLS 
+
+Modify according to where you built CIRCT:
+```
+$ mkdir build
+$ cd build
+$ cmake -G Ninja .. \
+    -DCIRCT_DIR=$PWD/../circt/build/lib/cmake/circt \
+    -DMLIR_DIR=$PWD/../circt/llvm/build/lib/cmake/mlir \
+    -DLLVM_DIR=$PWD/../circt/llvm/build/lib/cmake/llvm \
+    -DLLVM_ENABLE_ASSERTIONS=ON \
+    -DCMAKE_BUILD_TYPE=DEBUG \
+    -DCMAKE_EXPORT_COMPILE_COMMANDS=ON
+$ ninja
+$ ninja check-circt-hls
 ```
 
 # Usage
