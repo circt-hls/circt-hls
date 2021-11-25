@@ -185,6 +185,11 @@ public:
     auto *ctx = &getContext();
     auto module = getOperation();
 
+    if (functionName.empty()) {
+      getOperation().emitError() << "Must provide a --function argument";
+      return signalPassFailure();
+    }
+
     FuncOp source = module.lookupSymbol<FuncOp>(functionName);
     if (!source) {
       getOperation().emitError()
@@ -196,7 +201,8 @@ public:
     createExternalSymbols(source);
 
     RewritePatternSet patterns(ctx);
-    patterns.insert<ForOpConversion, CallOpConversion>(ctx, callOp, awaitOp);
+    patterns.insert<ForOpConversion, CallOpConversion>(ctx, callOp, awaitOp,
+                                                       functionName);
 
     ConversionTarget target(*ctx);
     addTargetLegalizations(target);
@@ -233,12 +239,12 @@ void AsyncifyCallsPass::createExternalSymbols(FuncOp sourceOp) {
   auto module = getOperation();
 
   FunctionType type = sourceOp.getType();
-  ImplicitLocOpBuilder builder(module.getLoc());
+  ImplicitLocOpBuilder builder(module.getLoc(), ctx);
   callOp = builder.create<FuncOp>(
-      sourceOp.getName() + "_call",
+      (sourceOp.getName() + "_call").str(),
       FunctionType::get(ctx, type.getInputs(), TypeRange()));
   awaitOp = builder.create<FuncOp>(
-      sourceOp.getName() + "_await",
+      (sourceOp.getName() + "_await").str(),
       FunctionType::get(ctx, TypeRange(), type.getResults()));
 }
 
