@@ -1,17 +1,15 @@
 # circt-hls
 
 **What is this?**:
-A collection of repositories used to realise various end-to-end high-level synthesis (HLS) flows centering around the CIRCT project.
+A collection of repositories and tools used to realise various end-to-end high-level synthesis (HLS) flows centering around the CIRCT project. This project can be seen as an incubator for things to go into CIRCT (... which itself is an incubator project). If you're researching CIRCT/MLIR based HLS flows, feel free to contribute or push your code to this repository - there are as of now no strict review or code requirements.
 
-The `fud` driver within Calyx is used as a general driver for the entire flow.
-
+**Contents:**
 - [circt-hls](#circt-hls)
-  - [HLS flows](#hls-flows)
 - [Setup](#setup)
   - [Build CIRCT](#build-circt)
   - [Build Polygeist](#build-polygeist)
-  - [Setup Calyx and the HLS fud stages](#setup-calyx-and-the-hls-fud-stages)
   - [Build and test CIRCT-HLS](#build-and-test-circt-hls)
+  - [Setup and build Calyx and the HLS `fud` stages](#setup-and-build-calyx-and-the-hls-fud-stages)
 - [Usage](#usage)
   - [Statically scheduled](#statically-scheduled)
     - [Pipeline:](#pipeline)
@@ -21,9 +19,7 @@ The `fud` driver within Calyx is used as a general driver for the entire flow.
     - [Status](#status-1)
   - [Vivado](#vivado)
 
-## HLS flows
-
-These are the (intended) end-to-end flows that can be run from this directory:
+These are the (intended) end-to-end flows that can be driven from this directory:
 - [C](https://en.wikipedia.org/wiki/C_(programming_language))
   - [Polygeist](https://c.wsmoses.com/papers/Polygeist_PACT.pdf)
     - [CIRCT](https://circt.llvm.org/)
@@ -35,6 +31,7 @@ These are the (intended) end-to-end flows that can be run from this directory:
         - [FIRRTL Dialect](https://circt.llvm.org/docs/Dialects/FIRRTL/)
           - [HW Dialect](https://circt.llvm.org/docs/Dialects/HW/)
             - [**SystemVerilog**](https://en.wikipedia.org/wiki/SystemVerilog)
+            - HLS Cosimulation
   - [Vivado](https://en.wikipedia.org/wiki/Xilinx_Vivado) ("Classical" HLS)
     -  [**SystemVerilog**](https://en.wikipedia.org/wiki/SystemVerilog)
 
@@ -44,7 +41,7 @@ These are the (intended) end-to-end flows that can be run from this directory:
 If you don't already have a CIRCT/MLIR build locally, checkout https://github.com/llvm/circt and go follow the instructions.
 
 ## Build Polygeist
-We'll build Polygeist using our existing MLIR/LLVM/Clang build.  
+Polygeist is used as the primary front-end for ingesting high-level programs. We'll build Polygeist using our existing MLIR/LLVM/Clang build.  
 **NOTE: modify these paths to point to your own CIRCT/MLIR builds**.
 ```
 cd Polygeist
@@ -60,23 +57,11 @@ ninja
 ninja check-mlir-clang
 ```
 
-## Setup Calyx and the HLS fud stages
-
-run the `calyx_setup.sh` script from the root repository folder. If any step fails due to missing dependencies, download the dependencies and rerun the script.
-
-We use the setting
-> `fud config stages.circt_hls.toplevel ${toplevel}`
-
-to keep track of the top-level function to be compiled. This should match a function name in the input `.c` file. This will further be used as the top-level function when lowering `SCFToCalyx`.
-
-To initialize this, please run:
-```
-fud config stages.circt_hls.toplevel ""
-```
-
 ## Build and test CIRCT-HLS 
 
-Modify according to where you built CIRCT:
+This repository contains an LLVM tool called `circt-hls` which provides various passes used to realize the HLS flows. This is the primary place for incubating things which are intended to be eventually merged into CIRCT. 
+
+To build the tool:
 ```
 $ mkdir build
 $ cd build
@@ -89,6 +74,22 @@ $ cmake -G Ninja .. \
     -DCMAKE_EXPORT_COMPILE_COMMANDS=ON
 $ ninja
 $ ninja check-circt-hls
+```
+(Modify the above wrt. where you built circt/mlir/llvm).
+
+## Setup and build Calyx and the HLS `fud` stages
+
+The `fud` driver within Calyx is used as a general driver for the entire flow.
+Run the `calyx_setup.sh` script from the root repository folder. If any step fails due to missing dependencies, download the dependencies and rerun the script.
+
+We use the setting
+> `fud config stages.circt_hls.toplevel ${toplevel}`
+
+to keep track of the top-level function to be compiled. This should match a function name in the input `.c` file. This will further be used as the top-level function when lowering `SCFToCalyx`.
+
+To initialize this, please run:
+```
+fud config stages.circt_hls.toplevel ""
 ```
 
 # Usage
