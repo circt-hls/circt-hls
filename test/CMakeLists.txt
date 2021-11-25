@@ -16,6 +16,6 @@ add_lit_testsuite(check-circt-hls "Running the CIRCT HLS regression tests"
   )
 set_target_properties(check-circt-hls PROPERTIES FOLDER "Tests")
 
-add_lit_testsuites(CIRCT ${CMAKE_CURRENT_SOURCE_DIR}
+add_lit_testsuites(CIRCT_HLS ${CMAKE_CURRENT_SOURCE_DIR}
   DEPENDS ${CIRCT_HLS_TEST_DEPS}
 )

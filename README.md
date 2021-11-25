@@ -8,8 +8,8 @@ A collection of repositories and tools used to realise various end-to-end high-l
 - [Setup](#setup)
   - [Build CIRCT](#build-circt)
   - [Build Polygeist](#build-polygeist)
-  - [Build and test CIRCT-HLS](#build-and-test-circt-hls)
   - [Setup and build Calyx and the HLS `fud` stages](#setup-and-build-calyx-and-the-hls-fud-stages)
+  - [Build and test CIRCT-HLS](#build-and-test-circt-hls)
 - [Usage](#usage)
   - [Statically scheduled](#statically-scheduled)
     - [Pipeline:](#pipeline)
@@ -57,6 +57,21 @@ ninja
 ninja check-mlir-clang
 ```
 
+## Setup and build Calyx and the HLS `fud` stages
+
+The `fud` driver within Calyx is used as a general driver for the entire flow.
+Run the `calyx_setup.sh` script from the root repository folder. If any step fails due to missing dependencies, download the dependencies and rerun the script.
+
+We use the setting
+> `fud config stages.circt_hls.toplevel ${toplevel}`
+
+to keep track of the top-level function to be compiled. This should match a function name in the input `.c` file. This will further be used as the top-level function when lowering `SCFToCalyx`.
+
+To initialize this, please run:
+```
+fud config stages.circt_hls.toplevel ""
+```
+
 ## Build and test CIRCT-HLS 
 
 This repository contains an LLVM tool called `circt-hls` which provides various passes used to realize the HLS flows. This is the primary place for incubating things which are intended to be eventually merged into CIRCT. 
@@ -74,23 +89,9 @@ $ cmake -G Ninja .. \
     -DCMAKE_EXPORT_COMPILE_COMMANDS=ON
 $ ninja
 $ ninja check-circt-hls
+$ ninja check-circt-hls-integration
 ```
 (Modify the above wrt. where you built circt/mlir/llvm).
-
-## Setup and build Calyx and the HLS `fud` stages
-
-The `fud` driver within Calyx is used as a general driver for the entire flow.
-Run the `calyx_setup.sh` script from the root repository folder. If any step fails due to missing dependencies, download the dependencies and rerun the script.
-
-We use the setting
-> `fud config stages.circt_hls.toplevel ${toplevel}`
-
-to keep track of the top-level function to be compiled. This should match a function name in the input `.c` file. This will further be used as the top-level function when lowering `SCFToCalyx`.
-
-To initialize this, please run:
-```
-fud config stages.circt_hls.toplevel ""
-```
 
 # Usage
 The following lists example commands for exercising the available flows. If you're interested about the specific passes that are getting executed through `fud`, add `--verbose` to the command line.

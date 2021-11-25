@@ -76,7 +76,29 @@ list(APPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_SOURCE_DIR}/cmake/modules")
 include_directories(${CIRCT_HLS_MAIN_INCLUDE_DIR})
 include_directories(${CIRCT_HLS_INCLUDE_DIR})
 
+#-------------------------------------------------------------------------------
+# Polygeist Configuration
+#-------------------------------------------------------------------------------
+
+# Search for polygeist in path
+find_program(POLYGEIST_PATH "mlir-clang")
+if(NOT EXISTS ${POLYGEIST_PATH})
+  message(STATUS "mlir-clang not found in path, looking for an in-tree build...")
+  set(POLYGEIST_IN_TREE_DIR "${CMAKE_CURRENT_SOURCE_DIR}/Polygeist/build/bin/")
+  find_program(POLYGEIST_PATH "${POLYGEIST_IN_TREE_DIR}/mlir-clang")
+  if(NOT EXISTS ${POLYGEIST_PATH})
+    message(FATAL_ERROR "Did not find mlir-clang in PATH nor in tree; in tree
+    expected mlir-clang to be at ${CMAKE_CURRENT_SOURCE_DIR}/Polygeist/build/bin/mlir-clang")
+  endif()
+endif() 
+message(STATUS "Found mlir-clang at ${POLYGEIST_PATH}")
+
+#-------------------------------------------------------------------------------
+# Directory setup
+#-------------------------------------------------------------------------------
+
 add_subdirectory(include/circt-hls)
 add_subdirectory(lib)
 add_subdirectory(tools)
 add_subdirectory(test)
+add_subdirectory(integration_test)

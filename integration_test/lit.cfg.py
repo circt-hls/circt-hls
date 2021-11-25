@@ -22,7 +22,7 @@ config.name = 'CIRCT'
 config.test_format = lit.formats.ShTest(not llvm_config.use_lit_shell)
 
 # suffixes: A list of file extensions to treat as test files.
-config.suffixes = ['.mlir']
+config.suffixes = ['.mlir', '.c']
 
 # test_source_root: The root path where tests are located.
 config.test_source_root = os.path.dirname(__file__)
@@ -63,5 +63,10 @@ tool_dirs = [
 tools = [
     'hls-opt'
 ]
+
+# Enable Polygeist if it has been detected.
+if config.polygeist_path != "":
+  tool_dirs.append(os.path.dirname(config.polygeist_path))
+  tools.append('mlir-clang')
 
 llvm_config.add_tool_substitutions(tools, tool_dirs)
