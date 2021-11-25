@@ -1,7 +1,7 @@
 #include "image_resize.h"
 
 #ifndef AMOUNT_OF_TEST
-#define AMOUNT_OF_TEST 1
+#define AMOUNT_OF_TEST 2
 #endif
 
 int main(void) {
