@@ -3,11 +3,9 @@
 #ifndef AMOUNT_OF_TEST
 #define AMOUNT_OF_TEST 1
 #endif
-
 int main(void) {
   int c[AMOUNT_OF_TEST][20];
   int A[AMOUNT_OF_TEST][20][20];
-
   srand(13);
   for (int i = 0; i < AMOUNT_OF_TEST; ++i) {
     for (int y = 0; y < 20; ++y) {
@@ -17,9 +15,8 @@ int main(void) {
       }
     }
   }
-
-  // for(int i = 0; i < AMOUNT_OF_TEST; ++i){
-  int i = 0;
-  gaussian(c[i], A[i]);
-}
+  for (int i = 0; i < AMOUNT_OF_TEST; ++i) {
+    int i = 0;
+    gaussian(c[i], A[i]);
+  }
 }

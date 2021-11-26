@@ -3,7 +3,6 @@
 #ifndef AMOUNT_OF_TEST
 #define AMOUNT_OF_TEST 1
 #endif
-
 int main(void) {
   int alpha[AMOUNT_OF_TEST];
   int beta[AMOUNT_OF_TEST];
@@ -16,7 +15,6 @@ int main(void) {
   int x[AMOUNT_OF_TEST][N];
   int y[AMOUNT_OF_TEST][N];
   int z[AMOUNT_OF_TEST][N];
-
   for (int i = 0; i < AMOUNT_OF_TEST; ++i) {
     alpha[i] = rand() % 20;
     beta[i] = rand() % 20;
@@ -34,10 +32,9 @@ int main(void) {
       }
     }
   }
-
-  // for(int i = 0; i < AMOUNT_OF_TEST; ++i){
-  int i = 0;
-  gemver(alpha[i], beta[i], A[i], u1[i], v1[i], u2[i], v2[i], w[i], x[i], y[i],
-         z[i]);
-}
+  for (int i = 0; i < AMOUNT_OF_TEST; ++i) {
+    int i = 0;
+    gemver(alpha[i], beta[i], A[i], u1[i], v1[i], u2[i], v2[i], w[i], x[i],
+           y[i], z[i]);
+  }
 }

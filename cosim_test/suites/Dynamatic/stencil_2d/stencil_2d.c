@@ -4,7 +4,6 @@
 int stencil_2d(int orig[900], int sol[900], int filter[10]) {
   int temp = 0;
   int mul = 0;
-
   for (int r = 0; r < 28; r++) {
     for (int c = 0; c < 28; c++) {
       temp = 0;
@@ -17,6 +16,5 @@ int stencil_2d(int orig[900], int sol[900], int filter[10]) {
       sol[(r * 30) + c] = temp;
     }
   }
-
   return temp;
 }

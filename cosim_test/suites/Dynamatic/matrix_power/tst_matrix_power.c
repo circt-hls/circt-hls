@@ -2,13 +2,11 @@
 #ifndef AMOUNT_OF_TEST
 #define AMOUNT_OF_TEST 1
 #endif
-
 int main(void) {
   int mat[AMOUNT_OF_TEST][20][20];
   int row[AMOUNT_OF_TEST][20];
   int col[AMOUNT_OF_TEST][20];
   int a[AMOUNT_OF_TEST][20];
-
   for (int i = 0; i < AMOUNT_OF_TEST; ++i) {
     for (int y = 0; y < 20; ++y) {
       col[i][y] = rand() % 20;
@@ -19,7 +17,6 @@ int main(void) {
       }
     }
   }
-
   for (int i = 0; i < AMOUNT_OF_TEST; ++i) {
     matrix_power(mat[i], row[i], col[i], a[i]);
   }

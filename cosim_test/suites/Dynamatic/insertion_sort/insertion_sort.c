@@ -4,7 +4,6 @@
 void insertion_sort(int A[1000], int n) {
   if (n <= 1)
     return;
-
   for (int i = 1; i < n; ++i) {
     int x = A[i];
     int j = i;

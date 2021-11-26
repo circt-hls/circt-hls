@@ -1,7 +1,6 @@
 // RUN: dyn_incrementally_lower %s
 
 #include "matrix.h"
-
 void matrix(int in_a[A_ROWS][A_COLS], int in_b[A_COLS][B_COLS],
             int out_c[A_ROWS][B_COLS]) {
   int i, j, k;

@@ -2,7 +2,6 @@
 #ifndef AMOUNT_OF_TEST
 #define AMOUNT_OF_TEST 1
 #endif
-
 int main(void) {
   int alpha[AMOUNT_OF_TEST];
   int beta[AMOUNT_OF_TEST];
@@ -11,7 +10,6 @@ int main(void) {
   int B[AMOUNT_OF_TEST][N][N];
   int C[AMOUNT_OF_TEST][N][N];
   int D[AMOUNT_OF_TEST][N][N];
-
   for (int i = 0; i < AMOUNT_OF_TEST; ++i) {
     alpha[i] = rand();
     beta[i] = rand();
@@ -24,7 +22,6 @@ int main(void) {
       }
     }
   }
-
   for (int i = 0; i < AMOUNT_OF_TEST; ++i) {
     kernel_2mm(alpha[0], beta[0], tmp[0], A[0], B[0], C[0], D[0]);
   }

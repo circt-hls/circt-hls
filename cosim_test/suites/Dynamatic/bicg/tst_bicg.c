@@ -4,14 +4,12 @@
 #ifndef AMOUNT_OF_TEST
 #define AMOUNT_OF_TEST 1
 #endif
-
 int main(void) {
   int A[AMOUNT_OF_TEST][N][N];
   int s[AMOUNT_OF_TEST][N];
   int q[AMOUNT_OF_TEST][N];
   int p[AMOUNT_OF_TEST][N];
   int r[AMOUNT_OF_TEST][N];
-
   for (int i = 0; i < AMOUNT_OF_TEST; ++i) {
     for (int y = 0; y < N; ++y) {
       s[i][y] = rand() % 100;
@@ -23,7 +21,6 @@ int main(void) {
       }
     }
   }
-
   for (int i = 0; i < AMOUNT_OF_TEST; ++i) {
     bicg(A[i], s[i], q[i], p[i], r[i]);
   }
