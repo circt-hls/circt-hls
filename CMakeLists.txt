@@ -94,6 +94,37 @@ endif()
 message(STATUS "Found mlir-clang at ${POLYGEIST_PATH}")
 
 #-------------------------------------------------------------------------------
+# Verilator Configuration
+#-------------------------------------------------------------------------------
+
+# Detect if Verilator is present.
+if (NOT DEFINED VERILATOR_PATH)
+  find_program(VERILATOR_PATH "verilator" PATHS
+    "${CMAKE_CURRENT_SOURCE_DIR}/ext/bin" NO_DEFAULT_PATH)
+  find_program(VERILATOR_PATH "verilator")
+endif()
+
+if(EXISTS ${VERILATOR_PATH})
+  message(STATUS "Found Verilator at ${VERILATOR_PATH}.")
+
+  # Find Verilator version.
+  execute_process(COMMAND ${VERILATOR_PATH} --version
+    OUTPUT_VARIABLE VERILATOR_VERSION)
+  string(REGEX MATCH "Verilator (([0-9]+)\.([0-9]+)) \.*"
+    MATCH ${VERILATOR_VERSION})
+  # It's gotta be at least v4.110.
+  if (${CMAKE_MATCH_1} LESS 4.110)
+    message(FATAL_ERROR "CIRCT only supports Verilator version 4.110 and up. \
+                          Found version: ${CMAKE_MATCH_1}. You can disable \
+                          the Verilator tests with '-DVERILATOR_DISABLE=ON'.")
+    set(VERILATOR_PATH "")
+  endif()
+else()
+  set(VERILATOR_PATH "")
+  message(FATAL_ERROR "Did not find Verilator in path.")
+endif()
+
+#-------------------------------------------------------------------------------
 # Directory setup
 #-------------------------------------------------------------------------------
 

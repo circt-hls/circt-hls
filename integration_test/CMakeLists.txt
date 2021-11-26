@@ -7,7 +7,8 @@ configure_lit_site_cfg(
 
 set(CIRCT_HLS_INTEGRATION_TEST_DEPENDS
   FileCheck count not split-file
-  hls-opt)
+  hls-opt
+  hlt-sim)
 
 add_lit_testsuite(check-circt-hls-integration "Running the CIRCT HLS integration tests"
   ${CMAKE_CURRENT_BINARY_DIR}
