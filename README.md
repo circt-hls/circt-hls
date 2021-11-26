@@ -88,6 +88,10 @@ $ ninja check-circt-hls-integration
 # Usage
 The following lists example commands for exercising the available flows. If you're interested about the specific passes that are getting executed through `fud`, add `--verbose` to the command line.
 
+**Verication:**
+- integration tests can be run by executing the `ninja check-circt-hls-integration` command in the `circt-hls/build` directory. This will execute the `lit` integration test suites.
+- Extensive verification can be run by executing the scripts in the `cosim_tests` directory.
+
 ## Statically scheduled
 
 ### Pipeline:
