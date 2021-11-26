@@ -1,23 +1,15 @@
 # circt-hls
 
-**What is this?**:
+**What is this?**
 A collection of repositories and tools used to realise various end-to-end high-level synthesis (HLS) flows centering around the CIRCT project. This project can be seen as an incubator for things to go into CIRCT (... which itself is an incubator project). If you're researching CIRCT/MLIR based HLS flows, feel free to contribute or push your code to this repository - there are as of now no strict review or code requirements.
 
-**Contents:**
-- [circt-hls](#circt-hls)
-- [Setup](#setup)
-  - [Build CIRCT](#build-circt)
-  - [Build Polygeist](#build-polygeist)
-  - [Setup and build Calyx and the HLS `fud` stages](#setup-and-build-calyx-and-the-hls-fud-stages)
-  - [Build and test CIRCT-HLS](#build-and-test-circt-hls)
-- [Usage](#usage)
-  - [Statically scheduled](#statically-scheduled)
-    - [Pipeline:](#pipeline)
-    - [Status](#status)
-  - [Dynamically scheduled](#dynamically-scheduled)
-    - [Compilation pipeline](#compilation-pipeline)
-    - [Status](#status-1)
-  - [Vivado](#vivado)
+**What tools do i get?**
+- **Polygeist:** A clang-based C-to-MLIR compiler front-end.
+- **CIRCT tools:** MLIR-based hardware compiler(s) and tools
+- **Calyx native compiler:** A rust compiler for the [Calyx](https://calyxir.org/) Hardware IR
+- **HSDbg:** A visual debugging tool for Handshake (dataflow) circuits
+- **HLT:** An MLIR-to-Verilator cosimulation framework
+- **hls-opt:** Various HLS-related MLIR passes, mostly to support the above tools.
 
 These are the (intended) end-to-end flows that can be driven from this directory:
 - [C](https://en.wikipedia.org/wiki/C_(programming_language))
