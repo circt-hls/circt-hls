@@ -1,5 +1,3 @@
-// RUN: dyn_incrementally_lower %s
-
 #include "test_memory_3.h"
 #ifndef AMOUNT_OF_TEST
 #define AMOUNT_OF_TEST 1

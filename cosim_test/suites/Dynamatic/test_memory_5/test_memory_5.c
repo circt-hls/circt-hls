@@ -1,5 +1,3 @@
-// RUN: dyn_incrementally_lower %s
-
 #include "test_memory_5.h"
 void test_memory_5(int a[4], int n) {
   int x;

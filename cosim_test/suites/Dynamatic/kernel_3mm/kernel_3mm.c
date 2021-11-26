@@ -1,5 +1,3 @@
-// RUN: dyn_incrementally_lower %s
-
 #include "kernel_3mm.h"
 void kernel_3mm(int A[N][N], int B[N][N], int C[N][N], int D[N][N], int E[N][N],
                 int F[N][N], int G[N][N]) {

@@ -1,5 +1,3 @@
-// RUN: dyn_incrementally_lower %s
-
 #include "threshold.h"
 void threshold(int red[1000], int green[1000], int blue[1000], int th) {
   for (int i = 0; i < 1000; i++) {

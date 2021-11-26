@@ -1,5 +1,3 @@
-// RUN: dyn_incrementally_lower %s
-
 #define N 8
 int triangular(int i) {
   int acc = 0;

@@ -1,5 +1,3 @@
-// RUN: dyn_incrementally_lower %s
-
 #include "image_resize.h"
 void image_resize(int a[30][30], int c) {
   for (int i = 0; i < 30; i++) {

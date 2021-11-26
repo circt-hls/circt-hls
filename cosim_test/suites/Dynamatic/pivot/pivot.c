@@ -1,5 +1,3 @@
-// RUN: dyn_incrementally_lower %s
-
 #include "pivot.h"
 void pivot(int x[1000], int a[1000], int n, int k) {
   int i;

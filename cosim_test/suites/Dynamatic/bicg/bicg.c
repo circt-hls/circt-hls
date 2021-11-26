@@ -1,4 +1,3 @@
-// RUN: dyn_incrementally_lower %s
 
 #include "bicg.h"
 int bicg(int A[N][N], int s[N], int q[N], int p[N], int r[N]) {

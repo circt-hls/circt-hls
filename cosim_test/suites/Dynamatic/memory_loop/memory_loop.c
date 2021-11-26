@@ -1,5 +1,3 @@
-// RUN: dyn_incrementally_lower %s
-
 #include "memory_loop.h"
 void memory_loop(int x[1000], int y[1000]) {
   for (int i = 1; i < 1000; i++) {

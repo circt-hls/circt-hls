@@ -1,5 +1,3 @@
-// RUN: dyn_incrementally_lower %s
-
 #include "iir.h"
 int iir(int y[1000], int x[1000], int a, int b) {
   int i;

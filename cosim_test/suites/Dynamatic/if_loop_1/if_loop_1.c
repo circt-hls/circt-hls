@@ -1,5 +1,3 @@
-// RUN: dyn_incrementally_lower %s
-
 #include "if_loop_1.h"
 int if_loop_1(int a[100], int n) {
   int i;

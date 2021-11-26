@@ -1,5 +1,3 @@
-// RUN: dyn_incrementally_lower %s
-
 int fir(int d_i[1000], int idx[1000]) {
   int i;
   int tmp = 0;

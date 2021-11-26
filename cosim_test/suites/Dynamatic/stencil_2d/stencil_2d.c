@@ -1,5 +1,3 @@
-// RUN: dyn_incrementally_lower %s
-
 #include "stencil_2d.h"
 int stencil_2d(int orig[900], int sol[900], int filter[10]) {
   int temp = 0;

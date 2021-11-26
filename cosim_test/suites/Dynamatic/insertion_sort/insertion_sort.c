@@ -1,5 +1,3 @@
-// RUN: dyn_incrementally_lower %s
-
 #include "insertion_sort.h"
 void insertion_sort(int A[1000], int n) {
   if (n <= 1)

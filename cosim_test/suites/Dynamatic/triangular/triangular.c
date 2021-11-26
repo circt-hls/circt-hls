@@ -1,5 +1,3 @@
-// RUN: dyn_incrementally_lower %s
-
 #include "triangular.h"
 void triangular(int x[10], int A[10][10], int n) {
   for (int i = n - 1; i >= 0; i--) {

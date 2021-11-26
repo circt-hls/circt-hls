@@ -1,5 +1,3 @@
-// RUN: dyn_incrementally_lower %s
-
 #include "matvec.h"
 int matvec(int M[30][30], int V[30], int Out[30]) {
   int i, j;

@@ -92,6 +92,7 @@ LogicalResult emitType(llvm::raw_ostream &os, Location loc, Type type,
     assert(memRefType.getRank() == 1 &&
            "Only unidimensional memories supported.. for now");
 
+    os << "\n";
     // Allocated pointer. If we've been provided with a variable name, this wil
     // be the named variable.
     if (emitType(os, loc, memRefType.getElementType()).failed())
@@ -115,7 +116,7 @@ LogicalResult emitType(llvm::raw_ostream &os, Location loc, Type type,
       os << "int64_t " << *variable << "_size, ";
       os << "int64_t " << *variable << "_stride";
     } else
-      os << "int64_t, int64_t, int64_t";
+      os << "int64_t, int64_t, int64_t\n";
     return success();
   } else if (auto iType = type.dyn_cast<IntegerType>()) {
     switch (iType.getWidth()) {
