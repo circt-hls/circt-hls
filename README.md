@@ -82,6 +82,7 @@ $ cmake -G Ninja .. \
 $ ninja
 $ ninja check-circt-hls
 $ ninja check-circt-hls-integration
+$ ninja check-circt-hls-integration-extended
 ```
 (Modify the above wrt. where you built circt/mlir/llvm).
 
@@ -90,7 +91,7 @@ The following lists example commands for exercising the available flows. If you'
 
 **Verication:**
 - integration tests can be run by executing the `ninja check-circt-hls-integration` command in the `circt-hls/build` directory. This will execute the `lit` integration test suites.
-- Extensive verification can be run by executing the scripts in the `cosim_tests` directory.
+- Extensive verification can be run by executing the `ninja check-circt-hls-integration-extended` command in the `circt-hls/build` directory. This will execute the `lit` extended integration test suite, HLS'ing all of the C tests in the `cosim_test` directory. Each file is progressively lowered and the intermediate representations for each file during the lowering process will be availabe in i.e. `build/cosim_test/suites/Dynamatic/...`. This can be very helpful if you're developing and quickly want to inspect (or use) some of the intermediate results during compilation.
 
 ## Statically scheduled
 
