@@ -19,7 +19,6 @@
 #include "llvm/Support/FileSystem.h"
 #include "llvm/Support/Path.h"
 
-using namespace llvm;
 using namespace mlir;
 
 namespace circt_hls {
@@ -57,10 +56,10 @@ protected:
                                                   Type, Optional<StringRef>)>;
   LogicalResult emitIOTypes(const TypeEmitter &emitter);
 
-  raw_fd_ostream &os() { return *outputFile; }
+  llvm::raw_fd_ostream &os() { return *outputFile; }
   raw_indented_ostream &osi() { return *outputFileIndented; }
 
-  std::unique_ptr<raw_fd_ostream> outputFile;
+  std::unique_ptr<llvm::raw_fd_ostream> outputFile;
   std::unique_ptr<raw_indented_ostream> outputFileIndented;
   std::string outputFilename;
   StringRef outDir;

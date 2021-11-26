@@ -10,9 +10,9 @@ basename=${basename%.*}
 printf "= Dynamically scheduled HLS'ing $1...\n"
 fud exec --from c --to mlir-affine -o ${basename}_affine.mlir $1
 printf "\tLowered to affine! (Polygeist)...!"
-fud exec --from mlir-affine --to mlir-scf-while -o ${basename}_scf.mlir ${basename}_affine.mlir
-printf "\r\tLowered to scf...!"
-fud exec --from mlir-scf-while --to mlir-handshake-buffered -o ${basename}_handshake.mlir ${basename}_scf.mlir
+fud exec --from mlir-affine --to mlir-std-flattened -o ${basename}_std.mlir ${basename}_affine.mlir
+printf "\r\tLowered to standard...!"
+fud exec --from mlir-std-flattened --to mlir-handshake-buffered -o ${basename}_handshake.mlir ${basename}_std.mlir
 printf "\r\tLowered to handshake...!"
 fud exec --from mlir-handshake-buffered --to mlir-firrtl -o ${basename}_firrtl.mlir ${basename}_handshake.mlir
 printf "\r\tLowered to FIRRTL...!"

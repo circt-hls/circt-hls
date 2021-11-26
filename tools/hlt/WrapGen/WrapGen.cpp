@@ -29,6 +29,7 @@
 #include "circt/Dialect/Handshake/HandshakeDialect.h"
 #include "circt/Dialect/Handshake/HandshakeOps.h"
 #include "mlir/Dialect/Arithmetic/IR/Arithmetic.h"
+#include "mlir/Dialect/LLVMIR/LLVMDialect.h"
 #include "mlir/Dialect/MemRef/IR/MemRef.h"
 #include "mlir/Dialect/SCF/SCF.h"
 #include "mlir/Dialect/StandardOps/IR/Ops.h"
@@ -95,8 +96,8 @@ static std::unique_ptr<BaseWrapper> getWrapper() {
 static SmallVector<OwningModuleRef> modules;
 
 /// Load a module from the argument file fn into the modules vector.
-static ModuleOp getModule(MLIRContext *ctx, const std::string &fn) {
-  auto file_or_err = MemoryBuffer::getFileOrSTDIN(fn.c_str());
+static ModuleOp getModule(MLIRContext *ctx, StringRef fn) {
+  auto file_or_err = MemoryBuffer::getFileOrSTDIN(fn);
   if (std::error_code error = file_or_err.getError()) {
     errs() << "Error: Could not open input file '" << fn
            << "': " << error.message() << "\n";
@@ -116,9 +117,9 @@ static ModuleOp getModule(MLIRContext *ctx, const std::string &fn) {
 
 /// Locates the operation defining the provided symbol within the set of loaded
 /// modules.
-static mlir::Operation *getOpToWrap(mlir::MLIRContext *ctx,
-                                    const std::string &fn, StringRef symbol) {
-  auto file_or_err = MemoryBuffer::getFileOrSTDIN(fn.c_str());
+static mlir::Operation *getOpToWrap(mlir::MLIRContext *ctx, StringRef fn,
+                                    StringRef symbol) {
+  auto file_or_err = MemoryBuffer::getFileOrSTDIN(fn);
   if (std::error_code error = file_or_err.getError()) {
     errs() << ": could not open input file '" << fn << "': " << error.message()
            << "\n";
@@ -156,9 +157,23 @@ static void registerDialects(mlir::DialectRegistry &registry) {
   registry.insert<scf::SCFDialect>();
   registry.insert<handshake::HandshakeDialect>();
   registry.insert<firrtl::FIRRTLDialect>();
+  registry.insert<LLVM::LLVMDialect>();
 }
 
 } // namespace circt_hls
+
+static Operation *getOpToWrapErroring(MLIRContext *ctx, StringRef fileName,
+                                      StringRef symbolName) {
+  Operation *op = nullptr;
+  if (!fileName.empty()) {
+    op = circt_hls::getOpToWrap(ctx, fileName, symbolName);
+    if (!op) {
+      errs() << "No symbol named '" << symbolName << "' found in '" << fileName
+             << "\n";
+    }
+  }
+  return op;
+}
 
 int main(int argc, char **argv) {
   InitLLVM y(argc, argv);
@@ -173,35 +188,26 @@ int main(int argc, char **argv) {
   circt_hls::registerDialects(registry);
   mlir::MLIRContext context(registry);
 
-  mlir::Operation *funcOpPtr =
-      circt_hls::getOpToWrap(&context, inputFunctionFilename, functionName);
+  Operation *funcOpPtr =
+      getOpToWrapErroring(&context, inputFunctionFilename, functionName);
+  if (!funcOpPtr)
+    return 1;
+
   auto funcOp = dyn_cast<mlir::FuncOp>(funcOpPtr);
   if (!funcOp) {
     errs() << "Expected --func to be a builtin.func\n";
     return 1;
   }
 
-  Operation *refOp = nullptr;
-  Operation *kernelOp = nullptr;
+  Operation *refOp =
+      getOpToWrapErroring(&context, inputReferenceFilename, functionName);
+  if (!refOp)
+    return 1;
 
-  if (!inputReferenceFilename.empty()) {
-    refOp =
-        circt_hls::getOpToWrap(&context, inputReferenceFilename, functionName);
-    if (!refOp) {
-      errs() << "No symbol named '" << functionName << "' found in '"
-             << inputReferenceFilename << "\n";
-      return 1;
-    }
-  }
-  if (!inputKernelFilename.empty()) {
-    kernelOp =
-        circt_hls::getOpToWrap(&context, inputKernelFilename, functionName);
-    if (!kernelOp) {
-      errs() << "No symbol named '" << functionName << "' found in '"
-             << inputReferenceFilename << "\n";
-      return 1;
-    }
-  }
+  Operation *kernelOp =
+      getOpToWrapErroring(&context, inputKernelFilename, functionName);
+  if (!kernelOp)
+    return 1;
 
   /// Locate wrapping handler for the operation.
   auto wrapper = circt_hls::getWrapper();

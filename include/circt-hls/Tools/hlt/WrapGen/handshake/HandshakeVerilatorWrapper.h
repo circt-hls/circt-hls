@@ -25,7 +25,6 @@
 #include "circt-hls/Tools/hlt/WrapGen/CEmitterUtils.h"
 #include "circt-hls/Tools/hlt/WrapGen/VerilatorEmitterUtils.h"
 
-using namespace llvm;
 using namespace mlir;
 using namespace circt;
 

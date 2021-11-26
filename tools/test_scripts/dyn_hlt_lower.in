@@ -33,7 +33,7 @@ fi
 
 handshake_kernel="${kernel_basename}_handshake.mlir"
 firrtl_kernel="${kernel_basename}_firrtl.mlir"
-func_kernel="${kernel_basename}_scf.mlir"
+func_kernel="${kernel_basename}_std.mlir"
 
 # fail if handshake_kernel or firrtl_kernel doesn't exist
 if [ ! -f "$handshake_kernel" ]; then
@@ -49,10 +49,14 @@ if [ ! -f "$func_kernel" ]; then
     exit 1
 fi
 
-@CIRCT_HLS_TOOLS_DIR@/hlt-wrapgen \
-  --func ${func_kernel} \
-  --ref ${handshake_kernel} \
-  --kernel ${firrtl_kernel} \
-  --name ${kernel_basename} \
-  --type=handshakeFIRRTL \
-  -o .
+# For debugging purposes; makes it easy to copy the arguments into an IED
+# for further debug.
+wrapgenArgs="\
+--func ${func_kernel} \
+--ref ${handshake_kernel} \
+--kernel ${firrtl_kernel} \
+--name ${kernel_basename} \
+--type=handshakeFIRRTL -o ."
+
+echo "Running 'hlt-wrapgen ${wrapgenArgs}'" >&2
+@CIRCT_HLS_TOOLS_DIR@/hlt-wrapgen ${wrapgenArgs}
