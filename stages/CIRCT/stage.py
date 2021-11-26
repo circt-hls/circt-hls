@@ -60,10 +60,21 @@ class CIRCTStageBase(Stage):
         return compile_with_circt(input_file)
 
 
-class CIRCTSCFToDataflow(CIRCTStageBase):
+class CIRCTFlattenMemRefs(CIRCTStageBase):
     def __init__(self, config):
         super().__init__(
             "mlir-std",
+            "mlir-std-flattened",
+            "circt-opt",
+            config,
+            "Flatten multidimensional memories to unidimensional.",
+            "-flatten-memref --canonicalize"
+        )
+
+class CIRCTSCFToDataflow(CIRCTStageBase):
+    def __init__(self, config):
+        super().__init__(
+            "mlir-std-flattened",
             "mlir-handshake",
             "circt-opt",
             config,
@@ -94,21 +105,6 @@ class CIRCTHandshakeToFIRRTL(CIRCTStageBase):
             "Lower MLIR Handshake to MLIR FIRRTL",
             "--canonicalize -lower-handshake-to-firrtl"
         )
-
-
-class CIRCTFIRRTLToHW(CIRCTStageBase):
-    def __init__(self, config):
-        super().__init__(
-            "mlir-firrtl",
-            "mlir-hw",
-            "circt-opt",
-            config,
-            "Lower FIRRTL types to ground types",
-            "-pass-pipeline='module(firrtl.circuit(firrtl-lower-types), " +
-            "firrtl.circuit(firrtl-infer-widths), " +
-            "builtin.module(lower-firrtl-to-hw))'"
-        )
-
 
 class CIRCTSCFToCalyxStage(CIRCTStageBase):
     def __init__(self, config):
@@ -152,6 +148,7 @@ __STAGES__ = [
     CIRCTEmitCalyxStage,
     CIRCTHandshakeToFIRRTL,
     CIRCTSCFToDataflow,
+    CIRCTFlattenMemRefs,
     CIRCTFIRRTLToVerilog,
     CIRCTHandshakeBufferize
 ]
