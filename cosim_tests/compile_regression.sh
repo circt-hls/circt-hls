@@ -33,11 +33,18 @@ c_to_sv_stat() {
     fud exec --from c --to synth-verilog --through mlir-calyx $1
 }
 
-Filelist=$SCRIPT_DIR/filelist.lst
+echo "Running tests..."
 
-echo "Iterating over files in $Filelist"
-while read fn; do
-    c_to_sv_dyn ${fn}
-done <$Filelist
+# For each .c file in all subdirectories which is not a testbench
+for c_file in $(find . -name "*.c"); do
+    # if basename of file starts with tst_
+    set c_file = basename $c_file
+    if [[ $c_file != tst_* ]]; then
+        # Run the dynamically scheduled path
+        c_to_sv_dyn $c_file
+        # Run the statically scheduled path
+        c_to_sv_stat $c_file
+    fi
+done
 
 echo "Done - all regression tests passed!"
