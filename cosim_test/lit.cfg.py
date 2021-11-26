@@ -55,22 +55,12 @@ tool_dirs = [
     config.circt_tools_dir, config.mlir_tools_dir, config.llvm_tools_dir, config.circt_hls_tools_dir
 ]
 tools = [
-    'hls-opt', 'hlt-wrapgen', 'dyn_incrementally_lower'
+    'hls-opt', 'hlt-wrapgen', 'dyn_incrementally_lower', 'dyn_hlt_lower'
 ]
 
 # Enable Polygeist if it has been detected.
 if config.polygeist_path != "":
   tool_dirs.append(os.path.dirname(config.polygeist_path))
   tools.append('mlir-clang')
-
-
-# Exclude all .c files prefixed with tst_ (for now):
-for root, dirs, files in os.walk(config.test_source_root):
-  for f in files:
-    if f.startswith('tst_') and f.endswith('.c'):
-      config.excludes.append(f)
-
-print("Excluding files: ")
-print(config.excludes)
 
 llvm_config.add_tool_substitutions(tools, tool_dirs)

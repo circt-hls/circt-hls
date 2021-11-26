@@ -1,3 +1,5 @@
+// RUN: dyn_hlt_lower %s
+
 #include "sumi3_mem.h"
 int main(void) {
   int a[AMOUNT_OF_TEST][1000];

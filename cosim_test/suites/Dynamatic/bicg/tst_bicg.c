@@ -1,3 +1,5 @@
+// RUN: dyn_hlt_lower %s
+
 #include "bicg.h"
 #include <stdlib.h>
 

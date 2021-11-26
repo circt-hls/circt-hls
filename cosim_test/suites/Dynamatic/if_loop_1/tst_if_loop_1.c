@@ -1,3 +1,5 @@
+// RUN: dyn_hlt_lower %s
+
 #include "if_loop_1.h"
 
 #ifndef AMOUNT_OF_TEST

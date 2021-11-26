@@ -1,3 +1,5 @@
+// RUN: dyn_hlt_lower %s
+
 #include "iir.h"
 int main(void) {
   int y[AMOUNT_OF_TEST][1000];

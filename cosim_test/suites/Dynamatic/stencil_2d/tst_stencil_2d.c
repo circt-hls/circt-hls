@@ -1,3 +1,5 @@
+// RUN: dyn_hlt_lower %s
+
 #include "stencil_2d.h"
 #ifndef AMOUNT_OF_TEST
 #define AMOUNT_OF_TEST 1

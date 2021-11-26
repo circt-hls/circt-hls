@@ -13,6 +13,7 @@
 
 set(SOURCES
   dyn_incrementally_lower
+  dyn_hlt_lower
 )
 foreach(file IN ITEMS ${SOURCES})
   configure_file(${file}.in ${CIRCT_HLS_TOOLS_DIR}/${file} @ONLY)

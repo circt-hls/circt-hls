@@ -1,3 +1,5 @@
+// RUN: dyn_hlt_lower %s
+
 #include "image_resize.h"
 
 #ifndef AMOUNT_OF_TEST

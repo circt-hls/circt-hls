@@ -1,3 +1,5 @@
+// RUN: dyn_hlt_lower %s
+
 #include "test_memory_3.h"
 int main(void) {
   int a[AMOUNT_OF_TEST][4];

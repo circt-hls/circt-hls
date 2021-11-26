@@ -1,3 +1,5 @@
+// RUN: dyn_hlt_lower %s
+
 #include "insertion_sort.h"
 
 #ifndef AMOUNT_OF_TEST
