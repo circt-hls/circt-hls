@@ -1,0 +1,20 @@
+#!/usr/bin/env bash
+
+# The first argument to the script is the kernel or testbench which the Simulator
+# was generated from.
+# A testbench is defined as the kernel file prefixed with "tst_"
+
+set -e
+sourceDir=$(dirname $1)
+basename=${1##*/}
+basename=${basename%.*}
+
+if [[ "$basename" == "tst_"* ]]; then
+    basename=${basename#tst_}
+fi
+
+mlir-cpu-runner                                                        \
+    -e test_${basename} -entry-point-result=i32 -O3                    \
+    -shared-libs=%llvm_shlibdir/libmlir_c_runner_utils%shlibext        \
+    -shared-libs=%llvm_shlibdir/libmlir_runner_utils%shlibext          \
+    -shared-libs=libhlt_${basename}%shlibext ${basename}_tb.mlir
