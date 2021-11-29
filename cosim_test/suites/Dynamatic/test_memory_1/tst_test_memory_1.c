@@ -1,4 +1,5 @@
 // RUN: dyn_hlt_lower %s
+// RUN: dyn_hlt_build_sim %s
 
 #include "test_memory_1.h"
 #ifndef AMOUNT_OF_TEST

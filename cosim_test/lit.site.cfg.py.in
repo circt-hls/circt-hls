@@ -39,7 +39,8 @@ config.circt_hls_obj_root = "@CIRCT_HLS_BINARY_DIR@"
 config.circt_shlib_dir = "@LLVM_LIBRARY_OUTPUT_INTDIR@"
 config.circt_hls_tools_dir = "@CIRCT_HLS_TOOLS_DIR@"
 config.verilator_path = "@VERILATOR_PATH@"
-config.polygeist_path = "@POLYGEIST_PATH@"
+config.mlir_clang_path = "@MLIR-CLANG_PATH@"
+config.polygeist_opt_path = "@POLYGEIST-OPT_PATH@"
 
 
 # Support substitution of the tools_dir with user parameters. This is

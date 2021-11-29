@@ -59,8 +59,12 @@ tools = [
 ]
 
 # Enable Polygeist if it has been detected.
-if config.polygeist_path != "":
-  tool_dirs.append(os.path.dirname(config.polygeist_path))
+if config.mlir_clang_path != "":
+  tool_dirs.append(os.path.dirname(config.mlir_clang_path))
   tools.append('mlir-clang')
+if config.polygeist_opt_path != "":
+  tool_dirs.append(os.path.dirname(config.polygeist_opt_path))
+  tools.append('polygeist-opt')
+
 
 llvm_config.add_tool_substitutions(tools, tool_dirs)

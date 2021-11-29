@@ -1,4 +1,5 @@
 // RUN: dyn_hlt_lower %s
+// RUN: dyn_hlt_build_sim %s
 
 #include "if_loop_1.h"
 

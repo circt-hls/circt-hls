@@ -1,4 +1,5 @@
 // RUN: dyn_hlt_lower %s
+// RUN: dyn_hlt_build_sim %s
 
 #include "iir.h"
 int main(void) {
