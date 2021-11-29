@@ -16,6 +16,7 @@ set(SOURCES
   dyn_hlt_lower
   dyn_hlt_run_sim
   dyn_hlt_build_sim
+  dyn_hlt_build_tb
 )
 foreach(file IN ITEMS ${SOURCES})
   configure_file(${file}.in ${CIRCT_HLS_TOOLS_DIR}/${file} @ONLY)

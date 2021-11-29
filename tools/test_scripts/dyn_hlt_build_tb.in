@@ -13,16 +13,18 @@ if [[ "$basename" == "tst_"* ]]; then
     basename=${basename#tst_}
 fi
 
+# Lower polygeist to MLIR
 @MLIR-CLANG_PATH@ \
   -S \
   --function=* \
   --memref-fullrank \
   $1 > ${basename}_poly.mlir
 
-# lower polygeist subindexes
+# lower polygeist subindexes to memrefs
 @POLYGEIST-OPT_PATH@ \
   --lower-subindex ${basename}_poly.mlir > ${basename}_poly_memref.mlir
 
-# Asynchronize
-@CIRCT_HLS_BINARY_DIR@/tools/hls-opt --asyncify-calls \
+# Asynchronize to adhere with HLT. We assume that the testname is equal to the
+# kernel name - which in turn is the function to asynchronize.
+@CIRCT_HLS_BINARY_DIR@/bin/hls-opt --asyncify-calls="function=${basename}" \
   ${basename}_poly_memref.mlir > ${basename}_tb.mlir
