@@ -5,6 +5,8 @@
 #include "sumi3_mem.h"
 #include <stdlib.h>
 
+#define AMOUNT_OF_TEST 1
+
 int main(void) {
   int a[AMOUNT_OF_TEST][1000];
   for (int i = 0; i < AMOUNT_OF_TEST; ++i) {
