@@ -1,7 +1,10 @@
 // RUN: dyn_hlt_lower %s
 // RUN: dyn_hlt_build_sim %s
+// RUN: dyn_hlt_build_tb %s
 
 #include "iir.h"
+#include <stdlib.h>
+
 int main(void) {
   int y[AMOUNT_OF_TEST][1000];
   int x[AMOUNT_OF_TEST][1000];

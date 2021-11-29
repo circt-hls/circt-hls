@@ -1,7 +1,10 @@
 // RUN: dyn_hlt_lower %s
 // RUN: dyn_hlt_build_sim %s
+// RUN: dyn_hlt_build_tb %s
 
 #include "test_memory_3.h"
+#include <stdlib.h>
+
 int main(void) {
   int a[AMOUNT_OF_TEST][4];
   int n[AMOUNT_OF_TEST];

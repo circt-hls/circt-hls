@@ -1,10 +1,11 @@
 // RUN: dyn_hlt_lower %s
 // RUN: dyn_hlt_build_sim %s
+// RUN: dyn_hlt_build_tb %s
 
-#include "gemver.h"
+#include "gemver.h" 
 
 #ifndef AMOUNT_OF_TEST
-#define AMOUNT_OF_TEST 1
+#define AMOUNT_OF_TEST 2
 #endif
 int main(void) {
   int alpha[AMOUNT_OF_TEST];

@@ -1,5 +1,6 @@
 // RUN: dyn_hlt_lower %s
 // RUN: dyn_hlt_build_sim %s
+// RUN: dyn_hlt_build_tb %s
 
 #include "kernel_3mm.h"
 #ifndef AMOUNT_OF_TEST
