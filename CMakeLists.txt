@@ -81,17 +81,28 @@ include_directories(${CIRCT_HLS_INCLUDE_DIR})
 #-------------------------------------------------------------------------------
 
 # Search for polygeist in path
-find_program(POLYGEIST_PATH "mlir-clang")
-if(NOT EXISTS ${POLYGEIST_PATH})
-  message(STATUS "mlir-clang not found in path, looking for an in-tree build...")
-  set(POLYGEIST_IN_TREE_DIR "${CMAKE_CURRENT_SOURCE_DIR}/Polygeist/build/bin/")
-  find_program(POLYGEIST_PATH "${POLYGEIST_IN_TREE_DIR}/mlir-clang")
-  if(NOT EXISTS ${POLYGEIST_PATH})
-    message(FATAL_ERROR "Did not find mlir-clang in PATH nor in tree; in tree
-    expected mlir-clang to be at ${CMAKE_CURRENT_SOURCE_DIR}/Polygeist/build/bin/mlir-clang")
-  endif()
-endif() 
-message(STATUS "Found mlir-clang at ${POLYGEIST_PATH}")
+find_program(MLIR-CLANG_PATH "mlir-clang"
+  PATHS
+  "${CMAKE_CURRENT_SOURCE_DIR}/Polygeist/build/mlir-clang"
+  "${CMAKE_CURRENT_SOURCE_DIR}/Polygeist/build/bin"
+  NO_DEFAULT_PATH
+)
+if(NOT EXISTS ${MLIR-CLANG_PATH})
+  message(FATAL_ERROR "Did not find mlir-clang in PATH nor in tree;")
+endif()
+message(STATUS "Found mlir-clang at ${MLIR-CLANG_PATH}")
+
+find_program(POLYGEIST-OPT_PATH "polygeist-opt"
+  PATHS
+  "${CMAKE_CURRENT_SOURCE_DIR}/Polygeist/build/tools/polygeist-opt"
+  "${CMAKE_CURRENT_SOURCE_DIR}/Polygeist/build/bin"
+  NO_DEFAULT_PATH
+)
+if(NOT EXISTS ${POLYGEIST-OPT_PATH})
+  message(FATAL_ERROR "Did not find polygeist-opt in PATH nor in tree;")
+endif()
+message(STATUS "Found polygeist-opt at ${POLYGEIST-OPT_PATH}")
+
 
 #-------------------------------------------------------------------------------
 # Verilator Configuration
