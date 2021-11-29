@@ -13,6 +13,15 @@ if [[ "$basename" == "tst_"* ]]; then
     basename=${basename#tst_}
 fi
 
+# We set -j1 to avoid overloading the build machine when running LIT tests in parallel.
+# We set ccache to hopefully speed up incremental test builds.
+mkdir -p ".ccache"
+export CCACHE_DIR="$(pwd)/.ccache"
+export CC="ccache gcc" CXX="ccache g++"
+
 cp @CIRCT_HLS_BINARY_DIR@/tools/hlt/Simulator/hlt_verilator_CMakeLists.txt CMakeLists.txt
-cmake -DHLT_TESTNAME=${basename} -DCMAKE_BUILD_TYPE=RelWithDebInfo . 
-make all -j$(nproc)
+cmake -DHLT_TESTNAME=${basename} \
+    -DCMAKE_BUILD_TYPE=RelWithDebInfo \
+    -GNinja \
+    . 
+ninja

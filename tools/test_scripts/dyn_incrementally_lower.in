@@ -16,4 +16,4 @@ fud exec --from mlir-std-flattened --to mlir-handshake-buffered -o ${basename}_h
 printf "\r\tLowered to handshake...!"
 fud exec --from mlir-handshake-buffered --to mlir-firrtl -o ${basename}_firrtl.mlir ${basename}_handshake.mlir
 printf "\r\tLowered to FIRRTL...!"
-fud exec --from mlir-firrtl --to synth-verilog -o ${basename}_sv.sv ${basename}_firrtl.mlir
+fud exec --from mlir-firrtl --to synth-verilog -o ${basename}.sv ${basename}_firrtl.mlir
