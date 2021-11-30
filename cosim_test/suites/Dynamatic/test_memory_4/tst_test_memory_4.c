@@ -8,6 +8,7 @@
 #ifndef AMOUNT_OF_TEST
 #define AMOUNT_OF_TEST 1
 #endif
+
 int main(void) {
   int a[AMOUNT_OF_TEST][4];
   int n[AMOUNT_OF_TEST];
