@@ -23,4 +23,3 @@ int main(void) {
     matrix(in_a[i], in_b[i], out_c[i]);
   }
 }
-  

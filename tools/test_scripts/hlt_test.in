@@ -44,3 +44,7 @@ echo $script_path
 # Then, build the testbench
 gen_script dyn_hlt_build_tb
 echo $script_path
+
+# Then, generate testbench execution script. We'll postpone actually running
+# it for now...
+gen_script dyn_hlt_run_sim

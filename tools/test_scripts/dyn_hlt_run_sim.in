@@ -3,6 +3,7 @@
 # The first argument to the script is the kernel or testbench which the Simulator
 # was generated from.
 # A testbench is defined as the kernel file prefixed with "tst_"
+# It is assumed that the testbench function is named "main".
 
 set -e
 sourceDir=$(dirname $1)
@@ -13,8 +14,10 @@ if [[ "$basename" == "tst_"* ]]; then
     basename=${basename#tst_}
 fi
 
-mlir-cpu-runner                                                        \
-    -e test_${basename} -entry-point-result=i32 -O3                    \
-    -shared-libs=%llvm_shlibdir/libmlir_c_runner_utils%shlibext        \
-    -shared-libs=%llvm_shlibdir/libmlir_runner_utils%shlibext          \
-    -shared-libs=libhlt_${basename}%shlibext ${basename}_tb.mlir
+libdir="@LLVM_BINARY_DIR@/lib"
+
+mlir-cpu-runner                                            \
+    -e main -entry-point-result=i32 -O3                    \
+    -shared-libs=${libdir}/libmlir_c_runner_utils.so       \
+    -shared-libs=${libdir}/libmlir_runner_utils.so         \
+    -shared-libs=libhlt_${basename}.so ${basename}_tb_llvm.mlir

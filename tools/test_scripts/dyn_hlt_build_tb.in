@@ -27,3 +27,10 @@ fi
 # kernel name - which in turn is the function to asynchronize.
 @CIRCT_HLS_BINARY_DIR@/bin/hls-opt --asyncify-calls="function=${basename}" \
   ${basename}_tb_poly_flat.mlir > ${basename}_tb.mlir
+
+# Lower to LLVM
+@LLVM_BINARY_DIR@/bin/mlir-opt -convert-scf-to-std                        \
+   -convert-memref-to-llvm                                                     \
+   -convert-std-to-llvm                                                        \
+   -reconcile-unrealized-casts \
+   ${basename}_tb.mlir > ${basename}_tb_llvm.mlir
