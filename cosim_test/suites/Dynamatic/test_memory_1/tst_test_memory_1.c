@@ -1,10 +1,8 @@
-// RUN: dyn_hlt_lower %s
-// RUN: dyn_hlt_build_sim %s
-// RUN: dyn_hlt_build_tb %s
+// RUN: hlt_test %s | run_test_scripts
 
 #include "test_memory_1.h"
 #include <stdlib.h>
-  
+
 #ifndef AMOUNT_OF_TEST
 #define AMOUNT_OF_TEST 1
 #endif

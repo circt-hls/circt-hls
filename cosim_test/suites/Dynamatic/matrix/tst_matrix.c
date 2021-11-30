@@ -1,6 +1,4 @@
-// RUN: dyn_hlt_lower %s
-// RUN: dyn_hlt_build_sim %s
-// RUN: dyn_hlt_build_tb %s
+// RUN: hlt_test %s | run_test_scripts
 
 #include "matrix.h"
 #include <stdlib.h>
@@ -25,3 +23,4 @@ int main(void) {
     matrix(in_a[i], in_b[i], out_c[i]);
   }
 }
+  

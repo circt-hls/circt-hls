@@ -1,6 +1,4 @@
-// RUN: dyn_hlt_lower %s
-// RUN: dyn_hlt_build_sim %s
-// RUN: dyn_hlt_build_tb %s
+// RUN: hlt_test %s | run_test_scripts
 
 #include "stencil_2d.h"
 #ifndef AMOUNT_OF_TEST
