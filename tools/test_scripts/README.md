@@ -31,3 +31,12 @@ The scripts are as follows:
   - A script that generates driver scripts for a testbench, and defines the overall test flow. These driver scripts are convenient if you want to reproduce certain steps of the synthesis/simulation pipeline. If so, just navigate to the test output directory and run the script in question.
 - **run_test_scripts**:
   - A script which will execute all scripts that are piped to it via. stdin. Used together with `hlt_test`.
+
+For developers `hlt_test` is a big help here; the output within a test directory may look as follows (after running `ninja check-circt-hls-integration-cosim`):
+```
+# $ ls circt-hls/build/cosim_test/suites/Dynamatic/kernel_2mm
+build.ninja     cmake_install.cmake          dyn_hlt_build_tb_driver.sh  dyn_incrementally_lower_driver.sh  kernel_2mm_firrtl.mlir       kernel_2mm_poly.mlir  kernel_2mm_tb_llvm.mlir       kernel_2mm_tb_poly.mlir  Output
+CMakeCache.txt  CMakeLists.txt               dyn_hlt_lower_driver.sh     kernel_2mm_affine.mlir             kernel_2mm_handshake.mlir    kernel_2mm_std.mlir   kernel_2mm_tb.mlir            libhlt_kernel_2mm.so
+CMakeFiles      dyn_hlt_build_sim_driver.sh  dyn_hlt_run_sim_driver.sh   kernel_2mm.cpp                     kernel_2mm_poly_memref.mlir  kernel_2mm.sv         kernel_2mm_tb_poly_flat.mlir  llvm.mlir
+```
+Here, each of the `.sh` scripts can be run directly, without any arguments, and they will execute the given part of synthesis/test process.
