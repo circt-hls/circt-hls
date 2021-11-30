@@ -87,7 +87,10 @@ $ ninja check-circt-hls-integration-extended
 (Modify the above wrt. where you built circt/mlir/llvm).
 
 # Usage
-The following lists example commands for exercising the available flows. If you're interested about the specific passes that are getting executed through `fud`, add `--verbose` to the command line.
+The following lists example commands for exercising the available flows.
+The best way to get insight into the lowering process is to take a look at the test scripts, described [here](tools/test_scripts/README.md).
+
+If you're interested about the specific passes that are getting executed through `fud`, add `--verbose` to the command line.
 
 **Verication:**
 - integration tests can be run by executing the `ninja check-circt-hls-integration` command in the `circt-hls/build` directory. This will execute the `lit` integration test suites.
