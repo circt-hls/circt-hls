@@ -29,7 +29,10 @@ fi
   ${basename}_tb_poly_flat.mlir > ${basename}_tb.mlir
 
 # Lower to LLVM
-@LLVM_BINARY_DIR@/bin/mlir-opt -convert-scf-to-std                        \
+@LLVM_BINARY_DIR@/bin/mlir-opt \
+   -lower-affine \
+   -convert-scf-to-std                        \
+   -std-expand \
    -convert-memref-to-llvm                                                     \
    -convert-std-to-llvm                                                        \
    -reconcile-unrealized-casts \
