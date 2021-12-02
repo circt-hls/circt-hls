@@ -30,4 +30,33 @@ def AsyncifyCalls : Pass<"asyncify-calls", "ModuleOp"> {
   ];
 }
 
+def MaxSSAForm : FunctionPass<"max-ssa"> {
+  let summary = "Converts a program into maximal SSA form";
+  let description = [{
+    This pass converts a program into maximal SSA form. In this form, any value
+    referenced within a block is also defined within the block. This is done by
+    adding block arguments to all basic block dominance chains which may lead
+    to an operation that relied on referencing a Value based on basic block
+    dominance.
+    
+    This pass is useful in dataflow-style programming models since it renders
+    all data flow within the program explicit (through block arguments) instead
+    of implicit (through block dominance).
+
+    This pass only works on Standard-level IR, in that it expects all operations
+    (and blocks) within a FuncOp to be within the same region. Furthermore, it
+    is assumed that any value referenced by any operation is eligible to be
+    passed around as a block argument.
+  }];
+  let constructor = "mlir::createMaxSSAFormPass()";
+  let options = [
+    ListOption<"ignoredDialects", "ignore-dialects", "std::string",
+      "List of ignored dialects. If a values' type is defined by an ignored "
+      "dialect, the value will be ignored during SSA maximization.",
+      "llvm::cl::ZeroOrMore, llvm::cl::MiscFlags::CommaSeparated">,
+    Option<"ignoreMemref", "ignore-memref", "bool", "false",
+      "Ignore memref values in SSA maximization.">
+  ];
+}
+
 #endif // CIRCT_HLS_TRANSFORMS_PASSES

@@ -23,6 +23,7 @@ namespace circt_hls {
 //===----------------------------------------------------------------------===//
 
 std::unique_ptr<mlir::Pass> createAsyncifyCallsPass();
+std::unique_ptr<mlir::Pass> createMaxSSAFormPass();
 
 //===----------------------------------------------------------------------===//
 // Registration
