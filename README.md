@@ -33,7 +33,7 @@ These are the (intended) end-to-end flows that can be driven from this directory
 If you don't already have a CIRCT/MLIR build locally, checkout https://github.com/llvm/circt and go follow the instructions.
 
 ## Build Polygeist
-Polygeist is used as the primary front-end for ingesting high-level programs. We'll build Polygeist using our existing MLIR/LLVM/Clang build.  
+Polygeist is used as the primary front-end for ingesting high-level programs. While it *is* possible to build Polygeist with an external LLVM/MLIR build, it often occurs that the CIRCT and Polygeist LLVM versions have API-breaking differences. It is suggested that you try building Polygeist with an external LLVM build (reusing your CIRCT build), and as a fallback use the internal LLVM submodule of Polygeist, which is sure to work.
 **NOTE: modify these paths to point to your own CIRCT/MLIR builds**.
 ```
 cd Polygeist
