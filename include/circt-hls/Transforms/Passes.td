@@ -48,7 +48,7 @@ def MaxSSAForm : FunctionPass<"max-ssa"> {
     is assumed that any value referenced by any operation is eligible to be
     passed around as a block argument.
   }];
-  let constructor = "mlir::createMaxSSAFormPass()";
+  let constructor = "circt_hls::createMaxSSAFormPass()";
   let options = [
     ListOption<"ignoredDialects", "ignore-dialects", "std::string",
       "List of ignored dialects. If a values' type is defined by an ignored "

@@ -19,6 +19,9 @@ set(SOURCES
   dyn_hlt_build_tb
   hlt_test
   run_test_scripts
+  lower_to_llvm
+  dyn_print_dot
+  dyn_show_sim_viz
 )
 foreach(file IN ITEMS ${SOURCES})
   configure_file(${file}.in ${CIRCT_HLS_TOOLS_DIR}/${file} @ONLY)

@@ -30,8 +30,15 @@ gen_script() {
     script_path="$(pwd)/$scriptName"
 }
 
+# Generate script for rerunning this script
+gen_script hlt_test
+
 # Generate the script for incremental lowering. This is used by dyn_hlt_lower
 gen_script dyn_incrementally_lower
+
+# Generate debugging scripts
+gen_script dyn_show_sim_viz
+gen_script dyn_print_dot
 
 # First, lower the kernel
 gen_script dyn_hlt_lower
