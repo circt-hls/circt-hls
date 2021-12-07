@@ -195,6 +195,7 @@ public:
 
   // Forward keepAlive callback to memory ports
   void setKeepAliveCallback(const KeepAliveFunction &f) override {
+    this->keepAlive = f;
     for (auto &port : storePorts)
       port.setKeepAliveCallback(f);
     for (auto &port : loadPorts)
@@ -274,6 +275,7 @@ public:
         size_t addr = *(loadPort.addr->dataSig);
         assert(addr < memorySize && "Address out of bounds.");
         *(loadPort.data->dataSig) = memory_ptr[addr];
+        keepAlive();
       }
     }
 
@@ -288,6 +290,7 @@ public:
         size_t addr = *(storePort.addr->dataSig);
         assert(addr < memorySize && "Address out of bounds.");
         memory_ptr[addr] = *(storePort.data->dataSig);
+        keepAlive();
       }
     }
 
