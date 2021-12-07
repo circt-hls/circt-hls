@@ -3,6 +3,7 @@
 
 #include <cassert>
 #include <condition_variable>
+#include <functional>
 #include <iostream>
 #include <list>
 #include <mutex>
@@ -56,11 +57,24 @@ struct SimQueues {
   AtomicQueue<std::shared_ptr<std::condition_variable>> outReq;
 };
 
+using KeepAliveFunction = std::function<void()>;
+
 /// Base class for simulator-related classes.
 class SimBase {
 public:
   /// Dump the state of the object.
-  virtual void dump(std::ostream &os) const = 0;
+  virtual void dump(std::ostream &os) const {}
+
+  virtual void setKeepAliveCallback(const KeepAliveFunction &f) {
+    assert(keepAlive == nullptr && "keepAlive callback already set!");
+    keepAlive = f;
+  }
+
+  // A function that should be called by the simulator whenever a meaningful
+  // state change has occured within the simulator. This is used to inform the
+  // simulator driver that the simulator has progressed and subsequently
+  // reset the timeout counter.
+  KeepAliveFunction keepAlive;
 };
 
 std::ostream &operator<<(std::ostream &out, const SimBase &b) {

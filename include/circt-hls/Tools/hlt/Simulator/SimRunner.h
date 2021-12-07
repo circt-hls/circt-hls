@@ -43,6 +43,9 @@ public:
   // Runner - simulation executer in separate thread
   void run() {
     sim = std::make_unique<Sim>();
+    // Define the keepAlive callback which the simulator can use to notify
+    // the runner that it is still alive.
+    sim->setKeepAliveCallback([this]() { to.reset(); });
     sim->setup();
 
     debugOut << "RUNNER: Runner thread started" << std::endl;

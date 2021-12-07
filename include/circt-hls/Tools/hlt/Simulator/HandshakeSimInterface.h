@@ -26,6 +26,7 @@ struct TransactableTrait {
 template <typename TSimPort>
 struct HandshakePort : public TSimPort, public TransactableTrait {
   HandshakePort() {}
+
   HandshakePort(CData *readySig, CData *validSig)
       : readySig(readySig), validSig(validSig){};
   HandshakePort(const std::string &name, CData *readySig, CData *validSig)
@@ -67,6 +68,8 @@ struct HandshakeInPort : public HandshakePort<SimulatorInPort> {
       if (transacting) {
         *this->validSig = 0;
         txState = Transacted;
+        // Transactions are considered a valid keepAlive reason.
+        this->keepAlive();
       } else
         txState = TransactNext;
     }
@@ -92,6 +95,8 @@ struct HandshakeOutPort : public HandshakePort<SimulatorOutPort> {
       if (transacting) {
         // *this->readySig = 0;
         txState = Transacted;
+        // Transactions are considered a valid keepAlive reason.
+        this->keepAlive();
       } else
         txState = TransactNext;
     }
@@ -142,7 +147,11 @@ struct HandshakeDataOutPort : HandshakeDataPort<TData, HandshakeOutPort> {
 template <typename TData, typename TAddr>
 class HandshakeMemoryInterface : public SimulatorInPort,
                                  public TransactableTrait {
-  struct StorePort {
+  struct StorePort : SimBase {
+    StorePort(const std::shared_ptr<HandshakeDataOutPort<TData>> &data,
+              const std::shared_ptr<HandshakeDataOutPort<TAddr>> &addr,
+              const std::shared_ptr<HandshakeInPort> &done)
+        : data(data), addr(addr), done(done){};
     std::shared_ptr<HandshakeDataOutPort<TData>> data;
     std::shared_ptr<HandshakeDataOutPort<TAddr>> addr;
     std::shared_ptr<HandshakeInPort> done;
@@ -151,9 +160,19 @@ class HandshakeMemoryInterface : public SimulatorInPort,
       addr->eval();
       done->eval();
     }
+
+    void setKeepAliveCallback(const KeepAliveFunction &f) override {
+      data->setKeepAliveCallback(f);
+      addr->setKeepAliveCallback(f);
+      done->setKeepAliveCallback(f);
+    }
   };
 
-  struct LoadPort {
+  struct LoadPort : SimBase {
+    LoadPort(const std::shared_ptr<HandshakeDataInPort<TData>> &data,
+             const std::shared_ptr<HandshakeDataOutPort<TAddr>> &addr,
+             const std::shared_ptr<HandshakeInPort> &done)
+        : data(data), addr(addr), done(done){};
     std::shared_ptr<HandshakeDataInPort<TData>> data;
     std::shared_ptr<HandshakeDataOutPort<TAddr>> addr;
     std::shared_ptr<HandshakeInPort> done;
@@ -162,12 +181,25 @@ class HandshakeMemoryInterface : public SimulatorInPort,
       addr->eval();
       done->eval();
     }
+    void setKeepAliveCallback(const KeepAliveFunction &f) override {
+      data->setKeepAliveCallback(f);
+      addr->setKeepAliveCallback(f);
+      done->setKeepAliveCallback(f);
+    }
   };
 
 public:
   // A memory interface is initialized with a static memory size. This is
   // generated during wrapper generation.
   HandshakeMemoryInterface(size_t size) : memorySize(size) {}
+
+  // Forward keepAlive callback to memory ports
+  void setKeepAliveCallback(const KeepAliveFunction &f) override {
+    for (auto &port : storePorts)
+      port.setKeepAliveCallback(f);
+    for (auto &port : loadPorts)
+      port.setKeepAliveCallback(f);
+  }
 
   void dump(std::ostream &os) const {}
 
@@ -186,13 +218,13 @@ public:
   addStorePort(const std::shared_ptr<HandshakeDataOutPort<TData>> &dataPort,
                const std::shared_ptr<HandshakeDataOutPort<TAddr>> &addrPort,
                const std::shared_ptr<HandshakeInPort> &donePort) {
-    storePorts.push_back(StorePort{dataPort, addrPort, donePort});
+    storePorts.push_back(StorePort(dataPort, addrPort, donePort));
   }
 
   void addLoadPort(const std::shared_ptr<HandshakeDataInPort<TData>> &dataPort,
                    const std::shared_ptr<HandshakeDataOutPort<TAddr>> &addrPort,
                    const std::shared_ptr<HandshakeInPort> &donePort) {
-    loadPorts.push_back(LoadPort{dataPort, addrPort, donePort});
+    loadPorts.push_back(LoadPort(dataPort, addrPort, donePort));
   }
 
   void reset() override {
@@ -400,6 +432,14 @@ public:
     assert(inCtrl->validSig != nullptr && "Missing in control valid signal");
     assert(outCtrl->readySig != nullptr && "Missing out control ready signal");
     assert(outCtrl->validSig != nullptr && "Missing out control valid signal");
+
+    // Forward keepAlive callback to ports.
+    for (auto &port : this->outPorts)
+      port->setKeepAliveCallback(this->keepAlive);
+    for (auto &port : this->inPorts)
+      port->setKeepAliveCallback(this->keepAlive);
+    inCtrl->setKeepAliveCallback(this->keepAlive);
+    outCtrl->setKeepAliveCallback(this->keepAlive);
 
     // Do verilator initialization; this will reset the circuit
     VerilatorSimImpl::setup();
