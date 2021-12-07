@@ -16,7 +16,7 @@
 #ifndef HLT_TIMEOUT
 // Number of steps without meaningful simulator state changes before exiting
 // runner.
-#define HLT_TIMEOUT 1000
+#define HLT_TIMEOUT 10000
 #endif
 
 namespace circt {
