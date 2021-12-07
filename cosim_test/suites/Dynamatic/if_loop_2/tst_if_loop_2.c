@@ -15,7 +15,6 @@ int main(void) {
     }
   }
   for (int i = 0; i < AMOUNT_OF_TEST; ++i) {
-    int i = 0;
     if_loop_2(a[i], n[i]);
   }
 }
