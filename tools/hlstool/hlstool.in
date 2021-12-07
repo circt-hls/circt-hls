@@ -1,0 +1,541 @@
+#!/usr/bin/env python3
+import argparse
+import sys
+import os
+import subprocess
+import shutil
+
+## CMake configured paths to the tools that we'll be using
+CIRCT_BIN_DIR = "@CIRCT_INCLUDE_DIR@/../bin/"
+CIRCT_HLS_BIN_DIR = "@CIRCT_HLS_BINARY_DIR@/bin/"
+MLIR_CLANG_PATH = "@MLIR-CLANG_PATH@"
+POLYGEIST_OPT_PATH = "@POLYGEIST-OPT_PATH@"
+LLVM_BIN_DIR = "@LLVM_BINARY_DIR@/bin"
+
+## Global variables used to drive the tool
+# Current mode
+mode = None
+# Tool arguments
+args = None
+
+
+def print_header(text, width=80):
+  if args.silent:
+    return
+  sideWidth = (width - len(text)) // 2 - 2
+  print("=" * sideWidth + f" {text} " + "=" * sideWidth)
+
+
+def print_prefixed(prefix, text):
+  if args.silent:
+    return
+  print(f"{prefix}: {text}")
+
+
+def print_info(text):
+  print_prefixed("INFO", "    " + text)
+
+
+def print_error(text):
+  print_prefixed("ERROR", text)
+  sys.exit(1)
+
+
+def print_step(text):
+  print_prefixed("\nSTEP", text)
+
+
+def runIfNotExists(file, func):
+  if not args.rebuild and os.path.exists(file):
+    print_info(f"File {file} already exists, skipping...")
+    return
+  func()
+
+
+def run_tool(args, stdOutFile=None, shell=False):
+  cmd = " ".join(args)
+
+  def onError(returnCode, stdOut, stdErr):
+    print_error(
+        f"Error while executing: {cmd}\nstdout:\n{stdOut}\nstderr:\n{stdErr}\n (code: {returnCode})"
+    )
+
+  try:
+    if shell:
+      proc = subprocess.Popen(cmd,
+                              stdout=subprocess.PIPE,
+                              stderr=subprocess.PIPE,
+                              shell=True)
+      code = proc.wait()
+      stdOut, stdErr = proc.communicate()
+    else:
+      res = subprocess.run(args, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+      code = res.returncode
+      stdOut, stdErr = res.stdout, res.stderr
+
+    if code != 0:
+      onError(code, stdOut, stdErr.decode('unicode_escape'))
+
+    if stdOutFile:
+      with open(stdOutFile, 'wb') as f:
+        f.write(stdOut)
+  except subprocess.CalledProcessError as e:
+    onError(e.returncode, "", e.output)
+
+
+def run_fud(fromType, toType, inputFile, outputFile):
+  if fromType == "" or toType == "":
+    print_error("Error: Missing fromType or toType")
+  run_tool([
+      "fud", "exec", "--from", fromType, "--to", toType, "-o", outputFile,
+      inputFile
+  ])
+
+
+def run_opt_tool(tool_dir, tool_name, args, inputFile, outputFile=None):
+  args = [os.path.join(tool_dir, tool_name), *args, inputFile]
+  run_tool(args, outputFile, shell=True)
+
+
+def run_circt_opt(args, inputFile, outputFile=None):
+  run_opt_tool(CIRCT_BIN_DIR, "circt-opt", args, inputFile, outputFile)
+
+
+def run_hls_opt(args, inputFile, outputFile=None):
+  run_opt_tool(CIRCT_HLS_BIN_DIR, "hls-opt", args, inputFile, outputFile)
+
+
+def run_mlir_opt(args, inputFile, outputFile=None):
+  run_opt_tool(LLVM_BIN_DIR, "mlir-opt", args, inputFile, outputFile)
+
+
+class HLSMode:
+
+  def __init__(self, name):
+    self.name = name
+
+  def add_arguments(self, subparser):
+    raise NotImplementedError("implement me in a subclass")
+
+  def parse_arguments(self, parser):
+    raise NotImplementedError("implement me in a subclass")
+
+  def run(self):
+    raise NotImplementedError("implement me in a subclass")
+
+
+class DynamicMode(HLSMode):
+
+  def __init__(self):
+    super().__init__('dynamic')
+
+  def add_arguments(self, subparser):
+    dynamic_parser = subparser.add_parser('dynamic', help='Dynamic mode')
+    dynamic_parser.add_argument('-r',
+                                '--run_sim',
+                                action='store_true',
+                                help='Run the HLT testbench.')
+
+    dynamic_parser.add_argument(
+        '-e',
+        '--genexec',
+        type=str,
+        help="Generate a HLT testbench which compiles to an executable file. "
+        "This is useful if you don\'t want to run the HLT wrapper via. the "
+        "mlir-cpu-runner, but instead want an executable file that you can debug"
+        " with regular C++ tools")
+
+    dynamic_parser.add_argument('--print_dot',
+                                help="Prints a dot file of the "
+                                "handshake circuit")
+    dynamic_parser.add_argument('--lower',
+                                action='store_true',
+                                help="Lower the C code to hardware.")
+    dynamic_parser.add_argument(
+        '--build_sim',
+        action='store_true',
+        help="Lower the C code to hardware, build the simulator.")
+    dynamic_parser.add_argument(
+        '--build_tb',
+        action='store_true',
+        help=
+        "Lower the testbench to MLIR, asyncify it (for HLT use), convert to LLVM IR."
+    )
+    dynamic_parser.add_argument(
+        '--hsdbg',
+        action='store_true',
+        help="Run HSDbg on the circuit. This"
+        " assumes that a simulation has been run prior to this.")
+
+  def parse_arguments(self, parser):
+    if not args.vcd:
+      # Infer a default location for the VCD file based on how HLT emits it.
+      args.vcd = os.path.join(args.outdir, 'logs/vlt_dump.vcd')
+
+    if args.hsdbg:
+      # Always run print_dot
+      args.print_dot = True
+
+      # If we are running HSDbg there must be simulation results available
+      if not os.path.exists(args.vcd):
+        parser.error(f"Expected a simulation result file at {args.vcd}. "
+                     " Please run a simulation first.")
+
+    if args.run_sim:
+      # Running the sim requires building the sim
+      args.build_sim = True
+      args.build_tb = True
+      print_info("enabling --build_sim required by --run_sim")
+      print_info("enabling --build_tb required by --run_sim")
+
+    if not args.build_sim and not args.lower and not args.run_sim and not args.build_tb:
+      # If no specific end-point has been set, we'll stop at building the sim
+      # and kernel, but not running the sim.
+      print_info("enabling --build_sim due to no specific end-point set")
+      args.build_sim = True
+      print_info("enabling --build_tb due to no specific end-point set")
+      args.build_tb = True
+
+    if args.build_sim:
+      # Building the sim requires lowering the kernel.
+      args.lower = True
+      print_info("enabling --lower required by --build_sim")
+
+  def gen_names(self):
+    # Generates all possible output file names which we'll reference during the run.
+
+    # Kernel files
+    self.kernel_affine = os.path.join(args.outdir,
+                                      args.kernel_name + "_affine.mlir")
+    self.kernel_std = os.path.join(args.outdir, args.kernel_name + "_std.mlir")
+    self.kernel_std_max = os.path.join(args.outdir,
+                                       args.kernel_name + "_std_max.mlir")
+    self.kernel_handshake_noid = os.path.join(
+        args.outdir, args.kernel_name + "_handshake_noid.mlir")
+    self.kernel_handshake = os.path.join(args.outdir,
+                                         args.kernel_name + "_handshake.mlir")
+    self.kernel_firrtl = os.path.join(args.outdir,
+                                      args.kernel_name + "_firrtl.mlir")
+    self.kernel_sv = os.path.join(args.outdir, args.kernel_name + ".sv")
+    self.dotfile = os.path.join(args.outdir, args.kernel_name + ".dot")
+
+    # Testbench files
+    self.tb_poly = os.path.join(args.outdir, args.kernel_name + "_poly.mlir")
+    self.tb_poly_flat = os.path.join(args.outdir,
+                                     args.kernel_name + "_poly_flat.mlir")
+    self.tb_mlir = os.path.join(args.outdir, args.kernel_name + "_tb.mlir")
+    self.tb_llvm = os.path.join(args.outdir, args.kernel_name + "_tb_llvm.mlir")
+    self.tb_output = os.path.join(args.outdir,
+                                  args.kernel_name + "_tb_output.txt")
+
+  def run(self):
+    # First, generate all of the names that we'll reference during the run.
+    self.gen_names()
+
+    if args.lower:
+      self.run_lowering()
+
+    if args.build_sim:
+      self.run_build_sim()
+
+    if args.build_tb:
+      self.run_build_tb()
+
+    if args.print_dot:
+      self.run_print_dot()
+
+    if args.hsdbg:
+      self.run_hsdbg()
+      return
+
+    if args.run_sim:
+      self.run_sim()
+
+    print_header("Finished!")
+
+  def run_lowering(self):
+    # Main HLS driver, for bring C to system verilog.
+    print_step(f"Dynamically scheduled HLS'ing {args.kernel_file}...")
+
+    runIfNotExists(
+        self.kernel_affine, lambda: run_fud("c", "mlir-affine", args.
+                                            kernel_file, self.kernel_affine))
+    print_info(f"Lowered to affine! (Polygeist)...! ({self.kernel_affine})")
+
+    runIfNotExists(
+        self.kernel_std, lambda: run_fud("mlir-affine", "mlir-std-flattened",
+                                         self.kernel_affine, self.kernel_std))
+    runIfNotExists(
+        self.kernel_std_max,
+        lambda: run_hls_opt(['--max-ssa=\"ignore-memref\"'], self.kernel_std,
+                            self.kernel_std_max))
+    print_info(f"Lowered to standard...! ({self.kernel_std_max})")
+
+    runIfNotExists(
+        self.kernel_handshake_noid,
+        lambda: run_fud("mlir-std-flattened", "mlir-handshake-buffered", self.
+                        kernel_std_max, self.kernel_handshake_noid))
+    runIfNotExists(
+        self.kernel_handshake,
+        lambda: run_circt_opt(["--handshake-add-ids"], self.
+                              kernel_handshake_noid, self.kernel_handshake))
+    print_info(f"Lowered to handshake...! ({self.kernel_handshake})")
+
+    runIfNotExists(
+        self.kernel_firrtl,
+        lambda: run_fud("mlir-handshake-buffered", "mlir-firrtl", self.
+                        kernel_handshake, self.kernel_firrtl))
+    print_info(f"Lowered to FIRRTL...! ({self.kernel_firrtl})")
+
+    runIfNotExists(
+        self.kernel_sv, lambda: run_fud("mlir-firrtl", "synth-verilog", self.
+                                        kernel_firrtl, self.kernel_sv))
+    print_info(f"Lowered to RTL...! ({self.kernel_sv})")
+
+  def run_print_dot(self):
+    print_info("= Printing dot file of the handshake circuit...")
+    run_circt_opt("--handshake-print-dot", self.kernel_handshake)
+
+  def run_hsdbg(self):
+    print_step("Running HSDbg on the handshake circuit...")
+    run_tool([
+        os.path.join(CIRCT_HLS_BIN_DIR, "hsdbg"), "-f=dec", self.dotfile,
+        args.vcd
+    ])
+
+  def run_genexec(self):
+    pass
+
+  def run_build_sim(self):
+    print_step("Building simulator")
+    htl_cmake = os.path.join(
+        CIRCT_HLS_BIN_DIR, "..",
+        "tools/hlt/Simulator/hlt_verilator_CMakeLists.txt")
+    shutil.copy(htl_cmake, "CMakeLists.txt")
+    print_info("Added CMakeLists.txt to the build directory")
+    print_info("Running CMake...")
+    run_tool(
+        ["cmake", "-G", "Ninja", f"-DHLT_TESTNAME={args.kernel_name}", "."])
+    print_info("Running ninja")
+    run_tool(["ninja"])
+
+  def run_build_tb(self):
+    print_step("Building testbench")
+
+    # Lower polygeist to MLIR. Ensure to run polygeist canonicalization since
+    # a lot of pointer/memref legalization takes places within the canonicalization
+    # patterns of Polygeist.
+    run_tool(
+        [
+            MLIR_CLANG_PATH,
+            "-S",  # Emit assembly (MLIR)
+            "--function=*",  # Emit all functions
+            "--memref-fullrank",  # Emit fullrank memrefs
+            args.tb_file,
+            "|",  # pipe stdout
+            POLYGEIST_OPT_PATH,  # Run Polygeist optimization driver
+            "--canonicalize",  # ensure that the polygeist-emitted IR is canonical. This may remove some polygeist-dialect specific ops.
+        ],
+        self.tb_poly,
+        shell=True)
+    print_info(f"Lowered testbench to MLIR ({self.tb_poly})")
+
+    # Run memref-call flattening. This is specific to handshake kernels since they do
+    # not support multidimensional memories at the moment
+    run_circt_opt(["--flatten-memref-calls"], self.tb_poly, self.tb_poly_flat)
+    print_info(
+        f"flattened multidimensional memref's in calls to unidimensional ({self.tb_poly_flat})"
+    )
+
+    # Asynchronize to adhere with HLT. We assume that the testname is equal to the
+    # kernel name - which in turn is the function to asynchronize.
+    run_hls_opt([f"--asyncify-calls=\"function={args.kernel_name}\""],
+                self.tb_poly_flat, self.tb_mlir)
+    print_info(f"Async-ified the testbench ({self.tb_mlir})")
+
+    run_mlir_opt([
+        "-lower-affine", "-convert-scf-to-std", "-std-expand",
+        "-convert-memref-to-llvm", "-convert-std-to-llvm",
+        "-reconcile-unrealized-casts"
+    ], self.tb_mlir, self.tb_llvm)
+    print_info(f"Lowered testbench to LLVMIR ({self.tb_llvm})")
+
+  def run_sim(self):
+    print_step("Running testbench")
+    # Directory containing LLVM libraries which we'll need to dynamically link
+    # against in the mlir-cpu-runner
+    libdir = os.path.join(LLVM_BIN_DIR, "..", "lib")
+
+    # Shared library built by the simulator.
+    simlib = f"libhlt_{args.kernel_name}.so"
+    if not os.path.exists(simlib):
+      print_error(
+          f"Could not find {simlib}, expected to be built by the --build_sim step"
+      )
+
+    run_tool([
+        "mlir-cpu-runner", f"-e {args.tb_entry} -entry-point-result=i32 -O3",
+        f"-shared-libs={libdir}/libmlir_c_runner_utils.so",
+        f"-shared-libs={libdir}/libmlir_runner_utils.so",
+        f"-shared-libs={simlib} {self.tb_llvm}"
+    ],
+             self.tb_output,
+             shell=True)
+
+    print_info("Testbench ran successfully. Output is in {}".format(
+        self.tb_output))
+    if os.path.exists(args.vcd):
+      print_info("VCD file is in {}".format(args.vcd))
+
+
+class StaticMode(HLSMode):
+  # TODO: implement static mode
+
+  def __init__(self):
+    super().__init__('static')
+
+  def add_arguments(self, subparser):
+    pass
+
+
+class MixedMode(HLSMode):
+  # TODO: implement mixed dynamic/static mode
+
+  def __init__(self):
+    super().__init__('mixed')
+
+  def add_arguments(self, subparser):
+    pass
+
+
+# Handles for the global 'Mode' objects
+dynMode = DynamicMode()
+staticMode = StaticMode()
+
+
+def parse_args(parser):
+  global mode
+  global args
+  args = parser.parse_args()
+  print_header("Parsing and validating arguments")
+
+  # First we validate the general arguments.
+  if not args.tb_file and not args.kernel_file and not args.kernel_name:
+    parser.error(
+        "Must specify either testbench name (to infer kernel and kernel name)"
+        " or kernel file and kernel name.")
+  if args.tb_file and not args.kernel_file and not args.kernel_name:
+    # Infer kernel file and name from testbench
+    print_info("Inferring kernel file and name from testbench name.")
+    dirname = os.path.dirname(args.tb_file)
+    basename = os.path.basename(args.tb_file)
+    basename = os.path.splitext(basename)[0]
+
+    if not basename.startswith("tst_"):
+      parser.error("Testbench name must start with 'tst_' in inference mode")
+      sys.exit(1)
+
+    basename = basename[4:]
+    args.kernel_file = os.path.join(dirname, basename + ".c")
+    args.kernel_name = basename
+  elif not args.kernel_file or not args.kernel_name:
+    parser.error("Must specify kernel file and kernel name")
+  else:
+    parser.error(
+        "Couldn't determine the requested kernel to synthesize, exiting...")
+
+  print_info("using kernel file: {}".format(args.kernel_file))
+  print_info("using kernel name: {}".format(args.kernel_name))
+  print_info("using testbench file: {}".format(args.tb_file))
+
+  # Set current mode
+  if args.mode == 'dynamic':
+    mode = dynMode
+  elif args.mode == 'static':
+    mode = staticMode
+  else:
+    parser.print_help()
+    sys.exit(1)
+
+  # Parse mode arguments
+  print_step(f"Parsing '{mode.name}' mode arguments")
+  mode.parse_arguments(args)
+  print_info("Arguments parsed and validated successfully!")
+
+
+# An entry point
+if __name__ == '__main__':
+  # and argparser taking a mandatory argument "mode"
+  parser = argparse.ArgumentParser(
+      description="HLSTool"
+      " is a tool for driving an end-to-end MLIR based HLS flow.")
+  # A sub parser for the "dynamic" mode
+  subparsers = parser.add_subparsers(help='Mode options', dest='mode')
+
+  # General arguments
+  parser.add_argument('--silent',
+                      action='store_true',
+                      help='Silent mode; suppress all output.',
+                      default=False)
+
+  parser.add_argument('--kernel_file',
+                      type=str,
+                      help='Path to the file containing the kernel.',
+                      required=False)
+
+  parser.add_argument(
+      '--tb_file',
+      type=str,
+      help='Testbench file. If only this is specified, the kernel '
+      'name and kernel file are inferred from the testbench name. '
+      'When inferring this, testbenches are expected to be named \'tst_${kernel_name}.c\'',
+      required=False)
+
+  parser.add_argument(
+      '--tb_entry',
+      type=str,
+      help=
+      'Testbench entry point. If not specified, the default entry point is used.',
+      required=False,
+      default='main')
+
+  parser.add_argument(
+      '--kernel_name',
+      type=str,
+      help='The kernel name is the name of the function within the '
+      'kernel file which is to be compiled.',
+      required=False)
+
+  parser.add_argument('--outdir',
+                      type=str,
+                      help='Output directory. If not specified, '
+                      'the output directory is the current working directory.',
+                      required=False,
+                      default=os.getcwd())
+
+  parser.add_argument("--vcd",
+                      type=str,
+                      help="Path to a VCD file associated with"
+                      " a testbench.",
+                      required=False)
+
+  parser.add_argument(
+      "--rebuild",
+      action='store_true',
+      help="Always rebuild any step of the tool. If this is not set, "
+      "steps will be skipped when an expected output file already exists.",
+      default=False)
+
+  # Add mode arguments
+  dynMode.add_arguments(subparsers)
+  staticMode.add_arguments(subparsers)
+
+  # Parse arguments
+  parse_args(parser)
+
+  # Move to the output directory
+  os.chdir(args.outdir)
+
+  # Run the current mode
+  print_header(f"Running '{mode.name}' mode")
+  mode.run()
