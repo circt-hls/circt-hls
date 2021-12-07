@@ -1,4 +1,4 @@
-// RUN: hlstool --tb_file %s dynamic
+// RUN: hlstool --rebuild --tb_file %s dynamic
 
 #include "if_loop_3.h"
 

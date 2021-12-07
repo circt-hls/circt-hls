@@ -1,4 +1,4 @@
-// RUN: hlstool --tb_file %s dynamic
+// RUN: hlstool --rebuild --tb_file %s dynamic
 
 #include "matrix_power.h"
 #include <stdlib.h>

@@ -1,4 +1,4 @@
-// RUN: hlstool --tb_file %s dynamic
+// RUN: hlstool --rebuild --tb_file %s dynamic
 
 #include "simple_example_2.h"
 #ifndef AMOUNT_OF_TEST

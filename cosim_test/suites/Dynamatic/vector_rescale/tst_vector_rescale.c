@@ -1,4 +1,4 @@
-// RUN: hlstool --tb_file %s dynamic
+// RUN: hlstool --rebuild --tb_file %s dynamic
 
 #include "vector_rescale.h"
 #include <stdlib.h>
