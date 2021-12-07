@@ -21,6 +21,8 @@
 using namespace mlir;
 using namespace circt_hls;
 
+using ValueFilterCallbackFn = llvm::function_ref<bool(Value)>;
+
 /// Rewrites the terminator in 'from' to pass an additional argument 'v' when
 /// passing control flow to 'to'.
 static LogicalResult rewriteControlFlowToBlock(Block *from, Block *to,
@@ -44,9 +46,10 @@ static LogicalResult rewriteControlFlowToBlock(Block *from, Block *to,
 
 /// Rewrites uses of 'oldV' in 'b' to 'newV'.
 static void rewriteUsageInBlock(Block *b, Value oldV, Value newV) {
-  for (auto &use : oldV.getUses())
-    if (use.getOwner()->getBlock() == b)
+  for (auto &use : llvm::make_early_inc_range(oldV.getUses()))
+    if (use.getOwner()->getBlock() == b) {
       use.set(newV);
+    }
 }
 
 /// Perform a depth-first search backwards through the CFG graph of a program,
@@ -56,46 +59,47 @@ static void rewriteUsageInBlock(Block *b, Value oldV, Value newV) {
 /// Arguments: 'use': ablock where a value v flows through. 'succ': a successor
 /// block of the 'use' block. Notably this conversion backtracks through the BB
 /// CFG graph, so 'succ' will be a basic block that called backtrackAndConvert
-/// on 'use'. 'convertedBArgs': A mapping containing the appended block argument
+/// on 'use'. 'inBlockValues': A mapping containing the appended block argument
 /// when backtracking through a basic block. 'convertedControlFlow': A mapping
-/// containing, for a given block (key) which successor opernad range in the
+/// containing, for a given block (key) which successor operand range in the
 /// terminator have been rewritten to the new block argument signature.
-static LogicalResult backtrackAndConvert(
-    Block *use, Block *succ, Value v, DenseMap<Block *, Value> &convertedBArgs,
-    DenseMap<Block *, std::set<Block *>> &convertedControlFlow) {
+static LogicalResult
+backtrackAndConvert(Block *use, Block *succ, Value v,
+                    DenseMap<Value, DenseMap<Block *, Value>> &inBlockValues,
+                    DenseMap<Value, DenseMap<Block *, DenseSet<Block *>>>
+                        &convertedControlFlow) {
   // The base case is when we've backtracked to the Block which defines the
   // value. In these cases, set the actual value as the converted value.
   if (v.getParentBlock() == use)
-    convertedBArgs[use] = v;
+    inBlockValues[v][use] = v;
 
-  auto alreadyConvertedBArgs = convertedBArgs.find(use);
-  if (alreadyConvertedBArgs == convertedBArgs.end()) {
-    // Rwrite this blocks' block arguments to take in a new value of 'v' type
+  if (inBlockValues[v].count(use) == 0) {
+
+    // Rewrite this blocks' block arguments to take in a new value of 'v' type.
     use->addArgument(v.getType());
     Value newBarg = use->getArguments().back();
 
     // Register the converted block argument in case other branches in the CFG
-    // arrive here earlier.
-    convertedBArgs[use] = newBarg;
+    // arrive here later.
+    inBlockValues[v][use] = newBarg;
     rewriteUsageInBlock(use, v, newBarg);
 
-    // Recurse through the predecessors of this block
+    // Recurse through the predecessors of this block.
     for (auto pred : use->getPredecessors())
-      if (backtrackAndConvert(pred, use, v, convertedBArgs,
-                              convertedControlFlow)
-              .failed())
+      if (failed(backtrackAndConvert(pred, use, v, inBlockValues,
+                                     convertedControlFlow)))
         return failure();
   }
 
-  // Rewrite control flow to the succ block through the termiantor, if not
+  // Rewrite control flow to the 'succ' block through the terminator, if not
   // already done.
-  if (succ && convertedControlFlow[use].count(succ) == 0) {
-    alreadyConvertedBArgs = convertedBArgs.find(use);
-    assert(alreadyConvertedBArgs != convertedBArgs.end());
-    if (rewriteControlFlowToBlock(use, succ, alreadyConvertedBArgs->second)
-            .failed())
+  if (succ && convertedControlFlow[v][use].count(succ) == 0) {
+    auto alreadyinBlockValues = inBlockValues[v].find(use);
+    assert(alreadyinBlockValues != inBlockValues[v].end());
+    if (failed(
+            rewriteControlFlowToBlock(use, succ, alreadyinBlockValues->second)))
       return failure();
-    convertedControlFlow[use].insert(succ);
+    convertedControlFlow[v][use].insert(succ);
   }
 
   return success();
@@ -103,54 +107,85 @@ static LogicalResult backtrackAndConvert(
 
 namespace {
 
-struct MaxSSAFormPass : public MaxSSAFormBase<MaxSSAFormPass> {
+struct MaxSSAFormConverter {
 public:
-  void runOnFunction() override {
-    FuncOp function = getOperation();
+  /// An optional filterFn may be provided to dynamically filter out values
+  /// from being converted.
+  MaxSSAFormConverter(ValueFilterCallbackFn filterFn = nullptr)
+      : filterFn(filterFn) {}
 
-    function.walk([&](Operation *op) {
-      if (llvm::any_of(op->getOperands(), [&](Value operand) {
-            return runOnValue(operand).failed();
+  LogicalResult convertFunction(FuncOp function) {
+    auto walkRes = function.walk([&](Operation *op) {
+      // Run on operation results.
+      SetVector<Value> visited;
+      if (llvm::any_of(op->getResults(), [&](Value res) {
+            visited.insert(res);
+            return failed(runOnValue(res));
           })) {
-        signalPassFailure();
-        return;
+        return WalkResult::interrupt();
       }
+      return WalkResult::advance();
     });
 
+    // Run on block arguments.
+    for (auto &block : function) {
+      if (llvm::any_of(block.getArguments(),
+                       [&](Value barg) { return failed(runOnValue(barg)); }))
+        return failure();
+    }
+
+    if (walkRes.wasInterrupted())
+      return failure();
+
     assert(
-        verifyFunction(function).succeeded() &&
+        succeeded(verifyFunction(function)) &&
         "Some values were still referenced outside of their defining block!");
+
+    return success();
+  }
+
+  LogicalResult convertValue(Value v) {
+    auto *defOp = v.getDefiningOp();
+    auto funcOp = dyn_cast<FuncOp>(defOp->getParentOp());
+    if (!funcOp)
+      return defOp->emitOpError() << "Expected parent operation to be a "
+                                     "function, but got "
+                                  << defOp->getParentOp()->getName();
+
+    return runOnValue(v);
   }
 
 private:
-  /// Returns true if this value is ignored in SSA maximisation.
-  bool isIgnored(Value v) const;
-
-  /// Verifies that all values indeed are only referenced within their defining
-  /// block.
+  /// Verifies that all values which are not filtered indeed are only referenced
+  /// within their defining block.
   LogicalResult verifyFunction(FuncOp f) const;
 
   /// Driver which will run backtrackAndConvert on values referenced outside
-  /// their defining block.
+  /// their defining block. Returns failure in case the pass failed to apply.
+  /// This may happen when nested regions exist within the FuncOp which this
+  /// pass is applied to, or if non branch-like control flow is used.
   LogicalResult runOnValue(Value v);
+
+  /// A mapping {original value : {block : replaced value}} representing
+  /// 'original value' has been replaced in 'block' with 'replaced value'".
+  DenseMap<Value, DenseMap<Block *, Value>> inBlockValues;
+
+  /// A mapping {original value : {block : succ block}} representing
+  /// 'original value' has already been passed from 'block' to 'succ block'
+  /// through the terminator of 'block'.
+  DenseMap<Value, DenseMap<Block *, DenseSet<Block *>>> convertedControlFlow;
+
+  /// An optional filter function to dynamically determine whether a value
+  /// should be considered for SSA maximization.
+  ValueFilterCallbackFn filterFn;
 };
 
-/// Returns true if this value is ignored in SSA maximisation.
-bool MaxSSAFormPass::isIgnored(Value v) const {
-  Type t = v.getType();
-
-  return llvm::TypeSwitch<Type, bool>(t)
-      .Case<MemRefType>([&](auto) { return static_cast<bool>(ignoreMemref); })
-      .Default([&](auto) {
-        return llvm::find(ignoredDialects, t.getDialect().getNamespace()) !=
-               ignoredDialects.end();
-      });
-}
-
-LogicalResult MaxSSAFormPass::verifyFunction(FuncOp f) const {
+LogicalResult MaxSSAFormConverter::verifyFunction(FuncOp f) const {
   for (auto &op : f.getOps()) {
     auto isValid = [&](Value v) {
-      return isIgnored(v) || v.getParentBlock() == op.getBlock();
+      if (filterFn && filterFn(v))
+        return true;
+      return v.getParentBlock() == op.getBlock();
     };
 
     if (!llvm::all_of(op.getOperands(), isValid))
@@ -160,23 +195,24 @@ LogicalResult MaxSSAFormPass::verifyFunction(FuncOp f) const {
   return success();
 }
 
-LogicalResult MaxSSAFormPass::runOnValue(Value v) {
-  if (isIgnored(v))
+LogicalResult MaxSSAFormConverter::runOnValue(Value v) {
+  if (filterFn && filterFn(v))
     return success();
   Block *definingBlock = v.getParentBlock();
-  for (auto user : v.getUsers()) {
-    Block *userBlock = user->getBlock();
+
+  SetVector<Block *> usedInBlocks;
+  for (Operation *user : v.getUsers())
+    usedInBlocks.insert(user->getBlock());
+
+  for (Block *userBlock : usedInBlocks) {
     if (definingBlock != userBlock) {
       // This is a case of using an SSA value through basic block dominance.
       if (userBlock->getParent() != definingBlock->getParent())
-        return user->emitOpError() << "can only convert SSA usage across "
-                                      "blocks in the same region.";
+        return emitError(v.getLoc()) << "can only convert SSA usage across "
+                                        "blocks in the same region.";
 
-      DenseMap<Block *, Value> convertedBArgs;
-      DenseMap<Block *, std::set<Block *>> convertedControlFlow;
-      if (backtrackAndConvert(userBlock, nullptr, v, convertedBArgs,
-                              convertedControlFlow)
-              .failed())
+      if (failed(backtrackAndConvert(userBlock, /*succ=*/nullptr, v,
+                                     inBlockValues, convertedControlFlow)))
         return failure();
     }
   }
@@ -184,6 +220,31 @@ LogicalResult MaxSSAFormPass::runOnValue(Value v) {
 }
 
 } // namespace
+
+LogicalResult convertToMaximalSSA(FuncOp func,
+                                  ValueFilterCallbackFn filterFn = nullptr) {
+  return MaxSSAFormConverter(filterFn).convertFunction(func);
+}
+
+LogicalResult convertToMaximalSSA(Value value) {
+  return MaxSSAFormConverter().convertValue(value);
+}
+
+struct MaxSSAFormPass : public MaxSSAFormBase<MaxSSAFormPass> {
+public:
+  void runOnFunction() override {
+    FuncOp func = getOperation();
+
+    // Do not modify memref's
+    ValueFilterCallbackFn filterFn = nullptr;
+
+    if (ignoreMemref)
+      filterFn = [&](Value v) { return v.getType().isa<MemRefType>(); };
+
+    if (convertToMaximalSSA(func, filterFn).failed())
+      return signalPassFailure();
+  }
+};
 
 namespace circt_hls {
 std::unique_ptr<mlir::Pass> createMaxSSAFormPass() {
