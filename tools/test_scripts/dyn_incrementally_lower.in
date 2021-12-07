@@ -16,7 +16,8 @@ printf "\tLowered to affine! (Polygeist)...!"
 fud exec --from mlir-affine --to mlir-std-flattened -o ${basename}_std.mlir ${basename}_affine.mlir
 @CIRCT_HLS_BINARY_DIR@/bin/hls-opt --max-ssa="ignore-memref" ${basename}_std.mlir > ${basename}_std_max.mlir
 printf "\r\tLowered to standard...!"
-fud exec --from mlir-std-flattened --to mlir-handshake-buffered -o ${basename}_handshake.mlir ${basename}_std_max.mlir
+fud exec --from mlir-std-flattened --to mlir-handshake-buffered -o ${basename}_handshake_noid.mlir ${basename}_std_max.mlir
+@CIRCT_INCLUDE_DIR@/../bin/circt-opt --handshake-add-ids ${basename}_handshake_noid.mlir > ${basename}_handshake.mlir
 printf "\r\tLowered to handshake...!"
 fud exec --from mlir-handshake-buffered --to mlir-firrtl -o ${basename}_firrtl.mlir ${basename}_handshake.mlir
 printf "\r\tLowered to FIRRTL...!"
