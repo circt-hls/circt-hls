@@ -186,20 +186,21 @@ class DynamicMode(HLSMode):
         parser.error(f"Expected a simulation result file at {args.vcd}. "
                      " Please run a simulation first.")
 
+    if not args.build_sim and not args.lower and not args.run_sim and not args.build_tb:
+      # If no specific end-point has been set, we'll stop at building the sim
+      # and kernel, but not running the sim.
+      # print_info("enabling --build_sim due to no specific end-point set")
+      # args.build_sim |= True
+      # print_info("enabling --build_tb due to no specific end-point set")
+      # args.build_tb |= True
+      args.run_sim |= True
+
     if args.run_sim:
       # Running the sim requires building the sim
       args.build_sim |= True
       args.build_tb |= True
       print_info("enabling --build_sim required by --run_sim")
       print_info("enabling --build_tb required by --run_sim")
-
-    if not args.build_sim and not args.lower and not args.run_sim and not args.build_tb:
-      # If no specific end-point has been set, we'll stop at building the sim
-      # and kernel, but not running the sim.
-      print_info("enabling --build_sim due to no specific end-point set")
-      args.build_sim |= True
-      print_info("enabling --build_tb due to no specific end-point set")
-      args.build_tb |= True
 
     if args.build_sim:
       # Building the sim requires lowering the kernel.
