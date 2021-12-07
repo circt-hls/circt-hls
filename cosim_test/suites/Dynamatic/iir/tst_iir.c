@@ -3,6 +3,10 @@
 #include "iir.h"
 #include <stdlib.h>
 
+#ifndef AMOUNT_OF_TEST
+#define AMOUNT_OF_TEST 1
+#endif
+
 int main(void) {
   int y[AMOUNT_OF_TEST][1000];
   int x[AMOUNT_OF_TEST][1000];
