@@ -92,16 +92,18 @@ def run_fud(fromType, toType, inputFile, outputFile):
   ])
 
 
-def run_opt_tool(tool_dir, tool_name, args, inputFile, outputFile=None):
-  args = [os.path.join(tool_dir, tool_name), *args, inputFile]
+def run_opt_tool(tool_dir, tool_name, args, inputFile=None, outputFile=None):
+  args = [os.path.join(tool_dir, tool_name), *args]
+  if inputFile:
+    args.append(inputFile)
   run_tool(args, outputFile, shell=True)
 
 
-def run_circt_opt(args, inputFile, outputFile=None):
+def run_circt_opt(args, inputFile=None, outputFile=None):
   run_opt_tool(CIRCT_BIN_DIR, "circt-opt", args, inputFile, outputFile)
 
 
-def run_hls_opt(args, inputFile, outputFile=None):
+def run_hls_opt(args, inputFile=None, outputFile=None):
   run_opt_tool(CIRCT_HLS_BIN_DIR, "hls-opt", args, inputFile, outputFile)
 
 
@@ -174,7 +176,7 @@ class DynamicMode(HLSMode):
 
     if args.hsdbg:
       # Always run print_dot
-      args.print_dot = True
+      args.print_dot |= True
 
       # If we are running HSDbg there must be simulation results available
       if not os.path.exists(args.vcd):
@@ -183,8 +185,8 @@ class DynamicMode(HLSMode):
 
     if args.run_sim:
       # Running the sim requires building the sim
-      args.build_sim = True
-      args.build_tb = True
+      args.build_sim |= True
+      args.build_tb |= True
       print_info("enabling --build_sim required by --run_sim")
       print_info("enabling --build_tb required by --run_sim")
 
@@ -192,13 +194,13 @@ class DynamicMode(HLSMode):
       # If no specific end-point has been set, we'll stop at building the sim
       # and kernel, but not running the sim.
       print_info("enabling --build_sim due to no specific end-point set")
-      args.build_sim = True
+      args.build_sim |= True
       print_info("enabling --build_tb due to no specific end-point set")
-      args.build_tb = True
+      args.build_tb |= True
 
     if args.build_sim:
       # Building the sim requires lowering the kernel.
-      args.lower = True
+      args.lower |= True
       print_info("enabling --lower required by --build_sim")
 
   def gen_names(self):
@@ -218,6 +220,7 @@ class DynamicMode(HLSMode):
                                       args.kernel_name + "_firrtl.mlir")
     self.kernel_sv = os.path.join(args.outdir, args.kernel_name + ".sv")
     self.dotfile = os.path.join(args.outdir, args.kernel_name + ".dot")
+    self.kernel_wrapper = os.path.join(args.outdir, args.kernel_name + ".cpp")
 
     # Testbench files
     self.tb_poly = os.path.join(args.outdir, args.kernel_name + "_poly.mlir")
@@ -235,11 +238,11 @@ class DynamicMode(HLSMode):
     if args.lower:
       self.run_lowering()
 
-    if args.build_sim:
-      self.run_build_sim()
-
     if args.build_tb:
       self.run_build_tb()
+
+    if args.build_sim:
+      self.run_build_sim()
 
     if args.print_dot:
       self.run_print_dot()
@@ -308,11 +311,28 @@ class DynamicMode(HLSMode):
 
   def run_build_sim(self):
     print_step("Building simulator")
+
+    # Generate HLT wrapper
+    runIfNotExists(
+        self.kernel_wrapper, lambda: run_tool([
+            os.path.join(CIRCT_HLS_BIN_DIR, "hlt-wrapgen"
+                        ), "--func", self.kernel_std, "--ref", self.
+            kernel_handshake, "--kernel", self.kernel_firrtl, "--name", args.
+            kernel_name, "--type=handshakeFIRRTL", "-o", "."
+        ],
+                                              shell=True))
+    print_info(f"Created HLT wrapper ({self.kernel_wrapper})")
+
     htl_cmake = os.path.join(
         CIRCT_HLS_BIN_DIR, "..",
         "tools/hlt/Simulator/hlt_verilator_CMakeLists.txt")
     shutil.copy(htl_cmake, "CMakeLists.txt")
     print_info("Added CMakeLists.txt to the build directory")
+
+    # Remove any stale CMakeCache files
+    if os.path.exists("CMakeCache.txt"):
+      os.remove("CMakeCache.txt")
+
     print_info("Running CMake...")
     run_tool(
         ["cmake", "-G", "Ninja", f"-DHLT_TESTNAME={args.kernel_name}", "."])
@@ -325,39 +345,46 @@ class DynamicMode(HLSMode):
     # Lower polygeist to MLIR. Ensure to run polygeist canonicalization since
     # a lot of pointer/memref legalization takes places within the canonicalization
     # patterns of Polygeist.
-    run_tool(
-        [
-            MLIR_CLANG_PATH,
-            "-S",  # Emit assembly (MLIR)
-            "--function=*",  # Emit all functions
-            "--memref-fullrank",  # Emit fullrank memrefs
-            args.tb_file,
-            "|",  # pipe stdout
-            POLYGEIST_OPT_PATH,  # Run Polygeist optimization driver
-            "--canonicalize",  # ensure that the polygeist-emitted IR is canonical. This may remove some polygeist-dialect specific ops.
-        ],
+    runIfNotExists(
         self.tb_poly,
-        shell=True)
+        lambda: run_tool(
+            [
+                MLIR_CLANG_PATH,
+                "-S",  # Emit assembly (MLIR)
+                "--function=*",  # Emit all functions
+                "--memref-fullrank",  # Emit fullrank memrefs
+                args.tb_file,
+                "|",  # pipe stdout
+                POLYGEIST_OPT_PATH,  # Run Polygeist optimization driver
+                "--canonicalize",  # ensure that the polygeist-emitted IR is canonical. This may remove some polygeist-dialect specific ops.
+            ],
+            self.tb_poly,
+            shell=True))
     print_info(f"Lowered testbench to MLIR ({self.tb_poly})")
 
     # Run memref-call flattening. This is specific to handshake kernels since they do
     # not support multidimensional memories at the moment
-    run_circt_opt(["--flatten-memref-calls"], self.tb_poly, self.tb_poly_flat)
+    runIfNotExists(
+        self.tb_poly_flat, lambda: run_circt_opt(
+            ["--flatten-memref-calls"], self.tb_poly, self.tb_poly_flat))
     print_info(
         f"flattened multidimensional memref's in calls to unidimensional ({self.tb_poly_flat})"
     )
 
     # Asynchronize to adhere with HLT. We assume that the testname is equal to the
     # kernel name - which in turn is the function to asynchronize.
-    run_hls_opt([f"--asyncify-calls=\"function={args.kernel_name}\""],
-                self.tb_poly_flat, self.tb_mlir)
+    runIfNotExists(
+        self.tb_mlir, lambda: run_hls_opt([
+            f"--asyncify-calls=\"function={args.kernel_name}\""
+        ], self.tb_poly_flat, self.tb_mlir))
     print_info(f"Async-ified the testbench ({self.tb_mlir})")
 
-    run_mlir_opt([
-        "-lower-affine", "-convert-scf-to-std", "-std-expand",
-        "-convert-memref-to-llvm", "-convert-std-to-llvm",
-        "-reconcile-unrealized-casts"
-    ], self.tb_mlir, self.tb_llvm)
+    runIfNotExists(
+        self.tb_llvm, lambda: run_mlir_opt([
+            "-lower-affine", "-convert-scf-to-std", "-std-expand",
+            "-convert-memref-to-llvm", "-convert-std-to-llvm",
+            "-reconcile-unrealized-casts"
+        ], self.tb_mlir, self.tb_llvm))
     print_info(f"Lowered testbench to LLVMIR ({self.tb_llvm})")
 
   def run_sim(self):
@@ -535,6 +562,7 @@ if __name__ == '__main__':
 
   # Move to the output directory
   os.chdir(args.outdir)
+  print_info("Working directory is now {}".format(args.outdir))
 
   # Run the current mode
   print_header(f"Running '{mode.name}' mode")
