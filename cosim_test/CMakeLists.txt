@@ -16,7 +16,7 @@ configure_lit_site_cfg(
 set(CIRCT_HLS_EXTENDED_INTEGRATION_TEST_DEPENDS
   FileCheck count not split-file
   hls-opt
-  circt-hls-testscripts
+  hlstool
 )
 
 add_lit_testsuite(check-circt-hls-integration-extended "Running the CIRCT HLS extended integration tests"

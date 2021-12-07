@@ -52,11 +52,10 @@ config.excludes = ['Inputs', 'CMakeLists.txt', 'README.txt', 'LICENSE.txt']
 llvm_config.with_environment('PATH', config.llvm_tools_dir, append_path=True)
 
 tool_dirs = [
-    config.circt_tools_dir, config.mlir_tools_dir, config.llvm_tools_dir, config.circt_hls_tools_dir
+    config.circt_tools_dir, config.mlir_tools_dir, config.llvm_tools_dir,
+    config.circt_hls_tools_dir
 ]
-tools = [
-    'hls-opt', 'hlt-wrapgen', 'dyn_incrementally_lower', 'dyn_hlt_lower'
-]
+tools = ['hls-opt', 'hlt-wrapgen', 'dyn_incrementally_lower', 'dyn_hlt_lower']
 
 # Enable Polygeist if it has been detected.
 if config.mlir_clang_path != "":
@@ -66,5 +65,7 @@ if config.polygeist_opt_path != "":
   tool_dirs.append(os.path.dirname(config.polygeist_opt_path))
   tools.append('polygeist-opt')
 
+# Maximum 60 seconds for each test.
+lit_config.maxIndividualTestTime = 60
 
 llvm_config.add_tool_substitutions(tools, tool_dirs)
