@@ -1,4 +1,4 @@
-// RUN: hlt_test %s | run_test_scripts
+// RUN: hlstool --tb_file %s dynamic
 
 #include "kernel_2mm.h"
 #ifndef AMOUNT_OF_TEST

@@ -1,4 +1,4 @@
-// RUN: hlt_test %s | run_test_scripts
+// RUN: hlstool --tb_file %s dynamic
 
 #include "stencil_2d.h"
 #ifndef AMOUNT_OF_TEST

@@ -1,4 +1,4 @@
-// RUN: hlt_test %s | run_test_scripts
+// RUN: hlstool --tb_file %s dynamic
 
 #include "video_filter.h"
 #include <stdlib.h>

@@ -1,4 +1,4 @@
-// RUN: hlt_test %s | run_test_scripts
+// RUN: hlstool --tb_file %s dynamic
 
 #include "test_memory_6.h"
 #include <stdlib.h>
