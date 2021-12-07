@@ -147,9 +147,12 @@ class DynamicMode(HLSMode):
         "mlir-cpu-runner, but instead want an executable file that you can debug"
         " with regular C++ tools")
 
-    dynamic_parser.add_argument('--print_dot',
-                                help="Prints a dot file of the "
-                                "handshake circuit")
+    dynamic_parser.add_argument(
+        '--print_dot',
+        help="Prints a dot file of the "
+        "handshake circuit",
+        action='store_true',
+    )
     dynamic_parser.add_argument('--lower',
                                 action='store_true',
                                 help="Lower the C code to hardware.")
@@ -296,15 +299,22 @@ class DynamicMode(HLSMode):
     print_info(f"Lowered to RTL...! ({self.kernel_sv})")
 
   def run_print_dot(self):
-    print_info("= Printing dot file of the handshake circuit...")
-    run_circt_opt("--handshake-print-dot", self.kernel_handshake)
+    print_step("Printing dot file of the handshake circuit...")
+    run_circt_opt(["--handshake-print-dot"], self.kernel_handshake)
 
   def run_hsdbg(self):
     print_step("Running HSDbg on the handshake circuit...")
-    run_tool([
+    hsdbg_cmd = [
         os.path.join(CIRCT_HLS_BIN_DIR, "hsdbg"), "-f=dec", self.dotfile,
         args.vcd
-    ])
+    ]
+    cmd = ["xterm", "-e", f'\'{" ".join(hsdbg_cmd)}\'']
+
+    print_info(f"Starting HSDbg in separate terminal")
+    proc = subprocess.Popen(" ".join(cmd),
+                            stdout=subprocess.PIPE,
+                            stderr=subprocess.PIPE,
+                            shell=True)
 
   def run_genexec(self):
     pass
