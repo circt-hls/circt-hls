@@ -27,12 +27,26 @@ add_definitions(-DLLVM_DISABLE_ABI_BREAKING_CHECKS_ENFORCING=1)
 include(ProcessorCount)
 ProcessorCount(NProcs)
 
+# If no specific thread cound is set, use the number of processors / 2.
+if(NOT (DEFINED HLT_THREADS))
+  math(EXPR HLT_THREADS "${NProcs} / 2")
+endif()
+
 # Add the Verilated circuit to the target
-verilate(${HLT_LIBNAME}
-  TRACE
-  THREADS ${NProcs}
-  VERILATOR_ARGS --trace-underscore # Generated FIRRTL names of internal modules are purely underscore'd  
-  SOURCES ${HLT_TESTNAME}.sv)
+# @TODO: is there a way to do this without duplicating the 'verilate' call?
+
+if(DEFINED HLT_TRACE)
+  verilate(${HLT_LIBNAME}
+    TRACE
+    THREADS ${HLT_THREADS}
+    VERILATOR_ARGS --trace-underscore # Generated FIRRTL names of internal modules are purely underscore'd  
+    SOURCES ${HLT_TESTNAME}.sv)
+else()
+  verilate(${HLT_LIBNAME}
+    THREADS ${HLT_THREADS}
+    VERILATOR_ARGS --trace-underscore # Generated FIRRTL names of internal modules are purely underscore'd  
+    SOURCES ${HLT_TESTNAME}.sv)
+endif()
 
 find_package(Threads REQUIRED)
 target_link_libraries(${HLT_LIBNAME} PUBLIC Threads::Threads)
