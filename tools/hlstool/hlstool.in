@@ -134,8 +134,7 @@ class DynamicMode(HLSMode):
 
   def add_arguments(self, subparser):
     dynamic_parser = subparser.add_parser('dynamic', help='Dynamic mode')
-    dynamic_parser.add_argument('-r',
-                                '--run_sim',
+    dynamic_parser.add_argument('--run_sim',
                                 action='store_true',
                                 help='Run the HLT testbench.')
 
@@ -545,8 +544,19 @@ def parse_args(parser):
 if __name__ == '__main__':
   # and argparser taking a mandatory argument "mode"
   parser = argparse.ArgumentParser(
-      description="HLSTool"
-      " is a tool for driving an end-to-end MLIR based HLS flow.")
+      description="""
+HLSTool is a tool for driving an end-to-end MLIR based HLS flow.
+
+
+Usage:
+Arguments are provided at two levels. First, generic arguments are specified, which
+applies to any mode. The second level are mode specific arguments.
+Generic arguments are specified before the (positional) mode argument.
+To see the arguments for a specific mode, use\n
+   'hlstool {mode} --help'
+""",
+      formatter_class=argparse.RawTextHelpFormatter)
+
   # A sub parser for the "dynamic" mode
   subparsers = parser.add_subparsers(help='Mode options', dest='mode')
 
@@ -611,7 +621,7 @@ if __name__ == '__main__':
   parser.add_argument(
       "--rebuild",
       action='store_true',
-      help="Always rebuild any step of the tool. If this is not set, "
+      help="Always rebuild any output file of the tool. If this is not set, "
       "steps will be skipped when an expected output file already exists.",
       default=False)
 
