@@ -24,9 +24,13 @@ target_include_directories(${HLT_LIBNAME} PUBLIC "@LLVM_BINARY_DIR@/include")
 # Allow using LLVM in header-only mode.
 add_definitions(-DLLVM_DISABLE_ABI_BREAKING_CHECKS_ENFORCING=1)
 
+include(ProcessorCount)
+ProcessorCount(NProcs)
+
 # Add the Verilated circuit to the target
 verilate(${HLT_LIBNAME}
   TRACE
+  THREADS ${NProcs}
   VERILATOR_ARGS --trace-underscore # Generated FIRRTL names of internal modules are purely underscore'd  
   SOURCES ${HLT_TESTNAME}.sv)
 
