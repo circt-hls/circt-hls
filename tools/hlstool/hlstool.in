@@ -20,6 +20,10 @@ mode = None
 # Tool arguments
 args = None
 
+# =============================================================================
+# Print utilities
+# =============================================================================
+
 
 def print_header(text, width=80):
   if args.silent:
@@ -47,13 +51,6 @@ def print_step(text):
   print_prefixed("\nSTEP", text)
 
 
-def runIfNotExists(file, func):
-  if not args.rebuild and os.path.exists(file):
-    print_info(f"File {file} already exists, skipping...")
-    return
-  func()
-
-
 def copyToCurrentDir(file, filename=None):
   hadFileName = filename is not None
   if filename is None:
@@ -61,6 +58,18 @@ def copyToCurrentDir(file, filename=None):
   shutil.copy(file, filename)
   print_info("Copied '" + file + "' to current directory" +
              f" as {filename}" if hadFileName else "")
+
+
+# =============================================================================
+# Utilities for driving external tools
+# =============================================================================
+
+
+def runIfNotExists(file, func):
+  if not args.rebuild and os.path.exists(file):
+    print_info(f"File {file} already exists, skipping...")
+    return
+  func()
 
 
 def run_tool(args, stdOutFile=None, shell=False, liveOutput=False):
@@ -338,8 +347,21 @@ class DynamicMode(HLSMode):
 
     # Run polygeist, generating affine/SCF level MLIR.
     runIfNotExists(
-        self.kernel_affine, lambda: run_fud("c", "mlir-affine", args.
-                                            kernel_file, self.kernel_affine))
+        self.kernel_affine,
+        lambda: run_tool(
+            [
+                MLIR_CLANG_PATH,
+                "-S",  # Emit assembly (MLIR)
+                "--function=*",  # Emit all functions
+                "--memref-fullrank",  # Emit fullrank memrefs
+                args.kernel_file,
+                *args.extra_polygeist_kernel_args,
+                "|",  # pipe stdout
+                POLYGEIST_OPT_PATH,  # Run Polygeist optimization driver
+                "--canonicalize",  # ensure that the polygeist-emitted IR is canonical. This may remove some polygeist-dialect specific ops.
+            ],
+            self.kernel_affine,
+            shell=True))
     print_info(f"Lowered to affine! (Polygeist)...! ({self.kernel_affine})")
 
     # Lower the affine code into flattened standard. By flattened, we mean that
@@ -463,6 +485,7 @@ class DynamicMode(HLSMode):
                 "--function=*",  # Emit all functions
                 "--memref-fullrank",  # Emit fullrank memrefs
                 args.tb_file,
+                *args.extra_polygeist_tb_args,
                 "|",  # pipe stdout
                 POLYGEIST_OPT_PATH,  # Run Polygeist optimization driver
                 "--canonicalize",  # ensure that the polygeist-emitted IR is canonical. This may remove some polygeist-dialect specific ops.
@@ -601,6 +624,18 @@ def parse_args(parser):
   print_info("using kernel name: {}".format(args.kernel_name))
   print_info("using testbench file: {}".format(args.tb_file))
 
+  # Validate extra polygeist args
+  if args.extra_polygeist_tb_args == None:
+    args.extra_polygeist_tb_args = []
+  else:
+    args.extra_polygeist_tb_args = args.extra_polygeist_tb_args.split(" ")
+
+  if args.extra_polygeist_kernel_args == None:
+    args.extra_polygeist_kernel_args = []
+  else:
+    args.extra_polygeist_kernel_args = args.extra_polygeist_kernel_args.split(
+        " ")
+
   # Set current mode
   if args.mode == 'dynamic':
     mode = dynMode
@@ -707,6 +742,20 @@ To see the arguments for a specific mode, use\n
       help="Run Vivado and generate a resource estimate. An output text file "
       "will be generated in the output directory.")
 
+  parser.add_argument(
+      "--extra_polygeist_tb_args",
+      type=str,
+      help=
+      "Extra arguments to pass to Polygeist during testbench lowering. Expects "
+      "a space-delimited string.",
+      required=False)
+
+  parser.add_argument(
+      "--extra_polygeist_kernel_args",
+      type=str,
+      help="Extra arguments to pass to Polygeist during kernel lowering. Expects "
+      "a space-delimited string.",
+      required=False)
   # Add mode arguments
   dynMode.add_arguments(subparsers)
   staticMode.add_arguments(subparsers)
