@@ -264,36 +264,49 @@ class DynamicMode(HLSMode):
     # Main HLS driver, for bring C to system verilog.
     print_step(f"Dynamically scheduled HLS'ing {args.kernel_file}...")
 
+    # Run polygeist, generating affine/SCF level MLIR.
     runIfNotExists(
         self.kernel_affine, lambda: run_fud("c", "mlir-affine", args.
                                             kernel_file, self.kernel_affine))
     print_info(f"Lowered to affine! (Polygeist)...! ({self.kernel_affine})")
 
+    # Lower the affine code into flattened standard. By flattened, we mean that
+    # all memrefs are unidimensional, since this is what is supported by the
+    # handshake passes.
     runIfNotExists(
         self.kernel_std, lambda: run_fud("mlir-affine", "mlir-std-flattened",
                                          self.kernel_affine, self.kernel_std))
+
+    # Put into maximized SSA form (precondition for correct handshake lowering)
     runIfNotExists(
         self.kernel_std_max,
         lambda: run_hls_opt(['--max-ssa=\"ignore-memref\"'], self.kernel_std,
                             self.kernel_std_max))
     print_info(f"Lowered to standard...! ({self.kernel_std_max})")
 
+    # Add buffers to the circuit
+    # @TODO: should expose a flag to the user to choose the buffer strategy.
     runIfNotExists(
         self.kernel_handshake_noid,
         lambda: run_fud("mlir-std-flattened", "mlir-handshake-buffered", self.
                         kernel_std_max, self.kernel_handshake_noid))
+
+    # Run the add-ids pass to ensure that we have a deterministic mapping between
+    # the FIRRTL/SV code and the Handshake IR/.dot file
     runIfNotExists(
         self.kernel_handshake,
         lambda: run_circt_opt(["--handshake-add-ids"], self.
                               kernel_handshake_noid, self.kernel_handshake))
     print_info(f"Lowered to handshake...! ({self.kernel_handshake})")
 
+    # Lower to FIRRTL
     runIfNotExists(
         self.kernel_firrtl,
         lambda: run_fud("mlir-handshake-buffered", "mlir-firrtl", self.
                         kernel_handshake, self.kernel_firrtl))
     print_info(f"Lowered to FIRRTL...! ({self.kernel_firrtl})")
 
+    # Lower to SV
     runIfNotExists(
         self.kernel_sv, lambda: run_fud("mlir-firrtl", "synth-verilog", self.
                                         kernel_firrtl, self.kernel_sv))
@@ -323,7 +336,8 @@ class DynamicMode(HLSMode):
   def run_build_sim(self):
     print_step("Building simulator")
 
-    # Generate HLT wrapper
+    # Generate HLT wrapper. This will create a '{kernel_name}.cpp' file in the
+    # output directory.
     runIfNotExists(
         self.kernel_wrapper, lambda: run_tool([
             os.path.join(CIRCT_HLS_BIN_DIR, "hlt-wrapgen"
@@ -334,6 +348,9 @@ class DynamicMode(HLSMode):
                                               shell=True))
     print_info(f"Created HLT wrapper ({self.kernel_wrapper})")
 
+    # Copy the prewritten CMakeLists.txt file to the output directory.
+    # This is the file that does the heavy lifting in terms of configuring the
+    # simulator library that we're building.
     htl_cmake = os.path.join(
         CIRCT_HLS_BIN_DIR, "..",
         "tools/hlt/Simulator/hlt_verilator_CMakeLists.txt")
@@ -344,6 +361,7 @@ class DynamicMode(HLSMode):
     if os.path.exists("CMakeCache.txt"):
       os.remove("CMakeCache.txt")
 
+    # Run CMake and build the simulator library.
     print_info("Running CMake...")
     run_tool(
         ["cmake", "-G", "Ninja", f"-DHLT_TESTNAME={args.kernel_name}", "."])
@@ -404,13 +422,21 @@ class DynamicMode(HLSMode):
     # against in the mlir-cpu-runner
     libdir = os.path.join(LLVM_BIN_DIR, "..", "lib")
 
-    # Shared library built by the simulator.
+    # Shared library built by the simulator (see 'run_build_sim').
     simlib = f"libhlt_{args.kernel_name}.so"
     if not os.path.exists(simlib):
       print_error(
           f"Could not find {simlib}, expected to be built by the --build_sim step"
       )
 
+    # Run the simulation.
+    # The testbench side of things (which is in LLVM-MLIR format) is passed to
+    # the mlir-cpu-runner and interpreted. The mlir-cpu-runner will look for the
+    # provided entry point and start execution from there.
+    # Within our lowered LLVM code, we have references to the (async) function
+    # identifiers '{kernel_name}_call' and '{kernel_name}_await' (what is generated
+    # by the HLT wrapper). Definitions for these functions are provided through
+    # the simulator shared library (simlib).
     run_tool([
         "mlir-cpu-runner", f"-e {args.tb_entry} -entry-point-result=i32 -O3",
         f"-shared-libs={libdir}/libmlir_c_runner_utils.so",
