@@ -65,7 +65,9 @@ if config.polygeist_opt_path != "":
   tool_dirs.append(os.path.dirname(config.polygeist_opt_path))
   tools.append('polygeist-opt')
 
-# Maximum 120 seconds for each test
-lit_config.maxIndividualTestTime = 120
+# Maximum 300 seconds for each test. This might be too much but some of these
+# tests might be very slow depending on the executing machine capabilities and the
+# amount of test parallelism used.
+lit_config.maxIndividualTestTime = 300
 
 llvm_config.add_tool_substitutions(tools, tool_dirs)
