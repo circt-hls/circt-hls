@@ -189,11 +189,10 @@ class DynamicMode(HLSMode):
     if not args.build_sim and not args.lower and not args.run_sim and not args.build_tb:
       # If no specific end-point has been set, we'll stop at building the sim
       # and kernel, but not running the sim.
-      # print_info("enabling --build_sim due to no specific end-point set")
-      # args.build_sim |= True
-      # print_info("enabling --build_tb due to no specific end-point set")
-      # args.build_tb |= True
-      args.run_sim |= True
+      print_info("enabling --build_sim due to no specific end-point set")
+      args.build_sim |= True
+      print_info("enabling --build_tb due to no specific end-point set")
+      args.build_tb |= True
 
     if args.run_sim:
       # Running the sim requires building the sim
