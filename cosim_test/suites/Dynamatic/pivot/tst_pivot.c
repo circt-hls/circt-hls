@@ -1,4 +1,4 @@
-// RUN: hlstool --rebuild --tb_file %s dynamic
+// RUN: hlstool --no_trace --rebuild --tb_file %s dynamic --run_sim
 
 #include "pivot.h"
 #ifndef AMOUNT_OF_TEST
