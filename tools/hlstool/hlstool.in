@@ -103,7 +103,7 @@ def run_tool(args, stdOutFile=None, shell=False, liveOutput=False):
       onError(code, stdOut, stdErr)
 
     if stdOutFile:
-      with open(stdOutFile, 'wb') as f:
+      with open(stdOutFile, 'w') as f:
         f.write(stdOut)
   except subprocess.CalledProcessError as e:
     onError(e.returncode, "", e.output)
