@@ -9,6 +9,7 @@ import multiprocessing
 ## CMake configured paths to the tools that we'll be using
 CIRCT_BIN_DIR = "@CIRCT_INCLUDE_DIR@/../bin/"
 CIRCT_HLS_BIN_DIR = "@CIRCT_HLS_BINARY_DIR@/bin/"
+CIRCT_HLS_SOURCE_DIR = "@CIRCT_HLS_SOURCE_DIR@"
 MLIR_CLANG_PATH = "@MLIR-CLANG_PATH@"
 POLYGEIST_OPT_PATH = "@POLYGEIST-OPT_PATH@"
 LLVM_BIN_DIR = "@LLVM_BINARY_DIR@/bin"
@@ -53,10 +54,20 @@ def runIfNotExists(file, func):
   func()
 
 
-def run_tool(args, stdOutFile=None, shell=False):
+def copyToCurrentDir(file, filename=None):
+  hadFileName = filename is not None
+  if filename is None:
+    filename = os.path.basename(file)
+  shutil.copy(file, filename)
+  print_info("Copied '" + file + "' to current directory" +
+             f" as {filename}" if hadFileName else "")
+
+
+def run_tool(args, stdOutFile=None, shell=False, liveOutput=False):
   cmd = " ".join(args)
 
   def onError(returnCode, stdOut, stdErr):
+    stdErr = str(stdErr).replace("\\n", "\n")
     print_error(
         f"Error while executing: {cmd}\nstdout:\n{stdOut}\nstderr:\n{stdErr}\n (code: {returnCode})"
     )
@@ -67,15 +78,29 @@ def run_tool(args, stdOutFile=None, shell=False):
                               stdout=subprocess.PIPE,
                               stderr=subprocess.PIPE,
                               shell=True)
-      code = proc.wait()
-      stdOut, stdErr = proc.communicate()
+      if liveOutput:
+        # Continuously poll the process and forward any stdout
+        while not proc.poll():
+          stdoutdata = proc.stdout.readline()
+          if stdoutdata:
+            sys.stdout.write(stdoutdata.decode("utf-8"))
+          else:
+            code = proc.returncode
+            break
+          stdOut, stdErr = b'', b''
+      else:
+        code = proc.wait()
+        stdOut, stdErr = proc.communicate()
     else:
       res = subprocess.run(args, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
       code = res.returncode
       stdOut, stdErr = res.stdout, res.stderr
 
+    stdOut = stdOut.decode("utf-8")
+    stdErr = stdErr.decode("utf-8")
+
     if code != 0:
-      onError(code, stdOut, stdErr.decode('unicode_escape'))
+      onError(code, stdOut, stdErr)
 
     if stdOutFile:
       with open(stdOutFile, 'wb') as f:
@@ -123,8 +148,65 @@ class HLSMode:
   def parse_arguments(self, parser):
     raise NotImplementedError("implement me in a subclass")
 
+  def gen_names(self):
+    # Generates all possible output file names which we'll reference during the run.
+    # Kernel files
+    self.kernel_sv = os.path.join(args.outdir, args.kernel_name + ".sv")
+    self.dotfile = os.path.join(args.outdir, args.kernel_name + ".dot")
+    self.kernel_wrapper = os.path.join(args.outdir, args.kernel_name + ".cpp")
+
+    # Testbench files
+    self.tb_poly = os.path.join(args.outdir, args.kernel_name + "_poly.mlir")
+    self.tb_poly_flat = os.path.join(args.outdir,
+                                     args.kernel_name + "_poly_flat.mlir")
+    self.tb_mlir = os.path.join(args.outdir, args.kernel_name + "_tb.mlir")
+    self.tb_llvm = os.path.join(args.outdir, args.kernel_name + "_tb_llvm.mlir")
+    self.tb_output = os.path.join(args.outdir,
+                                  args.kernel_name + "_tb_output.txt")
+
+    # Analysis files
+    self.resource_estimate = os.path.join(
+        args.outdir, args.kernel_name + "_resource_estimate.txt")
+
+    # Mode-specific names
+    self.gen_names_mode()
+
   def run(self):
-    raise NotImplementedError("implement me in a subclass")
+    # Generate output file names used during the run.
+    self.gen_names()
+
+    # Top level runner. Non-mode specific run jobs
+    # ...
+
+    # Run mode specific jobs
+    self.run_mode()
+
+    # Run post-mode specific jobs
+    if args.synth:
+      self.run_synth()
+
+    print_header("Finished!")
+
+  def run_synth(self):
+    print_step("Running Vivado resource estimation")
+
+    # Copy .tcl and .xdc files to current directory
+    copyToCurrentDir(
+        os.path.join(CIRCT_HLS_SOURCE_DIR, "tools", "hlstool", "synth.tcl"))
+    copyToCurrentDir(
+        os.path.join(CIRCT_HLS_SOURCE_DIR, "tools", "hlstool", "device.xdc"))
+
+    # Generate run commands
+    vivado_args = ["vivado", "-mode", "batch", "-source", "synth.tcl"]
+    # synth arguments (see synth.tcl)
+    vivado_args.append("-tclargs")
+    vivado_args.append(args.kernel_name)  # top level
+    vivado_args.append("xczu3eg-sbva484-1-e")  # part
+    vivado_args.append("vivado")  # outdir
+    vivado_args.append("1")  # do routing
+
+    print_info("Running Vivado with command: " + " ".join(vivado_args))
+    run_tool(vivado_args, shell=True, liveOutput=not args.silent)
 
 
 class DynamicMode(HLSMode):
@@ -186,13 +268,18 @@ class DynamicMode(HLSMode):
         parser.error(f"Expected a simulation result file at {args.vcd}. "
                      " Please run a simulation first.")
 
-    if not args.build_sim and not args.lower and not args.run_sim and not args.build_tb:
+    if not args.build_sim and not args.lower and not args.run_sim and not \
+      args.build_tb and not args.synth:
       # If no specific end-point has been set, we'll stop at building the sim
       # and kernel, but not running the sim.
       print_info("enabling --build_sim due to no specific end-point set")
       args.build_sim |= True
       print_info("enabling --build_tb due to no specific end-point set")
       args.build_tb |= True
+
+    if args.synth:
+      args.lower |= True
+      print_info("enabling --lower required by --synth")
 
     if args.run_sim:
       # Running the sim requires building the sim
@@ -206,8 +293,8 @@ class DynamicMode(HLSMode):
       args.lower |= True
       print_info("enabling --lower required by --build_sim")
 
-  def gen_names(self):
-    # Generates all possible output file names which we'll reference during the run.
+  def gen_names_mode(self):
+    # Generate dynamic-mode specific names.
 
     # Kernel files
     self.kernel_affine = os.path.join(args.outdir,
@@ -221,20 +308,8 @@ class DynamicMode(HLSMode):
                                          args.kernel_name + "_handshake.mlir")
     self.kernel_firrtl = os.path.join(args.outdir,
                                       args.kernel_name + "_firrtl.mlir")
-    self.kernel_sv = os.path.join(args.outdir, args.kernel_name + ".sv")
-    self.dotfile = os.path.join(args.outdir, args.kernel_name + ".dot")
-    self.kernel_wrapper = os.path.join(args.outdir, args.kernel_name + ".cpp")
 
-    # Testbench files
-    self.tb_poly = os.path.join(args.outdir, args.kernel_name + "_poly.mlir")
-    self.tb_poly_flat = os.path.join(args.outdir,
-                                     args.kernel_name + "_poly_flat.mlir")
-    self.tb_mlir = os.path.join(args.outdir, args.kernel_name + "_tb.mlir")
-    self.tb_llvm = os.path.join(args.outdir, args.kernel_name + "_tb_llvm.mlir")
-    self.tb_output = os.path.join(args.outdir,
-                                  args.kernel_name + "_tb_output.txt")
-
-  def run(self):
+  def run_mode(self):
     # First, generate all of the names that we'll reference during the run.
     self.gen_names()
 
@@ -256,8 +331,6 @@ class DynamicMode(HLSMode):
 
     if args.run_sim:
       self.run_sim()
-
-    print_header("Finished!")
 
   def run_lowering(self):
     # Main HLS driver, for bring C to system verilog.
@@ -353,7 +426,7 @@ class DynamicMode(HLSMode):
     htl_cmake = os.path.join(
         CIRCT_HLS_BIN_DIR, "..",
         "tools/hlt/Simulator/hlt_verilator_CMakeLists.txt")
-    shutil.copy(htl_cmake, "CMakeLists.txt")
+    copyToCurrentDir(htl_cmake, "CMakeLists.txt")
     print_info("Added CMakeLists.txt to the build directory")
 
     # Remove any stale CMakeCache files
@@ -623,6 +696,12 @@ To see the arguments for a specific mode, use\n
       help="Always rebuild any output file of the tool. If this is not set, "
       "steps will be skipped when an expected output file already exists.",
       default=False)
+
+  parser.add_argument(
+      "--synth",
+      action='store_true',
+      help="Run Vivado and generate a resource estimate. An output text file "
+      "will be generated in the output directory.")
 
   # Add mode arguments
   dynMode.add_arguments(subparsers)
