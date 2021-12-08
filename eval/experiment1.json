@@ -1,6 +1,16 @@
 {
   "if_loop_1" : {
+    "mode": "dynamic",
+    "args": [],
+    "mode_args": [],
     "tb": "../cosim_test/suites/Dynamatic/if_loop_1/tst_if_loop_1.c",
+    "kernel_calls": 1
+  },
+  "matrix" : {
+    "mode": "dynamic",
+    "args": [],
+    "mode_args": [],
+    "tb": "../cosim_test/suites/Dynamatic/matrix/matrix.c",
     "kernel_calls": 1
   }
 }
