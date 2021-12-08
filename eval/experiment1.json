@@ -1,0 +1,6 @@
+{
+  "if_loop_1" : {
+    "tb": "../cosim_test/suites/Dynamatic/if_loop_1/tst_if_loop_1.c",
+    "kernel_calls": 1
+  }
+}
