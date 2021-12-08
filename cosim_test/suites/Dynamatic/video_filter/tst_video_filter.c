@@ -3,17 +3,18 @@
 #include "video_filter.h"
 #include <stdlib.h>
 
-#ifndef AMOUNT_OF_TEST
-#define AMOUNT_OF_TEST 1
+#ifndef N_KERNEL_CALLS
+#define N_KERNEL_CALLS 1
 #endif
+
 int main(void) {
-  int pixel_red[AMOUNT_OF_TEST][30][30];
-  int pixel_blue[AMOUNT_OF_TEST][30][30];
-  int pixel_green[AMOUNT_OF_TEST][30][30];
-  int offset[AMOUNT_OF_TEST];
-  int scale[AMOUNT_OF_TEST];
+  int pixel_red[N_KERNEL_CALLS][30][30];
+  int pixel_blue[N_KERNEL_CALLS][30][30];
+  int pixel_green[N_KERNEL_CALLS][30][30];
+  int offset[N_KERNEL_CALLS];
+  int scale[N_KERNEL_CALLS];
   srand(13);
-  for (int i = 0; i < AMOUNT_OF_TEST; ++i) {
+  for (int i = 0; i < N_KERNEL_CALLS; ++i) {
     offset[i] = rand() % 100;
     scale[i] = rand() % 10;
     for (int y = 0; y < 30; ++y) {
@@ -24,7 +25,7 @@ int main(void) {
       }
     }
   }
-  for (int i = 0; i < AMOUNT_OF_TEST; ++i) {
+  for (int i = 0; i < N_KERNEL_CALLS; ++i) {
     video_filter(pixel_red[i], pixel_blue[i], pixel_green[i], offset[i],
                  scale[i]);
   }

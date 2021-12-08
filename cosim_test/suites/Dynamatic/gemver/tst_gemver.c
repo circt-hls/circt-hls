@@ -2,22 +2,23 @@
 
 #include "gemver.h"
 
-#ifndef AMOUNT_OF_TEST
-#define AMOUNT_OF_TEST 2
+#ifndef N_KERNEL_CALLS
+#define N_KERNEL_CALLS 2
 #endif
+
 int main(void) {
-  int alpha[AMOUNT_OF_TEST];
-  int beta[AMOUNT_OF_TEST];
-  int A[AMOUNT_OF_TEST][N][N];
-  int u1[AMOUNT_OF_TEST][N];
-  int v1[AMOUNT_OF_TEST][N];
-  int u2[AMOUNT_OF_TEST][N];
-  int v2[AMOUNT_OF_TEST][N];
-  int w[AMOUNT_OF_TEST][N];
-  int x[AMOUNT_OF_TEST][N];
-  int y[AMOUNT_OF_TEST][N];
-  int z[AMOUNT_OF_TEST][N];
-  for (int i = 0; i < AMOUNT_OF_TEST; ++i) {
+  int alpha[N_KERNEL_CALLS];
+  int beta[N_KERNEL_CALLS];
+  int A[N_KERNEL_CALLS][N][N];
+  int u1[N_KERNEL_CALLS][N];
+  int v1[N_KERNEL_CALLS][N];
+  int u2[N_KERNEL_CALLS][N];
+  int v2[N_KERNEL_CALLS][N];
+  int w[N_KERNEL_CALLS][N];
+  int x[N_KERNEL_CALLS][N];
+  int y[N_KERNEL_CALLS][N];
+  int z[N_KERNEL_CALLS][N];
+  for (int i = 0; i < N_KERNEL_CALLS; ++i) {
     alpha[i] = rand() % 20;
     beta[i] = rand() % 20;
     for (int yy = 0; yy < N; ++yy) {
@@ -34,8 +35,7 @@ int main(void) {
       }
     }
   }
-  for (int i = 0; i < AMOUNT_OF_TEST; ++i) {
-    int i = 0;
+  for (int i = 0; i < N_KERNEL_CALLS; ++i) {
     gemver(alpha[i], beta[i], A[i], u1[i], v1[i], u2[i], v2[i], w[i], x[i],
            y[i], z[i]);
   }

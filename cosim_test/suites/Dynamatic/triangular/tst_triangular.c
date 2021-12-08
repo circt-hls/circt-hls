@@ -1,14 +1,15 @@
 // RUN: hlstool --no_trace --rebuild --tb_file %s dynamic --run_sim
 
 #include "triangular.h"
-#ifndef AMOUNT_OF_TEST
-#define AMOUNT_OF_TEST 1
+#ifndef N_KERNEL_CALLS
+#define N_KERNEL_CALLS 1
 #endif
+
 int main(void) {
-  int xArray[AMOUNT_OF_TEST][10];
-  int A[AMOUNT_OF_TEST][10][10];
-  int n[AMOUNT_OF_TEST];
-  for (int i = 0; i < AMOUNT_OF_TEST; ++i) {
+  int xArray[N_KERNEL_CALLS][10];
+  int A[N_KERNEL_CALLS][10][10];
+  int n[N_KERNEL_CALLS];
+  for (int i = 0; i < N_KERNEL_CALLS; ++i) {
     n[i] = 10; //(rand() % 100);
     for (int x = 0; x < 10; ++x) {
       xArray[i][x] = rand() % 100;
@@ -17,7 +18,7 @@ int main(void) {
       }
     }
   }
-  for (int i = 0; i < AMOUNT_OF_TEST; ++i) {
+  for (int i = 0; i < N_KERNEL_CALLS; ++i) {
     triangular(xArray[i], A[i], n[i]);
   }
 }

@@ -3,19 +3,21 @@
 #include "test_memory_3.h"
 #include <stdlib.h>
 
-#define AMOUNT_OF_TEST 1
+#ifndef N_KERNEL_CALLS
+#define N_KERNEL_CALLS 1
+#endif
 
 int main(void) {
-  int a[AMOUNT_OF_TEST][N];
-  int n[AMOUNT_OF_TEST];
+  int a[N_KERNEL_CALLS][N];
+  int n[N_KERNEL_CALLS];
   srand(13);
-  for (int i = 0; i < AMOUNT_OF_TEST; ++i) {
+  for (int i = 0; i < N_KERNEL_CALLS; ++i) {
     n[i] = N / 2;
     for (int j = 0; j < N; ++j) {
       a[i][j] = j;
     }
   }
-  for (int i = 0; i < AMOUNT_OF_TEST; ++i) {
+  for (int i = 0; i < N_KERNEL_CALLS; ++i) {
     test_memory_3(a[i], n[i]);
   }
 }

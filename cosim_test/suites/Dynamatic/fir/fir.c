@@ -6,6 +6,5 @@ For_Loop:
   for (i = 0; i < 1000; i++) {
     tmp += idx[i] * d_i[999 - i];
   }
-  // out [0] = tmp;
   return tmp;
 }

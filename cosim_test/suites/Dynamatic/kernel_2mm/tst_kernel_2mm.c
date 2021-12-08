@@ -1,18 +1,19 @@
 // RUN: hlstool --no_trace --rebuild --tb_file %s dynamic --run_sim
 
 #include "kernel_2mm.h"
-#ifndef AMOUNT_OF_TEST
-#define AMOUNT_OF_TEST 1
+#ifndef N_KERNEL_CALLS
+#define N_KERNEL_CALLS 1
 #endif
+
 int main(void) {
-  int alpha[AMOUNT_OF_TEST];
-  int beta[AMOUNT_OF_TEST];
-  int tmp[AMOUNT_OF_TEST][N][N];
-  int A[AMOUNT_OF_TEST][N][N];
-  int B[AMOUNT_OF_TEST][N][N];
-  int C[AMOUNT_OF_TEST][N][N];
-  int D[AMOUNT_OF_TEST][N][N];
-  for (int i = 0; i < AMOUNT_OF_TEST; ++i) {
+  int alpha[N_KERNEL_CALLS];
+  int beta[N_KERNEL_CALLS];
+  int tmp[N_KERNEL_CALLS][N][N];
+  int A[N_KERNEL_CALLS][N][N];
+  int B[N_KERNEL_CALLS][N][N];
+  int C[N_KERNEL_CALLS][N][N];
+  int D[N_KERNEL_CALLS][N][N];
+  for (int i = 0; i < N_KERNEL_CALLS; ++i) {
     alpha[i] = rand();
     beta[i] = rand();
     for (int y = 0; y < N; ++y) {
@@ -24,7 +25,7 @@ int main(void) {
       }
     }
   }
-  for (int i = 0; i < AMOUNT_OF_TEST; ++i) {
-    kernel_2mm(alpha[0], beta[0], tmp[0], A[0], B[0], C[0], D[0]);
+  for (int i = 0; i < N_KERNEL_CALLS; ++i) {
+    kernel_2mm(alpha[i], beta[i], tmp[i], A[i], B[i], C[i], D[i]);
   }
 }

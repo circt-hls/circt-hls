@@ -3,16 +3,17 @@
 #include "bicg.h"
 #include <stdlib.h>
 
-#ifndef AMOUNT_OF_TEST
-#define AMOUNT_OF_TEST 1
+#ifndef N_KERNEL_CALLS
+#define N_KERNEL_CALLS 1
 #endif
+
 int main(void) {
-  int A[AMOUNT_OF_TEST][N][N];
-  int s[AMOUNT_OF_TEST][N];
-  int q[AMOUNT_OF_TEST][N];
-  int p[AMOUNT_OF_TEST][N];
-  int r[AMOUNT_OF_TEST][N];
-  for (int i = 0; i < AMOUNT_OF_TEST; ++i) {
+  int A[N_KERNEL_CALLS][N][N];
+  int s[N_KERNEL_CALLS][N];
+  int q[N_KERNEL_CALLS][N];
+  int p[N_KERNEL_CALLS][N];
+  int r[N_KERNEL_CALLS][N];
+  for (int i = 0; i < N_KERNEL_CALLS; ++i) {
     for (int y = 0; y < N; ++y) {
       s[i][y] = rand() % 100;
       q[i][y] = rand() % 100;
@@ -23,7 +24,7 @@ int main(void) {
       }
     }
   }
-  for (int i = 0; i < AMOUNT_OF_TEST; ++i) {
+  for (int i = 0; i < N_KERNEL_CALLS; ++i) {
     bicg(A[i], s[i], q[i], p[i], r[i]);
   }
 }

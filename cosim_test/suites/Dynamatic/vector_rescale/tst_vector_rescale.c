@@ -3,20 +3,21 @@
 #include "vector_rescale.h"
 #include <stdlib.h>
 
-#ifndef AMOUNT_OF_TEST
-#define AMOUNT_OF_TEST 1
+#ifndef N_KERNEL_CALLS
+#define N_KERNEL_CALLS 1
 #endif
+
 int main(void) {
-  int a[AMOUNT_OF_TEST][1000];
-  int c[AMOUNT_OF_TEST];
+  int a[N_KERNEL_CALLS][1000];
+  int c[N_KERNEL_CALLS];
   srand(13);
-  for (int i = 0; i < AMOUNT_OF_TEST; ++i) {
+  for (int i = 0; i < N_KERNEL_CALLS; ++i) {
     c[i] = rand() % 100;
     for (int j = 0; j < 1000; ++j) {
       a[i][j] = rand() % 100;
     }
   }
-  for (int i = 0; i < AMOUNT_OF_TEST; ++i) {
+  for (int i = 0; i < N_KERNEL_CALLS; ++i) {
     vector_rescale(a[i], c[i]);
   }
 }

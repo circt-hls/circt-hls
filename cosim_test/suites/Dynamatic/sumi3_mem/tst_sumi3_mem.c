@@ -3,16 +3,16 @@
 #include "sumi3_mem.h"
 #include <stdlib.h>
 
-#define AMOUNT_OF_TEST 2
+#define N_KERNEL_CALLS 2
 
 int main(void) {
-  int a[AMOUNT_OF_TEST][1000];
-  for (int i = 0; i < AMOUNT_OF_TEST; ++i) {
+  int a[N_KERNEL_CALLS][1000];
+  for (int i = 0; i < N_KERNEL_CALLS; ++i) {
     for (int j = 0; j < 1000; ++j) {
       a[i][j] = rand() % 10;
     }
   }
-  for (int i = 0; i < AMOUNT_OF_TEST; ++i) {
+  for (int i = 0; i < N_KERNEL_CALLS; ++i) {
     sumi3_mem(a[i]);
   }
 }

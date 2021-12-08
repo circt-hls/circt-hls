@@ -3,18 +3,19 @@
 // RUN: dyn_hlt_build_tb %s
 
 #include "kernel_3mm.h"
-#ifndef AMOUNT_OF_TEST
-#define AMOUNT_OF_TEST 1
+#ifndef N_KERNEL_CALLS
+#define N_KERNEL_CALLS 1
 #endif
+
 int main(void) {
-  int A[AMOUNT_OF_TEST][N][N];
-  int B[AMOUNT_OF_TEST][N][N];
-  int C[AMOUNT_OF_TEST][N][N];
-  int D[AMOUNT_OF_TEST][N][N];
-  int E[AMOUNT_OF_TEST][N][N];
-  int F[AMOUNT_OF_TEST][N][N];
-  int G[AMOUNT_OF_TEST][N][N];
-  for (int i = 0; i < AMOUNT_OF_TEST; ++i) {
+  int A[N_KERNEL_CALLS][N][N];
+  int B[N_KERNEL_CALLS][N][N];
+  int C[N_KERNEL_CALLS][N][N];
+  int D[N_KERNEL_CALLS][N][N];
+  int E[N_KERNEL_CALLS][N][N];
+  int F[N_KERNEL_CALLS][N][N];
+  int G[N_KERNEL_CALLS][N][N];
+  for (int i = 0; i < N_KERNEL_CALLS; ++i) {
     for (int y = 0; y < N; ++y) {
       for (int x = 0; x < N; ++x) {
         A[i][y][x] = rand() % 10;
@@ -27,7 +28,7 @@ int main(void) {
       }
     }
   }
-  for (int i = 0; i < AMOUNT_OF_TEST; ++i) {
-    kernel_3mm(A[0], B[0], C[0], D[0], E[0], F[0], G[0]);
+  for (int i = 0; i < N_KERNEL_CALLS; ++i) {
+    kernel_3mm(A[i], B[i], C[i], D[i], E[i], F[i], G[i]);
   }
 }
