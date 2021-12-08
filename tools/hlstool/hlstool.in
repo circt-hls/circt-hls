@@ -593,6 +593,10 @@ def parse_args(parser):
     parser.error(
         "Couldn't determine the requested kernel to synthesize, exiting...")
 
+  # Ensure provided files are absolute paths
+  args.tb_file = os.path.abspath(args.tb_file)
+  args.kernel_file = os.path.abspath(args.kernel_file)
+
   print_info("using kernel file: {}".format(args.kernel_file))
   print_info("using kernel name: {}".format(args.kernel_name))
   print_info("using testbench file: {}".format(args.tb_file))
