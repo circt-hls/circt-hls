@@ -4,6 +4,8 @@ on: [push]
 
 jobs:
   build:
+    container:
+      image: ghcr.io/circt/images/circt-ci-build:20211130162811
     name: Build ${{ matrix.build }} ${{ matrix.os }} ${{ matrix.compiler }}
     runs-on: ${{ matrix.os }}
 
@@ -11,15 +13,12 @@ jobs:
       fail-fast: false
       matrix:
         build: ["Release"] #, "Debug"] # "RelWithDebInfo"
-        os: [ubuntu-18.04]
+        os: [ubuntu-latest]
         compiler:
           - cc: clang
             cxx: clang++
 
     steps:
-    - name: add dependencies
-      run: sudo apt-get install -y ninja-build verilator
-
     - uses: actions/checkout@v2
       with:
         fetch-depth: 1
