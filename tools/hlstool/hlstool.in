@@ -504,7 +504,6 @@ class DynamicMode(HLSMode):
     # Iteratively try to run CMake and modify the arguments when faced with some
     # expected/common warnings.
 
-    print_info("Running CMake with arguments: " + " ".join(cmake_args))
     ret = run_tool(["cmake", *cmake_args], exitOnError=False)
     if ret != None:
       print_info("CMake failed. Trying to figure out what went wrong...")
@@ -609,13 +608,13 @@ class DynamicMode(HLSMode):
         "the hlstool script occasionally deadlocks the process. This is an unresolved "
         "issue. If you are experiencing this issue, please try running the simulation "
         "command directly on the command line.")
-    print_info("Running simulation with command: " + tb_cmd)
+    print_info("Running simulator")
     run_tool([tb_cmd], self.tb_output, shell=True)
 
     print_info("Testbench ran successfully. Output is in {}".format(
         self.tb_output))
     if not args.no_trace and os.path.exists(args.vcd):
-      print_info("VCD file is in {}".format(args.vcd))
+      print_info("VCD file is at: '{}'".format(args.vcd))
 
 
 class StaticMode(HLSMode):
