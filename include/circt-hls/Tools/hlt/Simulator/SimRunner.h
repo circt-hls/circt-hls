@@ -5,6 +5,7 @@
 #include <chrono>
 #include <condition_variable>
 #include <exception>
+#include <fstream>
 #include <list>
 #include <memory>
 #include <sstream>
@@ -33,6 +34,15 @@ class SimRunner {
     bool timedOut() const { return cntr >= HLT_TIMEOUT; }
   };
 
+  std::unique_ptr<std::ofstream> m_logFile;
+
+  void writeToLog(const std::string &msg) {
+    if (m_logFile) {
+      (*m_logFile) << sim->time() << " @ " << msg << std::endl;
+      m_logFile->flush();
+    }
+  }
+
 public:
   SimRunner(SimQueuesImpl &queues) : queues(queues) {
     thread = std::thread(&SimRunner::run, this);
@@ -47,6 +57,8 @@ public:
     // the runner that it is still alive.
     sim->setKeepAliveCallback([this]() { to.reset(); });
     sim->setup();
+
+    m_logFile = std::make_unique<std::ofstream>("sim.log");
 
     debugOut << "RUNNER: Runner thread started" << std::endl;
     std::mutex lock;
@@ -66,7 +78,9 @@ public:
         debugOut << "RUNNER: Woke up..." << std::endl;
       }
     }
+    writeToLog("FINISHED");
     sim->finish();
+    m_logFile->close();
   }
 
   // Todo(mortbopet): This can/should be optimized to not check atomic queues on
@@ -76,14 +90,14 @@ public:
     bool cont = false;
     // Rule 1: If has input transaction and sim is ready to accept input
     if (sim->inReady() && !queues.in.empty()) {
-      debugOut << "RUNNER: Pushing input (" << sim->time() << ")" << std::endl;
+      writeToLog("PUSH INPUT");
       sim->pushInput(queues.in.pop());
       to.reset();
       cont |= true;
     }
     // Rule 2: If popping an output from the simulator
     if (sim->outValid()) {
-      debugOut << "RUNNER: Popping output" << std::endl;
+      writeToLog("POP OUTPUT");
       queues.out.push(sim->popOutput());
       to.reset();
       cont |= true;
@@ -92,7 +106,7 @@ public:
     // Rule 3: If someone is awaiting output then always step
     if (!queues.outReq.empty()) {
       if (!queues.out.empty()) {
-        debugOut << "RUNNER: Sending output to waiter" << std::endl;
+        writeToLog("OUT TO WAITER");
         queues.outReq.pop().get()->notify_all();
       }
       cont |= true;
