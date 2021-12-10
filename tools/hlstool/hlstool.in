@@ -288,6 +288,14 @@ class DynamicMode(HLSMode):
         help="Buffer strategy to use, see 'circt-opt --handshake-insert-buffer'"
     )
 
+    dynamic_parser.add_argument(
+        '--buffer_size',
+        type=int,
+        default=2,
+        help=
+        "Number of slots in each buffer, see 'circt-opt --handshake-insert-buffer'"
+    )
+
   def parse_arguments(self, parser):
     if not args.vcd:
       # Infer a default location for the VCD file based on how HLT emits it.
@@ -303,7 +311,7 @@ class DynamicMode(HLSMode):
                      " Please run a simulation first.")
 
     if not args.build_sim and not args.lower and not args.run_sim and not \
-      args.build_tb and not args.synth:
+      args.build_tb and not args.synth and not args.hsdbg:
       # If no specific end-point has been set, we'll stop at building the sim
       # and kernel, but not running the sim.
       print_info("enabling --build_sim due to no specific end-point set")
@@ -372,24 +380,28 @@ class DynamicMode(HLSMode):
     # Main HLS driver, for bring C to system verilog.
     print_step(f"Dynamically scheduled HLS'ing {args.kernel_file}...")
 
-    # Run polygeist, generating affine/SCF level MLIR.
-    runIfNotExists(
-        self.kernel_affine,
-        lambda: run_tool(
-            [
-                MLIR_CLANG_PATH,
-                "-S",  # Emit assembly (MLIR)
-                "--function=*",  # Emit all functions
-                "--memref-fullrank",  # Emit fullrank memrefs
-                args.kernel_file,
-                *args.extra_polygeist_kernel_args,
-                "|",  # pipe stdout
-                POLYGEIST_OPT_PATH,  # Run Polygeist optimization driver
-                "--canonicalize",  # ensure that the polygeist-emitted IR is canonical. This may remove some polygeist-dialect specific ops.
-            ],
-            self.kernel_affine,
-            shell=True))
-    print_info(f"Lowered to affine! (Polygeist)...! ({self.kernel_affine})")
+    if not args.mlir_kernel:
+      # Run polygeist, generating affine/SCF level MLIR.
+      runIfNotExists(
+          self.kernel_affine,
+          lambda: run_tool(
+              [
+                  MLIR_CLANG_PATH,
+                  "-S",  # Emit assembly (MLIR)
+                  "--function=*",  # Emit all functions
+                  "--memref-fullrank",  # Emit fullrank memrefs
+                  args.kernel_file,
+                  *args.extra_polygeist_kernel_args,
+                  "|",  # pipe stdout
+                  POLYGEIST_OPT_PATH,  # Run Polygeist optimization driver
+                  "--canonicalize",  # ensure that the polygeist-emitted IR is canonical. This may remove some polygeist-dialect specific ops.
+              ],
+              self.kernel_affine,
+              shell=True))
+      print_info(f"Lowered to affine! (Polygeist)...! ({self.kernel_affine})")
+    else:
+      print_info("Skipping Polygeist lowering due to using an MLIR kernel")
+      shutil.copy(args.kernel_file, self.kernel_affine)
 
     # Lower the affine code into flattened standard. By flattened, we mean that
     # all memrefs are unidimensional, since this is what is supported by the
@@ -414,7 +426,7 @@ class DynamicMode(HLSMode):
     # Add buffers
     runIfNotExists(
         self.kernel_handshake_buffered, lambda: run_circt_opt([
-            f"--handshake-insert-buffer=\"strategies={args.buffer_strategy}\""
+            f"--handshake-insert-buffer=\"strategies={args.buffer_strategy} buffer-size={args.buffer_size}\"",
         ], self.kernel_handshake_unbuffered, self.kernel_handshake_buffered))
 
     # Run the add-ids pass to ensure that we have a deterministic mapping between
@@ -665,7 +677,11 @@ def parse_args(parser):
       sys.exit(1)
 
     basename = basename[4:]
-    args.kernel_file = os.path.join(dirname, basename + ".c")
+
+    ext = ".c"
+    if args.mlir_kernel:
+      ext = ".mlir"
+    args.kernel_file = os.path.join(dirname, basename + ext)
     args.kernel_name = basename
   elif not args.kernel_file or not args.kernel_name:
     parser.error("Must specify kernel file and kernel name")
@@ -704,7 +720,7 @@ def parse_args(parser):
 
   # Parse mode arguments
   print_step(f"Parsing '{mode.name}' mode arguments")
-  mode.parse_arguments(args)
+  mode.parse_arguments(parser)
   print_info("Arguments parsed and validated successfully!")
 
 
@@ -798,6 +814,13 @@ To see the arguments for a specific mode, use\n
       action='store_true',
       help="Run Vivado and generate a resource estimate. An output text file "
       "will be generated in the output directory.")
+
+  parser.add_argument(
+      "--mlir_kernel",
+      action='store_true',
+      help="If set, the kernel is assumed to be an MLIR kernel. This will skip "
+      "the Polygeist step. Kernel name inference via. testbench name still works, "
+      "however, kernel file is expected to be suffixed with '.mlir'.")
 
   parser.add_argument(
       "--extra_polygeist_tb_args",
