@@ -66,7 +66,7 @@ jobs:
             -DBUILD_SHARED_LIBS=ON \
             -DLLVM_ENABLE_LLD=ON \
             -DLLVM_OPTIMIZED_TABLEGEN=ON \
-            -DLLVM_ENABLE_PROJECTS="all" \
+            -DLLVM_ENABLE_PROJECTS="mlir" \
             -DLLVM_TARGETS_TO_BUILD="host" \
             -DLLVM_ENABLE_ASSERTIONS=ON \
             -DCMAKE_BUILD_TYPE=Release
@@ -89,7 +89,8 @@ jobs:
           -DCMAKE_EXPORT_COMPILE_COMMANDS=ON
         ninja -j$(nproc)
 
-    # STEP 2: Build Polygeist + LLVM + MLIR
+    # STEP 2: Build Polygeist + LLVM + MLIR. We do this separately from the CIRCT
+    # build since there are often API-breaking changes between the two versions...
     # Checkout already done due to Polygeist being a submodule
     - name: Cache Polygeist MLIR+LLVM
       id: cache-polygeist-llvm
@@ -107,7 +108,7 @@ jobs:
         mkdir Polygeist/llvm-project/build
         cd Polygeist/llvm-project/build
         cmake ../llvm -GNinja \
-          -DLLVM_ENABLE_PROJECTS="all" \
+          -DLLVM_ENABLE_PROJECTS="mlir;clang" \
           -DBUILD_SHARED_LIBS=ON \
           -DLLVM_ENABLE_LLD=ON \
           -DLLVM_OPTIMIZED_TABLEGEN=ON \
