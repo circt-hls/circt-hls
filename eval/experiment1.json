@@ -1,4 +1,12 @@
 {
+  "matrix_power" : {
+    "mode": "dynamic",
+    "args": [],
+    "mode_args": ["--buffer_size=3"],
+    "tb": "../cosim_test/suites/Dynamatic/matrix_power/tst_matrix_power.c",
+    "kernel_calls": 10,
+    "synth": false
+  },
   "if_loop_1" : {
     "mode": "dynamic",
     "args": [],
@@ -20,14 +28,6 @@
     "args": [],
     "mode_args": [],
     "tb": "../cosim_test/suites/Dynamatic/fir/tst_fir.c",
-    "kernel_calls": 10,
-    "synth": false
-  },
-  "matrix_power" : {
-    "mode": "dynamic",
-    "args": [],
-    "mode_args": [],
-    "tb": "../cosim_test/suites/Dynamatic/matrix_power/tst_matrix_power.c",
     "kernel_calls": 10,
     "synth": false
   },
