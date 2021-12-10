@@ -1,0 +1,149 @@
+name: CIRCT-HLS
+
+on: [push]
+
+jobs:
+  build:
+    name: Build ${{ matrix.build }} ${{ matrix.os }} ${{ matrix.compiler }}
+    runs-on: ${{ matrix.os }}
+
+    strategy:
+      fail-fast: false
+      matrix:
+        build: ["Release"] #, "Debug"] # "RelWithDebInfo"
+        os: [ubuntu-18.04]
+        compiler:
+          - cc: clang
+            cxx: clang++
+
+    steps:
+    - name: add dependencies
+      run: sudo apt-get install -y ninja-build verilator
+
+    - uses: actions/checkout@v2
+      with:
+        fetch-depth: 1
+        submodules: 'recursive'
+
+    # Step 1: Build CIRCT + LLVM + MLIR
+
+    # Checkout CIRCT. This also checks out CIRCTs LLVM submodule
+    - name: Checkout CIRCT
+      uses: actions/checkout@v2
+      with:
+        repository: llvm/circt
+        path: circt    
+        submodules: 'recursive'
+        fetch-depth: 1
+
+    # Cache the LLVM submodule inside CIRCT
+    - name: Cache CIRCT LLVM/MLIR
+      id: cache-circt-llvm
+      uses: actions/cache@v2
+      with:
+        path: circt/llvm/build
+        key: ${{ matrix.build }}-${{ matrix.os }}-circt-llvm-${{ hashFiles('circt/.git/modules/llvm/HEAD') }}
+
+    # Cache CIRCT itself
+    - name: Cache CIRCT
+      id: cache-circt
+      uses: actions/cache@v2
+      with:
+        path: circt/build
+        key: ${{ matrix.build }}-${{ matrix.os }}-circt-${{ hashFiles('circt/.git/HEAD') }}
+
+    # Build LLVM+MLIR
+    - name: CIRCT LLVM+MLIR build
+      if: steps.cache-circt-llvm.outputs.cache-hit != 'true'
+      env:
+          CC: ${{ matrix.compiler.cc }}
+          CXX: ${{ matrix.compiler.cxx }}
+      run: |
+        mkdir circt/llvm/build
+        cd circt/llvm/build
+        cmake -G Ninja ../llvm \
+            -DBUILD_SHARED_LIBS=ON \
+            -DLLVM_ENABLE_LLD=ON \
+            -DLLVM_OPTIMIZED_TABLEGEN=ON \
+            -DLLVM_ENABLE_PROJECTS="all" \
+            -DLLVM_TARGETS_TO_BUILD="host" \
+            -DLLVM_ENABLE_ASSERTIONS=ON \
+            -DCMAKE_BUILD_TYPE=Release
+        ninja -j$(nproc)
+
+    # Build CIRCT
+    - name: CIRCT LLVM+MLIR build
+      if: steps.cache-circt.outputs.cache-hit != 'true'
+      env:
+          CC: ${{ matrix.compiler.cc }}
+          CXX: ${{ matrix.compiler.cxx }}
+      run: |
+        mkdir circt/build
+        cd circt/build
+        cmake -G Ninja .. \
+          -DMLIR_DIR=$PWD/../llvm/build/lib/cmake/mlir \
+          -DLLVM_DIR=$PWD/../llvm/build/lib/cmake/llvm \
+          -DLLVM_ENABLE_ASSERTIONS=ON \
+          -DCMAKE_BUILD_TYPE=Release \
+          -DCMAKE_EXPORT_COMPILE_COMMANDS=ON
+        ninja -j$(nproc)
+
+    # STEP 2: Build Polygeist + LLVM + MLIR
+    # Checkout already done due to Polygeist being a submodule
+    - name: Cache Polygeist MLIR+LLVM
+      id: cache-polygeist-llvm
+      uses: actions/cache@v2
+      with:
+        path: Polygeist/llvm-project/build
+        key: ${{ matrix.build }}-${{ matrix.os }}-polygeist-llvm-${{ hashFiles('.git/modules/Polygeist/modules/llvm-project/HEAD') }}
+
+    - name: Polygeist LLVM+MLIR build
+      if: steps.cache-polygeist-mlir.outputs.cache-hit != 'true'
+      env:
+          CC: ${{ matrix.compiler.cc }}
+          CXX: ${{ matrix.compiler.cxx }}
+      run: |
+        mkdir Polygeist/llvm-project/build
+        cd Polygeist/llvm-project/build
+        cmake ../llvm -GNinja \
+          -DLLVM_ENABLE_PROJECTS="all" \
+          -DBUILD_SHARED_LIBS=ON \
+          -DLLVM_ENABLE_LLD=ON \
+          -DLLVM_OPTIMIZED_TABLEGEN=ON \
+          -DCMAKE_BUILD_TYPE=${{ matrix.build }} \
+          -DCMAKE_CXX_FLAGS="-Wno-c++11-narrowing"
+        ninja -j$(nproc)
+
+
+    - name: Cache Polygeist
+      id: cache-polygeist
+      uses: actions/cache@v2
+      with:
+        path: Polygeist/build
+        key: ${{ matrix.build }}-${{ matrix.os }}-polygeist-llvm-${{ hashFiles('.git/modules/Polygeist/HEAD') }}
+
+    - name: Build Polygeist
+      env:
+            CC: ${{ matrix.compiler.cc }}
+            CXX: ${{ matrix.compiler.cxx }}
+      run: |
+        mkdir Polygeist/build
+        cd Polygeist/build
+        cmake -G Ninja .. \
+          -DMLIR_DIR=$PWD/../llvm-project/build/lib/cmake/mlir \
+          -DCLANG_DIR=$PWD/../llvm-project/build/lib/cmake/clang \
+          -DLLVM_TARGETS_TO_BUILD="host" \
+          -DLLVM_ENABLE_ASSERTIONS=ON \
+          -DCMAKE_BUILD_TYPE=DEBUG
+        ninja -j$(nproc)
+
+    # Step 3: Calyx setup
+    - name: Calyx setup
+      run: bash calyx_setup.sh
+
+    - name: Test circt-hls
+      run: |
+        cd build
+        ninja check-circt-hls
+        ninja check-circt-hls-integration
+        ninja check-circt-hls-integration-extended
