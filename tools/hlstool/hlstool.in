@@ -11,9 +11,8 @@ from dataclasses import dataclass
 CIRCT_BIN_DIR = "@CIRCT_INCLUDE_DIR@/../bin/"
 CIRCT_HLS_BIN_DIR = "@CIRCT_HLS_BINARY_DIR@/bin/"
 CIRCT_HLS_SOURCE_DIR = "@CIRCT_HLS_SOURCE_DIR@"
-MLIR_CLANG_PATH = "@MLIR-CLANG_PATH@"
-POLYGEIST_OPT_PATH = "@POLYGEIST-OPT_PATH@"
 LLVM_BIN_DIR = "@LLVM_BINARY_DIR@/bin"
+POLYGEIST_BINARY_DIR = "@POLYGEIST_BINARY_DIR@"
 
 ## Global variables used to drive the tool
 # Current mode
@@ -386,14 +385,15 @@ class DynamicMode(HLSMode):
           self.kernel_affine,
           lambda: run_tool(
               [
-                  MLIR_CLANG_PATH,
+                  os.path.join(POLYGEIST_BINARY_DIR, "mlir-clang"),
                   "-S",  # Emit assembly (MLIR)
                   "--function=*",  # Emit all functions
                   "--memref-fullrank",  # Emit fullrank memrefs
                   args.kernel_file,
                   *args.extra_polygeist_kernel_args,
                   "|",  # pipe stdout
-                  POLYGEIST_OPT_PATH,  # Run Polygeist optimization driver
+                  os.path.join(POLYGEIST_BINARY_DIR, "polygeist-opt"
+                              ),  # Run Polygeist optimization driver
                   "--canonicalize",  # ensure that the polygeist-emitted IR is canonical. This may remove some polygeist-dialect specific ops.
               ],
               self.kernel_affine,
@@ -549,14 +549,15 @@ class DynamicMode(HLSMode):
         self.tb_poly,
         lambda: run_tool(
             [
-                MLIR_CLANG_PATH,
+                os.path.join(POLYGEIST_BINARY_DIR, "mlir-clang"),
                 "-S",  # Emit assembly (MLIR)
                 "--function=*",  # Emit all functions
                 "--memref-fullrank",  # Emit fullrank memrefs
                 args.tb_file,
                 *args.extra_polygeist_tb_args,
                 "|",  # pipe stdout
-                POLYGEIST_OPT_PATH,  # Run Polygeist optimization driver
+                os.path.join(POLYGEIST_BINARY_DIR, "polygeist-opt"
+                            ),  # Run Polygeist optimization driver
                 "--canonicalize",  # ensure that the polygeist-emitted IR is canonical. This may remove some polygeist-dialect specific ops.
             ],
             self.tb_poly,

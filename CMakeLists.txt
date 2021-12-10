@@ -81,28 +81,19 @@ include_directories(${CIRCT_HLS_INCLUDE_DIR})
 #-------------------------------------------------------------------------------
 
 # Search for polygeist in path
-find_program(MLIR-CLANG_PATH "mlir-clang"
+find_program(MLIR_CLANG_PATH "mlir-clang"
   PATHS
-  "${CMAKE_CURRENT_SOURCE_DIR}/Polygeist/build/mlir-clang"
   "${CMAKE_CURRENT_SOURCE_DIR}/Polygeist/build/bin"
   NO_DEFAULT_PATH
 )
-if(NOT EXISTS ${MLIR-CLANG_PATH})
-  message(FATAL_ERROR "Did not find mlir-clang in PATH nor in tree;")
+if(NOT EXISTS ${MLIR_CLANG_PATH})
+  message(FATAL_ERROR "Did not find mlir-clang in PATH nor in tree; 
+  make sure you have built Polygeist before building circt-hls.")
 endif()
-message(STATUS "Found mlir-clang at ${MLIR-CLANG_PATH}")
+message(STATUS "Found mlir-clang")
 
-find_program(POLYGEIST-OPT_PATH "polygeist-opt"
-  PATHS
-  "${CMAKE_CURRENT_SOURCE_DIR}/Polygeist/build/tools/polygeist-opt"
-  "${CMAKE_CURRENT_SOURCE_DIR}/Polygeist/build/bin"
-  NO_DEFAULT_PATH
-)
-if(NOT EXISTS ${POLYGEIST-OPT_PATH})
-  message(FATAL_ERROR "Did not find polygeist-opt in PATH nor in tree;")
-endif()
-message(STATUS "Found polygeist-opt at ${POLYGEIST-OPT_PATH}")
-
+get_filename_component(POLYGEIST_BINARY_DIR ${MLIR_CLANG_PATH} DIRECTORY)
+message(STATUS "Using Polygeist binary directory: ${POLYGEIST_BINARY_DIR}")
 
 #-------------------------------------------------------------------------------
 # Verilator Configuration
