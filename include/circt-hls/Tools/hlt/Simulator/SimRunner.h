@@ -78,7 +78,10 @@ public:
         debugOut << "RUNNER: Woke up..." << std::endl;
       }
     }
-    writeToLog("FINISHED");
+    if (to.timedOut())
+      writeToLog("TIMED OUT");
+    else
+      writeToLog("FINISHED");
     sim->finish();
     m_logFile->close();
   }
