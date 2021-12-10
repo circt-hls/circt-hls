@@ -1,3 +1,5 @@
+// RUN: hlstool --no_trace --rebuild --tb_file %s dynamic --run_sim
+
 #include "histogram.h"
 #include <stdlib.h>
 
