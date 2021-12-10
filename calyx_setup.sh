@@ -4,6 +4,8 @@
 # Polygeist using the instructions in README.md.
 # This script takes care of the Calyx setup.
 
+set -e
+
 # Building calyx
 pushd Calyx
 cargo build
