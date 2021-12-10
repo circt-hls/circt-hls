@@ -45,14 +45,21 @@ public:
 #endif
   }
 
-  uint64_t time() override { return ctx->time(); }
+  uint64_t time() override {
+    // We could return ctx->time() here, but a more accurate representation
+    // would be the number of cycles executed.
+    return m_clockCycles;
+  }
 
   bool outValid() override {
     return std::all_of(this->outPorts.begin(), this->outPorts.end(),
                        [](auto &port) { return port->valid(); });
   }
 
-  void step() override { clock_flip(); }
+  void step() override {
+    clock_flip();
+    m_clockCycles++;
+  }
 
   void dump(std::ostream &out) const override {
     out << "Port states:\n";
@@ -135,6 +142,9 @@ protected:
   std::unique_ptr<TModel> dut;
   std::unique_ptr<VerilatedContext> ctx;
   VerilatorGenericInterface interface;
+
+  // Number of clock-cycles executed.
+  uint64_t m_clockCycles = 0;
 
 #if VM_TRACE
   std::unique_ptr<VerilatedVcdC> trace;

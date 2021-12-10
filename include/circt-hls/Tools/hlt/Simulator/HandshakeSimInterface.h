@@ -426,6 +426,7 @@ public:
     // Falling edge
     VerilatorSimImpl::clock_falling();
     this->advanceTime();
+    this->m_clockCycles++;
   }
 
   void setup() override {
