@@ -205,6 +205,7 @@ def run_hls_tool(args):
                           stderr=subprocess.PIPE,
                           shell=True)
   # Continuously poll the process and forward any stdout
+  # if proc is finished
   while not proc.poll():
     stdoutdata = proc.stdout.readline()
     if stdoutdata:
@@ -233,6 +234,8 @@ class Experiment:
   args: list
   # mode arguments
   mode_args: list
+  # Run synthesis
+  synth: bool = True
 
   def run(self):
     print_header("Running experiment: " + self.name)
@@ -263,23 +266,23 @@ class Experiment:
     vcdpath = os.path.join(outdir, "logs", "vlt_dump.vcd")
     self.vcdeval = VCDEvaluator(vcdpath)
 
-    # Get reports
-    rpts = []
-    for root, dirs, files in os.walk(outdir):
-      for f in files:
-        if f.endswith(".rpt"):
-          rpts.append(os.path.join(root, f))
+    if self.synth:
+      # Get reports
+      rpts = []
+      for root, dirs, files in os.walk(outdir):
+        for f in files:
+          if f.endswith(".rpt"):
+            rpts.append(os.path.join(root, f))
 
-    def getReport(name):
-      for rpt in rpts:
-        if name in rpt:
-          return rpt
-      return None
+      def getReport(name):
+        for rpt in rpts:
+          if name in rpt:
+            return rpt
+        return None
 
-    utilReport = RPTParser(getReport("utilization_placed"))
-    timingFile = getReport("timing_summary_routed")
-
-    self.print_summary(utilReport, timingFile)
+      utilReport = RPTParser(getReport("utilization_placed"))
+      timingFile = getReport("timing_summary_routed")
+      self.print_summary(utilReport, timingFile)
 
   def print_summary(self, util, timingFile):
     slice_logic = util.get_table(re.compile(r"1\. CLB Logic"), 2)
@@ -360,7 +363,8 @@ if __name__ == "__main__":
                      kernel_calls=expValues["kernel_calls"],
                      mode=expValues["mode"],
                      args=expValues["args"],
-                     mode_args=expValues["mode_args"]))
+                     mode_args=expValues["mode_args"],
+                     synth=expValues["synth"]))
 
   print_yellow("Loaded experiments:")
   for experiment in experiments:
