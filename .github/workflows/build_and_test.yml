@@ -62,6 +62,8 @@ jobs:
         mkdir circt/llvm/build
         cd circt/llvm/build
         cmake -G Ninja ../llvm \
+            -DLLVM_BUILD_EXAMPLES=OFF \
+            -DLLVM_ENABLE_BINDINGS=OFF \
             -DBUILD_SHARED_LIBS=ON \
             -DLLVM_ENABLE_LLD=ON \
             -DLLVM_OPTIMIZED_TABLEGEN=ON \
