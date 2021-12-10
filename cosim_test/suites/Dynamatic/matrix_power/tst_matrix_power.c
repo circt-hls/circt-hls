@@ -1,4 +1,6 @@
-// RUN: hlstool --no_trace --rebuild --tb_file %s dynamic --run_sim
+// This circuit deadlocks if we use buffer size <=2
+// RUN: hlstool --no_trace --rebuild --tb_file %s dynamic --run_sim \
+// --buffer_size=3
 
 #include "matrix_power.h"
 #include <stdlib.h>
