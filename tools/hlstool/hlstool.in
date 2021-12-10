@@ -5,6 +5,7 @@ import os
 import subprocess
 import shutil
 import multiprocessing
+from dataclasses import dataclass
 
 ## CMake configured paths to the tools that we'll be using
 CIRCT_BIN_DIR = "@CIRCT_INCLUDE_DIR@/../bin/"
@@ -72,7 +73,18 @@ def runIfNotExists(file, func):
   func()
 
 
-def run_tool(args, stdOutFile=None, shell=False, liveOutput=False):
+@dataclass
+class RunResult:
+  returnCode: int
+  stdOut: str
+  stdErr: str
+
+
+def run_tool(args,
+             stdOutFile=None,
+             shell=False,
+             liveOutput=False,
+             exitOnError=True):
   cmd = " ".join(args)
 
   print_info(f"Running: {cmd}")
@@ -111,7 +123,11 @@ def run_tool(args, stdOutFile=None, shell=False, liveOutput=False):
     stdErr = stdErr.decode("utf-8")
 
     if code != 0:
-      onError(code, stdOut, stdErr)
+      if exitOnError:
+        onError(code, stdOut, stdErr)
+      else:
+        # Just forward the stdout, stderr and exit code to the caller
+        return RunResult(code, stdOut, stdErr)
 
     if stdOutFile:
       with open(stdOutFile, 'w') as f:
@@ -481,10 +497,36 @@ class DynamicMode(HLSMode):
     cmake_args.append(f"-DCMAKE_BUILD_TYPE=RelWithDebInfo")
     # Run cmake in current directory
     cmake_args.append(".")
-    print_info("Running CMake with arguments: " + " ".join(cmake_args))
-    run_tool(["cmake", *cmake_args])
-    print_info("Running ninja")
+    self.run_verilator_cmake(cmake_args)
     run_tool(["ninja"])
+
+  def run_verilator_cmake(self, cmake_args):
+    # Iteratively try to run CMake and modify the arguments when faced with some
+    # expected/common warnings.
+
+    print_info("Running CMake with arguments: " + " ".join(cmake_args))
+    ret = run_tool(["cmake", *cmake_args], exitOnError=False)
+    if ret != None:
+      print_info("CMake failed. Trying to figure out what went wrong...")
+
+      if "%Warning-UNOPTTHREADS" in ret.stdErr:
+        cur_threads = [
+            x if x.startswith("-DHLT_THREADS=") else "" for x in cmake_args
+        ]
+        cur_threads = [x.split("=")[1] for x in cur_threads if x != ""]
+        cur_threads = int(cur_threads[0])
+        next_threads = cur_threads - 1
+        print_info(
+            f"Verilator raised '%Warning-UNOPTTHREADS'; reducing model parallelism to {next_threads}"
+        )
+        cmake_args = [
+            x for x in cmake_args if not x.startswith("-DHLT_THREADS")
+        ]
+        cmake_args.append(f"-DHLT_THREADS={next_threads}")
+        self.run_verilator_cmake(cmake_args)
+      else:
+        print_info("Could not figure out what went wrong...")
+        print_error(ret.stderr)
 
   def run_build_tb(self):
     print_step("Building testbench")
