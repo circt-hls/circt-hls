@@ -220,6 +220,39 @@ def run_hls_tool(args):
     exit(code)
 
 
+class HLTLogEval:
+
+  def __init__(self, log_file):
+    self.log_file = log_file
+    self.cycles = None
+
+  def exectime(self, cp):
+    """
+    Returns the estimated execution time of this VCD file given a clock period.
+    """
+    cycles = self.get_cycles()
+    return cycles * cp
+
+  def get_cycles(self):
+    """ The HLT log file has lines on the format
+    {clock cycle} @ {info message}
+
+    We assume that the number of cycles executed was the number of cycles for the
+    last "OUT TO WAITER" message.
+  """
+    if self.cycles:
+      return self.cycles
+
+    with open(self.log_file, "r") as f:
+      lines = f.readlines()
+      for line in reversed(lines):
+        if "OUT TO WAITER" in line:
+          self.cycles = int(line.split("@")[0].strip())
+          return self.get_cycles()
+
+    raise Exception("Could not find number of cycles in HLT log file")
+
+
 @dataclass
 class Experiment:
   # Name of this experiment
@@ -261,11 +294,11 @@ class Experiment:
     hlstool_args += self.mode_args
     run_hls_tool(hlstool_args)
 
-    # # Extract VCD info. We assume that things have been run with HLT and the
-    # # vcd is at a known location
-    vcdpath = os.path.join(outdir, "logs", "vlt_dump.vcd")
-    self.vcdeval = VCDEvaluator(vcdpath)
-
+    # Extract # of cycles executed from simulator log file.
+    simlogpath = os.path.join(outdir, "sim.log")
+    self.cycleeval = HLTLogEval(simlogpath)
+    print_yellow(
+        f"Estimated execution time: {self.cycleeval.get_cycles()} cycles")
     if self.synth:
       # Get reports
       rpts = []
@@ -302,16 +335,16 @@ class Experiment:
       f.write("\n")
 
       f.write("# Experiment results:\n")
-      f.write("cycles executed: " + str(self.vcdeval.get_cycles()) + "\n")
+      f.write("cycles executed: " + str(self.cycleeval.get_cycles()) + "\n")
       wsn = float(timing_report["Design Timing Summary"]["WNS(ns)"])
       f.write("WNS(ns): " + str(wsn) + "\n")
       cp = float(timing_report["Clock Summary"]["Period(ns)"])
       f.write("Clock period(ns): " + str(cp) + "\n")
-      exectime = float(self.vcdeval.exectime(cp))
+      exectime = float(self.cycleeval.exectime(cp))
       f.write("Execution time(ns): " + str(exectime) + "\n")
       max_cp = cp - wsn
       f.write("Max clock period(ns): " + str(max_cp) + "\n")
-      min_exectime = float(self.vcdeval.exectime(max_cp))
+      min_exectime = float(self.cycleeval.exectime(max_cp))
       f.write("Min execution time(ns): " + str(min_exectime))
 
       clb = to_int(find_row(CLB_logic, "Site Type", "CLB")["Used"])

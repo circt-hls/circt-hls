@@ -1,9 +1,41 @@
 {
-  "if_loop_1_all" : {
+  "if_loop_1" : {
     "mode": "dynamic",
     "args": [],
     "mode_args": [],
     "tb": "../cosim_test/suites/Dynamatic/if_loop_1/tst_if_loop_1.c",
+    "kernel_calls": 10,
+    "synth": false
+  },
+  "if_loop_2" : {
+    "mode": "dynamic",
+    "args": [],
+    "mode_args": [],
+    "tb": "../cosim_test/suites/Dynamatic/if_loop_2/tst_if_loop_2.c",
+    "kernel_calls": 10,
+    "synth": false
+  },
+  "fir" : {
+    "mode": "dynamic",
+    "args": [],
+    "mode_args": [],
+    "tb": "../cosim_test/suites/Dynamatic/fir/tst_fir.c",
+    "kernel_calls": 10,
+    "synth": false
+  },
+  "matrix_power" : {
+    "mode": "dynamic",
+    "args": [],
+    "mode_args": [],
+    "tb": "../cosim_test/suites/Dynamatic/matrix_power/tst_matrix_power.c",
+    "kernel_calls": 10,
+    "synth": false
+  },
+  "histogram" : {
+    "mode": "dynamic",
+    "args": [],
+    "mode_args": [],
+    "tb": "../cosim_test/suites/Dynamatic/histogram/tst_histogram.c",
     "kernel_calls": 10,
     "synth": false
   }
