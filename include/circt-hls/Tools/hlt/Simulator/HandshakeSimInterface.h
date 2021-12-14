@@ -413,15 +413,16 @@ public:
       outBuffer.transactedControl = true;
 
     // Set output ports readyness based on which outputs in the current output
-    // buffer have been transacted.
+    // buffer have been transacted. This also means that we'll start off with
+    // all outputs ready, and gradually reduce the number of outputs that are
+    // ready until all ports are transacted. When the output buffer is then
+    // ready, all of these ready signals will go high again.
     for (auto outPort : llvm::enumerate(this->outPorts)) {
       auto outPortp = dynamic_cast<HandshakeOutPort *>(outPort.value().get());
       assert(outPortp);
-      if (!outBuffer.transacted[outPort.index()])
-        *(outPortp->readySig) = 1;
+      *(outPortp->readySig) = !outBuffer.transacted[outPort.index()];
     }
-    if (!outBuffer.transactedControl)
-      *(outCtrl->readySig) = 1;
+    *(outCtrl->readySig) = !outBuffer.transactedControl;
 
     // Falling edge
     VerilatorSimImpl::clock_falling();
