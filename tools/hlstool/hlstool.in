@@ -121,7 +121,7 @@ def run_tool(args,
     stdOut = stdOut.decode("utf-8")
     stdErr = stdErr.decode("utf-8")
 
-    if code != 0:
+    if code:
       if exitOnError:
         onError(code, stdOut, stdErr)
       else:
@@ -132,7 +132,7 @@ def run_tool(args,
       with open(stdOutFile, 'w') as f:
         f.write(stdOut)
   except subprocess.CalledProcessError as e:
-    onError(e.returncode, "", e.output)
+    onError(e.returncode, "<<subprocess CALLED PROCESS ERROR>>", e.output)
 
 
 def run_fud(fromType, toType, inputFile, outputFile):
@@ -315,8 +315,9 @@ class DynamicMode(HLSMode):
       # and kernel, but not running the sim.
       print_info("enabling --build_sim due to no specific end-point set")
       args.build_sim |= True
-      print_info("enabling --build_tb due to no specific end-point set")
-      args.build_tb |= True
+      if args.tb_file:
+        print_info("enabling --build_tb due to no specific end-point set")
+        args.build_tb |= True
 
     if args.synth:
       args.lower |= True
@@ -510,17 +511,15 @@ class DynamicMode(HLSMode):
     # Run cmake in current directory
     cmake_args.append(".")
     self.run_verilator_cmake(cmake_args)
-    run_tool(["ninja"])
 
   def run_verilator_cmake(self, cmake_args):
-    # Iteratively try to run CMake and modify the arguments when faced with some
-    # expected/common warnings.
+    # Iteratively try to run CMake and then ninja, and modify CMake arguments when
+    # faced with some expected/common warnings.
 
-    ret = run_tool(["cmake", *cmake_args], exitOnError=False)
-    if ret != None:
-      print_info("CMake failed. Trying to figure out what went wrong...")
+    def handleErrorAndRetry(ret, cmake_args):
+      print_info("Command failed. Trying to figure out what went wrong...")
 
-      if "%Warning-UNOPTTHREADS" in ret.stdErr:
+      if "%Warning-UNOPTTHREADS" in ret.stdErr or "%Warning-UNOPTTHREADS" in ret.stdOut:
         cur_threads = [
             x if x.startswith("-DHLT_THREADS=") else "" for x in cmake_args
         ]
@@ -538,6 +537,13 @@ class DynamicMode(HLSMode):
       else:
         print_info("Could not figure out what went wrong...")
         print_error(ret.stderr)
+
+    ret = run_tool(["cmake", *cmake_args], exitOnError=False)
+    if ret != None:
+      return handleErrorAndRetry(ret, cmake_args)
+    ret = run_tool(["ninja"], exitOnError=False)
+    if ret != None:
+      return handleErrorAndRetry(ret, cmake_args)
 
   def run_build_tb(self):
     print_step("Building testbench")
@@ -684,14 +690,12 @@ def parse_args(parser):
       ext = ".mlir"
     args.kernel_file = os.path.join(dirname, basename + ext)
     args.kernel_name = basename
-  elif not args.kernel_file or not args.kernel_name:
+  elif not args.kernel_file and not args.kernel_name:
     parser.error("Must specify kernel file and kernel name")
-  else:
-    parser.error(
-        "Couldn't determine the requested kernel to synthesize, exiting...")
 
   # Ensure provided files are absolute paths
-  args.tb_file = os.path.abspath(args.tb_file)
+  if args.tb_file:
+    args.tb_file = os.path.abspath(args.tb_file)
   args.kernel_file = os.path.abspath(args.kernel_file)
 
   print_info("using kernel file: {}".format(args.kernel_file))
