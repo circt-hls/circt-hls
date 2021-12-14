@@ -281,6 +281,12 @@ class DynamicMode(HLSMode):
         " assumes that a simulation has been run prior to this.")
 
     dynamic_parser.add_argument(
+        '--hs_kernel',
+        action='store_true',
+        help="The kernel is a handshake kernel. If this is set, will skip "
+        "polygaist and standard to handshake lowering.")
+
+    dynamic_parser.add_argument(
         '--buffer_strategy',
         type=str,
         default="all",
@@ -404,39 +410,53 @@ class DynamicMode(HLSMode):
       print_info("Skipping Polygeist lowering due to using an MLIR kernel")
       shutil.copy(args.kernel_file, self.kernel_affine)
 
-    # Lower the affine code into flattened standard. By flattened, we mean that
-    # all memrefs are unidimensional, since this is what is supported by the
-    # handshake passes.
-    runIfNotExists(
-        self.kernel_std, lambda: run_fud("mlir-affine", "mlir-std-flattened",
-                                         self.kernel_affine, self.kernel_std))
+    if args.hs_kernel:
+      print_info("Skipping handshake lowering due to using a handshake kernel")
+      shutil.copy(args.kernel_file, self.kernel_handshake)
+      expectedStdKernel = os.path.join(os.path.dirname(args.kernel_file),
+                                       args.kernel_name + "_std.mlir")
+      if not os.path.exists(expectedStdKernel):
+        print_error(
+            f"Expected a standard kernel at {expectedStdKernel}. It is sufficient "
+            "for this to just be a function signature without a definition, but it must be "
+            "provided to describe the software interface of the handshake kernel."
+        )
+      else:
+        shutil.copy(expectedStdKernel, self.kernel_std)
+    else:
+      # Lower the affine code into flattened standard. By flattened, we mean that
+      # all memrefs are unidimensional, since this is what is supported by the
+      # handshake passes.
+      runIfNotExists(
+          self.kernel_std, lambda: run_fud("mlir-affine", "mlir-std-flattened",
+                                           self.kernel_affine, self.kernel_std))
 
-    # Put into maximized SSA form (precondition for correct handshake lowering)
-    runIfNotExists(
-        self.kernel_std_max,
-        lambda: run_hls_opt(['--max-ssa=\"ignore-memref\"'], self.kernel_std,
-                            self.kernel_std_max))
-    print_info(f"Lowered to standard...! ({self.kernel_std_max})")
+      # Put into maximized SSA form (precondition for correct handshake lowering)
+      runIfNotExists(
+          self.kernel_std_max,
+          lambda: run_hls_opt(['--max-ssa=\"ignore-memref\"'], self.kernel_std,
+                              self.kernel_std_max))
+      print_info(f"Lowered to standard...! ({self.kernel_std_max})")
 
-    # Lower to handshake
-    runIfNotExists(
-        self.kernel_handshake_unbuffered,
-        lambda: run_fud("mlir-std-flattened", "mlir-handshake", self.
-                        kernel_std_max, self.kernel_handshake_unbuffered))
+      # Lower to handshake
+      runIfNotExists(
+          self.kernel_handshake_unbuffered,
+          lambda: run_fud("mlir-std-flattened", "mlir-handshake", self.
+                          kernel_std_max, self.kernel_handshake_unbuffered))
 
-    # Add buffers
-    runIfNotExists(
-        self.kernel_handshake_buffered, lambda: run_circt_opt([
-            f"--handshake-insert-buffer=\"strategies={args.buffer_strategy} buffer-size={args.buffer_size}\"",
-        ], self.kernel_handshake_unbuffered, self.kernel_handshake_buffered))
+      # Add buffers
+      runIfNotExists(
+          self.kernel_handshake_buffered, lambda: run_circt_opt([
+              f"--handshake-insert-buffer=\"strategies={args.buffer_strategy} buffer-size={args.buffer_size}\"",
+          ], self.kernel_handshake_unbuffered, self.kernel_handshake_buffered))
 
-    # Run the add-ids pass to ensure that we have a deterministic mapping between
-    # the FIRRTL/SV code and the Handshake IR/.dot file
-    runIfNotExists(
-        self.kernel_handshake,
-        lambda: run_circt_opt(["--handshake-add-ids"], self.
-                              kernel_handshake_buffered, self.kernel_handshake))
-    print_info(f"Lowered to handshake...! ({self.kernel_handshake})")
+      # Run the add-ids pass to ensure that we have a deterministic mapping between
+      # the FIRRTL/SV code and the Handshake IR/.dot file
+      runIfNotExists(
+          self.kernel_handshake, lambda: run_circt_opt([
+              "--handshake-add-ids"
+          ], self.kernel_handshake_buffered, self.kernel_handshake))
+      print_info(f"Lowered to handshake...! ({self.kernel_handshake})")
 
     # Lower to FIRRTL
     runIfNotExists(
