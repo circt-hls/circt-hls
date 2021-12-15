@@ -7,7 +7,7 @@
 set -e
 
 # Building calyx
-pushd Calyx
+pushd calyx
 cargo build
 
 # Building the Calyx driver 'fud'. This will be installed in your Python
