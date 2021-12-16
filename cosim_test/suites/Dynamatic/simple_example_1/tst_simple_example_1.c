@@ -7,13 +7,9 @@
 
 int main(void) {
   int a[N_KERNEL_CALLS][100];
-  int b[N_KERNEL_CALLS][100];
-  int c[N_KERNEL_CALLS];
   for (int i = 0; i < N_KERNEL_CALLS; ++i) {
-    c[i] = 3;
     for (int j = 0; j < 100; ++j) {
       a[i][j] = j;
-      b[i][j] = 99 - j;
     }
   }
   for (int i = 0; i < N_KERNEL_CALLS; ++i) {
