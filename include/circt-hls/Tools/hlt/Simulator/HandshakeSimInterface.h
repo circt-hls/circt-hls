@@ -147,44 +147,140 @@ struct HandshakeDataOutPort : HandshakeDataPort<TData, HandshakeOutPort> {
 template <typename TData, typename TAddr>
 class HandshakeMemoryInterface : public SimulatorInPort,
                                  public TransactableTrait {
-  struct StorePort : SimBase {
+  // The memory pointer is set by the simulation engine during execution.
+  TData *memory_ptr = nullptr;
+
+  // The size of the memory associated with this interface.
+  size_t memorySize;
+
+  void write(const TAddr &addr, const TData &data) {
+    assert(memory_ptr != nullptr && "Memory not set.");
+    assert(addr < memorySize && "Address out of bounds.");
+    memory_ptr[addr] = data;
+  }
+
+  TData read(const TAddr &addr) {
+    assert(memory_ptr != nullptr && "Memory not set.");
+    assert(addr < memorySize && "Address out of bounds.");
+    return memory_ptr[addr];
+  }
+
+  class MemoryPortBundle : public SimulatorPort {
+  public:
+    MemoryPortBundle(const std::vector<SimulatorPort *> &ports) : ports(ports) {
+      clearTransacted();
+    }
+    std::vector<SimulatorPort *> ports;
+
+    /// Evaluates each of the ports in this bundle. This interacts with the
+    /// propagate(...) function in that the transacted flag will be set to true
+    /// after transaction occured.
+    void eval() override {
+      for (auto &p : ports) {
+        p->eval();
+        auto transactable = dynamic_cast<TransactableTrait *>(p);
+        assert(transactable);
+        if (transactable->transacted()) {
+          portTransacted(p);
+          p->keepAlive();
+        }
+      }
+    }
+
+    bool hasTransacted(SimulatorPort *p) const { return transacted.at(p); }
+
+    void reset() override {}
+
+    // Propagation function for this memory bundle. This is where we'll
+    // implement the combinational logic for the port, pre-rising edge.
+    virtual void propagate(HandshakeMemoryInterface &mem) = 0;
+
+    void setKeepAliveCallback(const KeepAliveFunction &f) override {
+      for (auto &p : ports)
+        p->setKeepAliveCallback(f);
+    }
+
+    // Ready whenever none of the ports have transacted.
+    void ready() {
+      return llvm::all_of(transacted, [](auto &p) { return !p.second; });
+    }
+
+  private:
+    // Register that 'port' transacted. Upon all ports being transacted, this
+    // will clear the 'transacted' map. This is how we maintain the fork-like
+    // logic of the memory interface.
+    void portTransacted(SimulatorPort *port) {
+      transacted.at(port) = true;
+      if (llvm::all_of(transacted, [](const auto &p) { return p.second; }))
+        clearTransacted();
+    }
+    void clearTransacted() {
+      transacted.clear();
+      for (auto &p : ports)
+        transacted[p] = false;
+    }
+
+    // Maintain a map of each port and whether it has been transacted in the
+    // current transaction.
+    std::map<SimulatorPort *, bool> transacted = {};
+  };
+
+  struct StorePort : MemoryPortBundle {
     StorePort(const std::shared_ptr<HandshakeDataOutPort<TData>> &data,
               const std::shared_ptr<HandshakeDataOutPort<TAddr>> &addr,
               const std::shared_ptr<HandshakeInPort> &done)
-        : data(data), addr(addr), done(done){};
+        : MemoryPortBundle({data.get(), addr.get(), done.get()}), data(data),
+          addr(addr), done(done){};
     std::shared_ptr<HandshakeDataOutPort<TData>> data;
     std::shared_ptr<HandshakeDataOutPort<TAddr>> addr;
     std::shared_ptr<HandshakeInPort> done;
-    void eval() {
-      data->eval();
-      addr->eval();
-      done->eval();
-    }
 
-    void setKeepAliveCallback(const KeepAliveFunction &f) override {
-      data->setKeepAliveCallback(f);
-      addr->setKeepAliveCallback(f);
-      done->setKeepAliveCallback(f);
+    // Store port transaction rules:
+    // Whenever addr.valid and data.valid, addr.ready and data.ready (transact),
+    // and raise done.valid. Keep this high until the port transacted.
+    void propagate(HandshakeMemoryInterface &mem) override {
+      if (*(addr->validSig) && *(data->validSig) && *(done->readySig)) {
+        *(addr->readySig) = 1;
+        *(data->readySig) = 1;
+        *(done->validSig) = 1;
+        size_t addrValue = *(addr->dataSig);
+        mem.write(addrValue, *(data->dataSig));
+        this->keepAlive();
+      }
     }
   };
 
-  struct LoadPort : SimBase {
+  struct LoadPort : MemoryPortBundle {
+
     LoadPort(const std::shared_ptr<HandshakeDataInPort<TData>> &data,
              const std::shared_ptr<HandshakeDataOutPort<TAddr>> &addr,
              const std::shared_ptr<HandshakeInPort> &done)
-        : data(data), addr(addr), done(done){};
+        : MemoryPortBundle({data.get(), addr.get(), done.get()}), data(data),
+          addr(addr), done(done){};
     std::shared_ptr<HandshakeDataInPort<TData>> data;
     std::shared_ptr<HandshakeDataOutPort<TAddr>> addr;
     std::shared_ptr<HandshakeInPort> done;
-    void eval() {
-      data->eval();
-      addr->eval();
-      done->eval();
-    }
-    void setKeepAliveCallback(const KeepAliveFunction &f) override {
-      data->setKeepAliveCallback(f);
-      addr->setKeepAliveCallback(f);
-      done->setKeepAliveCallback(f);
+
+    // Load port transaction rules:
+    // Whenever the addr.valid, raise addr.ready (transact), and raise
+    // data.valid and done.valid. Keep these high until both of the ports
+    // transacted. These two ports may transact at different times, so state
+    // must be maintained.
+    void propagate(HandshakeMemoryInterface &mem) override {
+      if (*(addr->validSig) && !this->hasTransacted(addr.get())) {
+        *(addr->readySig) = 1;
+      }
+
+      if (*(addr->validSig) || this->hasTransacted(addr.get())) {
+        if (!this->hasTransacted(data.get())) {
+          *(data->validSig) = 1;
+          size_t addrValue = *(addr->dataSig);
+          *(data->dataSig) = mem.read(addrValue);
+        }
+
+        if (!this->hasTransacted(done.get()))
+          *(done->validSig) = 1;
+      }
     }
   };
 
@@ -265,35 +361,14 @@ public:
 
     // Current cycle transactions:
     // Load ports
-    for (auto &loadPort : loadPorts) {
-      if (*(loadPort.addr->validSig) && *(loadPort.data->readySig) &&
-          *(loadPort.done->readySig)) {
-        assert(memory_ptr != nullptr && "Memory not set.");
-        *(loadPort.addr->readySig) = 1;
-        *(loadPort.data->validSig) = 1;
-        *(loadPort.done->validSig) = 1;
-        size_t addr = *(loadPort.addr->dataSig);
-        assert(addr < memorySize && "Address out of bounds.");
-        *(loadPort.data->dataSig) = memory_ptr[addr];
-        keepAlive();
-      }
-    }
+    for (auto &loadPort : loadPorts)
+      loadPort.propagate(*this);
 
     // Store ports
-    for (auto &storePort : storePorts) {
-      if (*(storePort.addr->validSig) && *(storePort.data->validSig) &&
-          *(storePort.done->readySig)) {
-        assert(memory_ptr != nullptr && "Memory not set.");
-        *(storePort.addr->readySig) = 1;
-        *(storePort.data->readySig) = 1;
-        *(storePort.done->validSig) = 1;
-        size_t addr = *(storePort.addr->dataSig);
-        assert(addr < memorySize && "Address out of bounds.");
-        memory_ptr[addr] = *(storePort.data->dataSig);
-        keepAlive();
-      }
-    }
+    for (auto &storePort : storePorts)
+      storePort.propagate(*this);
 
+    // Evaluate the ports
     for (auto &port : storePorts)
       port.eval();
     for (auto &port : loadPorts)
@@ -314,12 +389,6 @@ private:
 
   std::vector<StorePort> storePorts;
   std::vector<LoadPort> loadPorts;
-
-  // The memory pointer is set by the simulation engine during execution.
-  TData *memory_ptr = nullptr;
-
-  // The size of the memory associated with this interface.
-  size_t memorySize;
 };
 
 template <typename TInput, typename TOutput, typename TModel>
