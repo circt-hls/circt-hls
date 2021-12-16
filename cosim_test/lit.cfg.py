@@ -58,11 +58,9 @@ tool_dirs = [
 tools = ['hls-opt', 'hlt-wrapgen', 'dyn_incrementally_lower', 'dyn_hlt_lower']
 
 # Enable Polygeist if it has been detected.
-if config.mlir_clang_path != "":
-  tool_dirs.append(os.path.dirname(config.mlir_clang_path))
+if config.polygeist_bin_dir != "":
+  tool_dirs.append(os.path.dirname(config.polygeist_bin_dir))
   tools.append('mlir-clang')
-if config.polygeist_opt_path != "":
-  tool_dirs.append(os.path.dirname(config.polygeist_opt_path))
   tools.append('polygeist-opt')
 
 # Maximum 300 seconds for each test. This might be too much but some of these
