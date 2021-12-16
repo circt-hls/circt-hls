@@ -9,6 +9,17 @@
 namespace circt {
 namespace hlt {
 
+// Utility function which assigns value 'newVal' to 'oldVal' if they are not
+// already equal, and returns true upon change.
+template <typename T, typename T2>
+bool setWithChange(T &oldVal, const T2 &newVal) {
+  if (oldVal != newVal) {
+    oldVal = newVal;
+    return true;
+  }
+  return false;
+}
+
 struct TransactableTrait {
   enum State {
     // No transaction
@@ -59,20 +70,23 @@ struct HandshakeInPort : public HandshakePort<SimulatorInPort> {
 
   /// An input port transaction is fulfilled by de-asserting the valid (output)
   // signal of his handshake bundle.
-  void eval() override {
+  bool eval(bool firstInStep) override {
+    bool changed = false;
     if (txState == Transacted)
       txState = Idle;
 
-    bool transacting = txState == TransactNext;
-    if (transacting || *(this->validSig) && *(this->readySig)) {
-      if (transacting) {
-        *this->validSig = 0;
+    bool handshaking = *(this->validSig) && *(this->readySig);
+    bool transacted = txState == TransactNext && firstInStep;
+    if (handshaking || transacted) {
+      if (transacted) {
+        changed |= setWithChange(*this->validSig, 0);
         txState = Transacted;
         // Transactions are considered a valid keepAlive reason.
         this->keepAlive();
       } else
         txState = TransactNext;
     }
+    return changed;
   }
 };
 
@@ -86,7 +100,7 @@ struct HandshakeOutPort : public HandshakePort<SimulatorOutPort> {
   /// An output port transaction is fulfilled whenever the ready signal of the
   // handshake bundle is asserted and the valid signal is not. A precondition
   // is that the valid signal was asserter before the ready signal.
-  void eval() override {
+  bool eval(bool firstInStep) override {
     if (txState == Transacted)
       txState = Idle;
 
@@ -100,6 +114,10 @@ struct HandshakeOutPort : public HandshakePort<SimulatorOutPort> {
       } else
         txState = TransactNext;
     }
+
+    // Implementing port determines whether there are any actual state changes
+    // on the port signals.
+    return false;
   }
 };
 
@@ -175,9 +193,10 @@ class HandshakeMemoryInterface : public SimulatorInPort,
     /// Evaluates each of the ports in this bundle. This interacts with the
     /// propagate(...) function in that the transacted flag will be set to true
     /// after transaction occured.
-    void eval() override {
+    bool eval(bool firstInStep) override {
+      bool changed = false;
       for (auto &p : ports) {
-        p->eval();
+        changed |= p->eval(firstInStep);
         auto transactable = dynamic_cast<TransactableTrait *>(p);
         assert(transactable);
         if (transactable->transacted()) {
@@ -185,6 +204,7 @@ class HandshakeMemoryInterface : public SimulatorInPort,
           p->keepAlive();
         }
       }
+      return changed;
     }
 
     bool hasTransacted(SimulatorPort *p) const { return transacted.at(p); }
@@ -193,11 +213,13 @@ class HandshakeMemoryInterface : public SimulatorInPort,
 
     // Propagation function for this memory bundle. This is where we'll
     // implement the combinational logic for the port, pre-rising edge.
-    virtual void propagate(HandshakeMemoryInterface &mem) = 0;
+    // Returns true if any signals changed.
+    virtual bool propagate(HandshakeMemoryInterface &mem) = 0;
 
     void setKeepAliveCallback(const KeepAliveFunction &f) override {
       for (auto &p : ports)
         p->setKeepAliveCallback(f);
+      SimulatorPort::setKeepAliveCallback(f);
     }
 
     // Ready whenever none of the ports have transacted.
@@ -238,15 +260,17 @@ class HandshakeMemoryInterface : public SimulatorInPort,
     // Store port transaction rules:
     // Whenever addr.valid and data.valid, addr.ready and data.ready (transact),
     // and raise done.valid. Keep this high until the port transacted.
-    void propagate(HandshakeMemoryInterface &mem) override {
+    bool propagate(HandshakeMemoryInterface &mem) override {
+      bool changed = false;
       if (*(addr->validSig) && *(data->validSig) && *(done->readySig)) {
-        *(addr->readySig) = 1;
-        *(data->readySig) = 1;
-        *(done->validSig) = 1;
+        changed |= setWithChange(*(addr->readySig), 1);
+        changed |= setWithChange(*(data->readySig), 1);
+        changed |= setWithChange(*(done->validSig), 1);
         size_t addrValue = *(addr->dataSig);
         mem.write(addrValue, *(data->dataSig));
         this->keepAlive();
       }
+      return changed;
     }
   };
 
@@ -266,22 +290,34 @@ class HandshakeMemoryInterface : public SimulatorInPort,
     // data.valid and done.valid. Keep these high until both of the ports
     // transacted. These two ports may transact at different times, so state
     // must be maintained.
-    void propagate(HandshakeMemoryInterface &mem) override {
-      if (*(addr->validSig) && !this->hasTransacted(addr.get())) {
-        *(addr->readySig) = 1;
+    bool propagate(HandshakeMemoryInterface &mem) override {
+      bool changed = false;
+      if (*(addr->validSig)) {
+        // It should always be legal to read the memory when the address signal
+        // is valid.
+        size_t addrValue = *(addr->dataSig);
+        lastReadData = mem.read(addrValue);
+        if (!this->hasTransacted(addr.get()))
+          changed |= setWithChange(*(addr->readySig), 1);
       }
 
       if (*(addr->validSig) || this->hasTransacted(addr.get())) {
         if (!this->hasTransacted(data.get())) {
-          *(data->validSig) = 1;
-          size_t addrValue = *(addr->dataSig);
-          *(data->dataSig) = mem.read(addrValue);
+          changed |= setWithChange(*(data->validSig), 1);
+          *(data->dataSig) = lastReadData;
         }
 
         if (!this->hasTransacted(done.get()))
-          *(done->validSig) = 1;
+          changed |= setWithChange(*(done->validSig), 1);
       }
+      return changed;
     }
+
+    // Store the last read data value when the address was valid. It may occur
+    // that the address signal handshakes before the data signal, and then
+    // changes in value, so we can only the the value that was read by a valid
+    // address signal.
+    TData lastReadData;
   };
 
 public:
@@ -347,7 +383,8 @@ public:
   /// An input port transaction is fulfilled by de-asserting the valid
   /// (output)
   // signal of his handshake bundle.
-  void eval() override {
+  bool eval(bool firstInStep) override {
+    bool changed = false;
     switch (txState) {
     case Idle:
       break;
@@ -362,31 +399,22 @@ public:
     // Current cycle transactions:
     // Load ports
     for (auto &loadPort : loadPorts)
-      loadPort.propagate(*this);
+      changed |= loadPort.propagate(*this);
 
     // Store ports
     for (auto &storePort : storePorts)
-      storePort.propagate(*this);
+      changed |= storePort.propagate(*this);
 
     // Evaluate the ports
     for (auto &port : storePorts)
-      port.eval();
+      changed |= port.eval(firstInStep);
     for (auto &port : loadPorts)
-      port.eval();
+      changed |= port.eval(firstInStep);
+
+    return changed;
   }
 
 private:
-  TData readMemory(uint32_t addr) {
-    assert(memory_ptr != nullptr && "Memory not set.");
-    assert(addr < memorySize && "Address out of bounds.");
-    return memory_ptr[addr];
-  }
-  void writeMemory(uint32_t addr, TData data) {
-    assert(memory_ptr != nullptr && "Memory not set.");
-    assert(addr < memorySize && "Address out of bounds.");
-    memory_ptr[addr] = data;
-  }
-
   std::vector<StorePort> storePorts;
   std::vector<LoadPort> loadPorts;
 };
@@ -453,33 +481,49 @@ public:
     readToOutputBuffer();
     writeFromInputBuffer();
 
-    // Advance time for debugging purposes; separates the clk edge from changes
-    // to the following signals.
-    this->advanceTime();
-    // Transact all I/O ports
-    for (auto &port : llvm::enumerate(this->outPorts)) {
-      port.value()->eval();
-      auto transactable = dynamic_cast<TransactableTrait *>(port.value().get());
-      assert(transactable);
-      if (transactable->transacted())
-        outBuffer.transacted[port.index()] = true;
-    }
-    for (auto &port : llvm::enumerate(this->inPorts)) {
-      port.value()->eval();
-      auto transactable = dynamic_cast<TransactableTrait *>(port.value().get());
-      assert(transactable);
-      if (transactable->transacted())
-        inBuffer.value().transacted[port.index()] = true;
-    }
+    // Evaluate the ports until no more changes occur.
+    bool changed = true;
+    int changeCount = HLT_TIMEOUT;
+    bool firstInStep = true;
+    while (changed) {
+      if (changeCount-- == 0) {
+        std::cerr << "Evaluated handshake sim interface HLT_TIMEOUT timeout "
+                     "times; this probably means that there is a combinational "
+                     "loop between the simulator interface logic and the RTL "
+                     "simulation.\n";
+        assert(false);
+      }
+      changed = false;
+      this->advanceTime();
+      // Transact all I/O ports
+      for (auto &port : llvm::enumerate(this->outPorts)) {
+        changed |= port.value()->eval(firstInStep);
+        auto transactable =
+            dynamic_cast<TransactableTrait *>(port.value().get());
+        assert(transactable);
+        if (transactable->transacted())
+          outBuffer.transacted[port.index()] = true;
+      }
+      for (auto &port : llvm::enumerate(this->inPorts)) {
+        changed |= port.value()->eval(firstInStep);
+        auto transactable =
+            dynamic_cast<TransactableTrait *>(port.value().get());
+        assert(transactable);
+        if (transactable->transacted())
+          inBuffer.value().transacted[port.index()] = true;
+      }
 
-    // Transact control ports
-    inCtrl->eval();
-    if (inCtrl->transacted())
-      inBuffer.value().transactedControl = true;
+      // Transact control ports
+      changed |= inCtrl->eval(firstInStep);
+      if (inCtrl->transacted())
+        inBuffer.value().transactedControl = true;
 
-    outCtrl->eval();
-    if (outCtrl->transacted())
-      outBuffer.transactedControl = true;
+      changed |= outCtrl->eval(firstInStep);
+      if (outCtrl->transacted())
+        outBuffer.transactedControl = true;
+
+      firstInStep = false;
+    }
 
     // Set output ports readyness based on which outputs in the current output
     // buffer have been transacted. This also means that we'll start off with

@@ -89,8 +89,12 @@ struct SimulatorPort : SimBase {
 
   // Resets a port to its initial state.
   virtual void reset() = 0;
-  // Evaluates a port.
-  virtual void eval() = 0;
+
+  // Evaluates a port. firstInStep is set whenever this is the first eval call
+  // during the current timestep. For synchronous/clocked simulations, this can
+  // be seen as the rising edge evaluation. Returns true if the port performed a
+  // state change which may require the simulation to update in relation to it.
+  virtual bool eval(bool firstInStep) = 0;
 };
 
 // A SimulatorInPort represents a mapping from a software-like input variable
