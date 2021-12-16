@@ -280,6 +280,11 @@ class DynamicMode(HLSMode):
         help="Run HSDbg on the circuit. This"
         " assumes that a simulation has been run prior to this.")
 
+    dynamic_parser.add_argument('--hsdbg_port',
+                                type=int,
+                                default=8080,
+                                help="Port to run HSDbg server on.")
+
     dynamic_parser.add_argument(
         '--hs_kernel',
         action='store_true',
@@ -478,8 +483,8 @@ class DynamicMode(HLSMode):
   def run_hsdbg(self):
     print_step("Running HSDbg on the handshake circuit...")
     hsdbg_cmd = [
-        os.path.join(CIRCT_HLS_BIN_DIR, "hsdbg"), "-f=dec", self.dotfile,
-        args.vcd
+        os.path.join(CIRCT_HLS_BIN_DIR, "hsdbg"), "-f dec",
+        f"-p {args.hsdbg_port}", self.dotfile, args.vcd
     ]
     cmd = ["xterm", "-e", f'\'{" ".join(hsdbg_cmd)}\'']
 
