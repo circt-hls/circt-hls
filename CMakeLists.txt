@@ -131,12 +131,12 @@ endif()
 #-------------------------------------------------------------------------------
 
 # Search for fud in path
-find_program(FUD_PATH "fud")
-if(NOT EXISTS ${FUD_PATH})
-    message(FATAL_ERROR "Did not find fud in PATH. Make sure you have setup
-    Calyx before building and testing circt-hls.")
-endif() 
-message(STATUS "Found fud at ${FUD_PATH}")
+# find_program(FUD_PATH "fud")
+# if(NOT EXISTS ${FUD_PATH})
+#     message(FATAL_ERROR "Did not find fud in PATH. Make sure you have setup
+#     Calyx before building and testing circt-hls.")
+# endif() 
+# message(STATUS "Found fud at ${FUD_PATH}")
 
 #-------------------------------------------------------------------------------
 # Directory setup
