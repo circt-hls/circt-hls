@@ -24,6 +24,11 @@ jobs:
         fetch-depth: 1
         submodules: 'recursive'
 
+    - name: Get rust toolchain
+      uses: actions-rs/toolchain@v1
+      with:
+        toolchain: stable
+
     # Step 1: Build CIRCT + LLVM + MLIR
 
     # Checkout CIRCT. This also checks out CIRCTs LLVM submodule
