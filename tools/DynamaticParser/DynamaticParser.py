@@ -213,6 +213,8 @@ class Op:
       self.writeMux()
     elif self.type == "Buffer":
       self.writeBuffer()
+    elif self.type == "Source":
+      self.writeSource()
     elif self.type == "Branch":
       self.writeBranch()
     elif self.type == "Operator":
@@ -286,6 +288,10 @@ class Op:
     self.writeOperands()
     self.writer.write(" {sequential = true}")
 
+  def writeSource(self):
+    self.writer.write(to_handshake_op(self.type))
+    # Source ops in Handshake IR are simple operations with no operands.
+
   def writeOperator(self):
     self.writer.write(mlir_operator_type(self.operator) + " ")
     self.writeOperands()
@@ -304,6 +310,9 @@ class Op:
     self.writer.write(", ".join(toValues(self.results.values())))
 
   def writeOpType(self):
+    if self.type == "Source":
+      return
+
     self.writer.write(" : ")
 
     if self.type == "Mux":
