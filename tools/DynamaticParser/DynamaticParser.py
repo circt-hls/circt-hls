@@ -239,7 +239,8 @@ class Op:
     self.writer.write(to_handshake_op(self.type))
     self.writer.write(" ")
     self.writeOperands()
-    self.writer.write(" {value = " + str(self.value) + "}")
+    self.writer.write(" {value = " + str(self.value) + " : " +
+                      typeResolver.getType(self.results[0]) + "}")
 
   def writeMux(self):
     self.writer.write(to_handshake_op(self.type))
@@ -538,7 +539,11 @@ def parseDynamaticFile(fileName, outstream):
 if __name__ == '__main__':
   parser = argparse.ArgumentParser(description='Parse a Dynamatic file')
   parser.add_argument('file', help='Dynamatic file to parse')
-  parser.add_argument('-o', '--output', help='Output file', action="store_true")
+  parser.add_argument('-o',
+                      '--output',
+                      help='Output file',
+                      type=str,
+                      default=None)
   args = parser.parse_args()
 
   # Create a stream object
