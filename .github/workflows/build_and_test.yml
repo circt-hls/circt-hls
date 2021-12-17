@@ -63,7 +63,7 @@ jobs:
           CC: ${{ matrix.compiler.cc }}
           CXX: ${{ matrix.compiler.cxx }}
       run: |
-        mkdir circt/llvm/build
+        mkdir -p circt/llvm/build
         cd circt/llvm/build
         cmake -G Ninja ../llvm \
             -DLLVM_BUILD_EXAMPLES=OFF \
@@ -84,7 +84,7 @@ jobs:
           CC: ${{ matrix.compiler.cc }}
           CXX: ${{ matrix.compiler.cxx }}
       run: |
-        mkdir circt/build
+        mkdir -p circt/build
         cd circt/build
         cmake -G Ninja .. \
           -DMLIR_DIR=$PWD/../llvm/build/lib/cmake/mlir \
@@ -110,7 +110,7 @@ jobs:
           CC: ${{ matrix.compiler.cc }}
           CXX: ${{ matrix.compiler.cxx }}
       run: |
-        mkdir Polygeist/llvm-project/build
+        mkdir -p Polygeist/llvm-project/build
         cd Polygeist/llvm-project/build
         cmake ../llvm -GNinja \
           -DLLVM_ENABLE_PROJECTS="mlir;clang" \
@@ -134,7 +134,7 @@ jobs:
             CC: ${{ matrix.compiler.cc }}
             CXX: ${{ matrix.compiler.cxx }}
       run: |
-        mkdir Polygeist/build
+        mkdir -p Polygeist/build
         cd Polygeist/build
         cmake -G Ninja .. \
           -DMLIR_DIR=$PWD/../llvm-project/build/lib/cmake/mlir \
