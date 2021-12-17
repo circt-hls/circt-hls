@@ -104,9 +104,10 @@ struct HandshakeOutPort : public HandshakePort<SimulatorOutPort> {
     if (txState == Transacted)
       txState = Idle;
 
-    bool transacting = txState == TransactNext;
-    if (transacting || *(this->validSig) && *(this->readySig)) {
-      if (transacting) {
+    bool handshaking = *(this->validSig) && *(this->readySig);
+    bool transacted = txState == TransactNext && firstInStep;
+    if (handshaking || transacted) {
+      if (transacted) {
         // *this->readySig = 0;
         txState = Transacted;
         // Transactions are considered a valid keepAlive reason.
@@ -223,7 +224,7 @@ class HandshakeMemoryInterface : public SimulatorInPort,
     }
 
     // Ready whenever none of the ports have transacted.
-    void ready() {
+    bool ready() {
       return llvm::all_of(transacted, [](auto &p) { return !p.second; });
     }
 
@@ -258,18 +259,34 @@ class HandshakeMemoryInterface : public SimulatorInPort,
     std::shared_ptr<HandshakeInPort> done;
 
     // Store port transaction rules:
-    // Whenever addr.valid and data.valid, addr.ready and data.ready (transact),
-    // and raise done.valid. Keep this high until the port transacted.
+    // Whenever data and address are valid, stores data into the memory.
+    // This causes done.valid to be asserted. After we've transacted done,
+    // we can then transact the data and address ports.
     bool propagate(HandshakeMemoryInterface &mem) override {
       bool changed = false;
-      if (*(addr->validSig) && *(data->validSig) && *(done->readySig)) {
+
+      // Ready mode implies address and data signals are ready.
+      if (this->ready()) {
         changed |= setWithChange(*(addr->readySig), 1);
         changed |= setWithChange(*(data->readySig), 1);
-        changed |= setWithChange(*(done->validSig), 1);
-        size_t addrValue = *(addr->dataSig);
-        mem.write(addrValue, *(data->dataSig));
-        this->keepAlive();
       }
+
+      // Deassert ready signals on address and data once transacted
+      if (this->hasTransacted(addr.get()))
+        changed |= setWithChange(*(addr->readySig), 0);
+      if (this->hasTransacted(data.get()))
+        changed |= setWithChange(*(data->readySig), 0);
+
+      // Write memory on address and data valid.
+      if (*(addr->validSig) && (*data->validSig)) {
+        mem.write(*(addr->dataSig), *(data->dataSig));
+      }
+
+      // After address and data has transacted, the done signal is valid,
+      // mimicking a 1 cycle delay through the memory.
+      if (this->hasTransacted(addr.get()) && this->hasTransacted(data.get()))
+        changed |= setWithChange(*(done->validSig), 1);
+
       return changed;
     }
   };
@@ -292,24 +309,36 @@ class HandshakeMemoryInterface : public SimulatorInPort,
     // must be maintained.
     bool propagate(HandshakeMemoryInterface &mem) override {
       bool changed = false;
+
+      if (this->ready()) {
+        changed |= setWithChange(*(addr->readySig), 0);
+      }
+
       if (*(addr->validSig)) {
         // It should always be legal to read the memory when the address signal
         // is valid.
         size_t addrValue = *(addr->dataSig);
         lastReadData = mem.read(addrValue);
-        if (!this->hasTransacted(addr.get()))
-          changed |= setWithChange(*(addr->readySig), 1);
       }
 
-      if (*(addr->validSig) || this->hasTransacted(addr.get())) {
+      if (*(addr->validSig)) {
         if (!this->hasTransacted(data.get())) {
           changed |= setWithChange(*(data->validSig), 1);
           *(data->dataSig) = lastReadData;
-        }
+        } else
+          changed |= setWithChange(*(data->validSig), 0);
 
         if (!this->hasTransacted(done.get()))
           changed |= setWithChange(*(done->validSig), 1);
+        else
+          changed |= setWithChange(*(done->validSig), 0);
       }
+
+      // Set address ready whenever we'll have transacted both the data and
+      // done ports in the next cycle.
+      if (this->hasTransacted(done.get()) && this->hasTransacted(data.get()))
+        changed |= setWithChange(*(addr->readySig), 1);
+
       return changed;
     }
 
@@ -485,7 +514,8 @@ public:
     bool changed = true;
     int changeCount = HLT_TIMEOUT;
     bool firstInStep = true;
-    while (changed) {
+    bool finalEval = false;
+    while (changed || finalEval) {
       if (changeCount-- == 0) {
         std::cerr << "Evaluated handshake sim interface HLT_TIMEOUT timeout "
                      "times; this probably means that there is a combinational "
@@ -522,7 +552,16 @@ public:
       if (outCtrl->transacted())
         outBuffer.transactedControl = true;
 
+      // This can no longer be the first evaluation
       firstInStep = false;
+
+      // If no change occured then we run the evaluation one final time, to let
+      // the model react to any sim changes.
+      if (!changed)
+        if (!finalEval) {
+          finalEval = true;
+        } else
+          finalEval = false;
     }
 
     // Set output ports readyness based on which outputs in the current output
@@ -594,8 +633,8 @@ public:
       // Normal port?
       if (auto inPort = dynamic_cast<HandshakeDataInPort<decltype(value)> *>(p);
           inPort) {
-        // A value can be written to an input port when it is not already trying
-        // to transact a value.
+        // A value can be written to an input port when it is not already
+        // trying to transact a value.
         if (!inPort->valid()) {
           inPort->writeData(value);
         }
