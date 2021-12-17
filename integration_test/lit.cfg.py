@@ -28,7 +28,8 @@ config.suffixes = ['.mlir', '.c']
 config.test_source_root = os.path.dirname(__file__)
 
 # test_exec_root: The root path where tests should be run.
-config.test_exec_root = os.path.join(config.circt_hls_obj_root, 'integration_test')
+config.test_exec_root = os.path.join(config.circt_hls_obj_root,
+                                     'integration_test')
 
 config.substitutions.append(('%PATH%', config.environment['PATH']))
 config.substitutions.append(('%shlibext', config.llvm_shlib_ext))
@@ -52,19 +53,15 @@ config.excludes = ['Inputs', 'CMakeLists.txt', 'README.txt', 'LICENSE.txt']
 llvm_config.with_environment('PATH', config.llvm_tools_dir, append_path=True)
 
 tool_dirs = [
-    config.circt_tools_dir, config.mlir_tools_dir, config.llvm_tools_dir, config.circt_hls_tools_dir
+    config.circt_tools_dir, config.mlir_tools_dir, config.llvm_tools_dir,
+    config.circt_hls_tools_dir
 ]
-tools = [
-    'hls-opt', 'hlt-wrapgen'
-]
+tools = ['hls-opt', 'hlt-wrapgen']
 
 # Enable Polygeist if it has been detected.
-if config.mlir_clang_path != "":
-  tool_dirs.append(os.path.dirname(config.mlir_clang_path))
+if config.polygeist_bin_dir != "":
+  tool_dirs.append(os.path.dirname(config.polygeist_bin_dir))
   tools.append('mlir-clang')
-if config.polygeist_opt_path != "":
-  tool_dirs.append(os.path.dirname(config.polygeist_opt_path))
   tools.append('polygeist-opt')
-
 
 llvm_config.add_tool_substitutions(tools, tool_dirs)
