@@ -148,9 +148,9 @@ jobs:
     # - name: Calyx setup
     #   run: bash calyx_setup.sh
 
-    # - name: Test circt-hls
-    #   run: |
-    #     cd build
-    #     ninja check-circt-hls
-    #     ninja check-circt-hls-integration
-    #     ninja check-circt-hls-integration-extended
+    - name: Test circt-hls
+      run: |
+        cd build
+        ninja check-circt-hls
+        ninja check-circt-hls-integration
+        ninja check-circt-hls-integration-extended
