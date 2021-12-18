@@ -141,16 +141,43 @@ jobs:
           -DCLANG_DIR=$PWD/../llvm-project/build/lib/cmake/clang \
           -DLLVM_TARGETS_TO_BUILD="host" \
           -DLLVM_ENABLE_ASSERTIONS=ON \
-          -DCMAKE_BUILD_TYPE=DEBUG
+          -DCMAKE_BUILD_TYPE=${{ matrix.build }}
         ninja -j$(nproc)
 
     # # Step 3: Calyx setup
     # - name: Calyx setup
     #   run: bash calyx_setup.sh
 
-    - name: Test circt-hls
+
+    # Step 4: CIRCT-HLS build
+    # Cache CIRCT itself
+    - name: Cache CIRCT-HLS
+      id: cache-circt-hls
+      uses: actions/cache@v2
+      with:
+        path: circt/build
+        key: ${{ matrix.build }}-${{ matrix.os }}-circt-hls-${{ hashFiles('.git/HEAD') }}
+
+    # Build CIRCT-HLS
+    - name: CIRCT-HLS build
+      if: steps.cache-circt-hls.outputs.cache-hit != 'true'
+      env:
+          CC: ${{ matrix.compiler.cc }}
+          CXX: ${{ matrix.compiler.cxx }}
       run: |
+        mkdir -p build
         cd build
-        ninja check-circt-hls
-        ninja check-circt-hls-integration
-        ninja check-circt-hls-integration-extended
+        cmake -G Ninja .. \
+          -DCIRCT_DIR=$PWD/../circt/build/lib/cmake/circt \
+          -DMLIR_DIR=$PWD/../circt/llvm/build/lib/cmake/mlir \
+          -DLLVM_DIR=$PWD/../circt/llvm/build/lib/cmake/llvm \
+          -DLLVM_ENABLE_ASSERTIONS=ON \
+          -DCMAKE_BUILD_TYPE=${{ matrix.build }}
+        ninja -j$(nproc)
+
+    # - name: Test circt-hls
+    #   run: |
+    #     cd build
+    #     ninja check-circt-hls
+    #     ninja check-circt-hls-integration
+    #     ninja check-circt-hls-integration-extended
