@@ -165,6 +165,7 @@ jobs:
           CC: ${{ matrix.compiler.cc }}
           CXX: ${{ matrix.compiler.cxx }}
       run: |
+        ls Polygeist/build/bin
         mkdir -p build
         cd build
         cmake -G Ninja .. \
