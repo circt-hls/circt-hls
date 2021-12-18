@@ -29,6 +29,8 @@ These are the (intended) end-to-end flows that can be driven from this directory
 
 # Setup
 
+**Since things are changing rapidly, the most reliable method of setting this up and getting things to work is to [replicate the steps done in CI](https://github.com/circt-hls/circt-hls/blob/main/.github/workflows/build_and_test.yml) (minus the caching steps).**
+
 ## Build CIRCT
 If you don't already have a CIRCT/MLIR build locally, checkout https://github.com/llvm/circt and go follow the instructions.
 
