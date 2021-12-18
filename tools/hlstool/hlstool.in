@@ -5,6 +5,7 @@ import os
 import subprocess
 import shutil
 import multiprocessing
+import json
 from dataclasses import dataclass
 
 ## CMake configured paths to the tools that we'll be using
@@ -686,6 +687,39 @@ dynMode = DynamicMode()
 staticMode = StaticMode()
 
 
+# Loads a checkpoint file in the current directory
+def load_checkpoint(args):
+  if os.path.exists(".hlstool_checkpoint"):
+    with open(".hlstool_checkpoint", "r") as f:
+      checkpoint_args = json.load(f)
+      # overwrite args with checkpoint args
+      for key, value in checkpoint_args.items():
+        vars(args)[key] = value
+    print_info("Using input files from .hlstool_checkpoint")
+    return True
+  return False
+
+
+def store_checkpoint(args):
+  checkpoint_args = {}
+  argsDict = vars(args)
+
+  def addIfExists(key):
+    if key in argsDict and argsDict[key] != None:
+      checkpoint_args[key] = argsDict[key]
+
+  with open(".hlstool_checkpoint", "w") as f:
+    addIfExists("tb_file")
+    addIfExists("kernel_file")
+    addIfExists("kernel_name")
+
+    f.write(json.dumps(checkpoint_args, indent=2, sort_keys=True))
+  print_info(
+      "Stored checkpoint to .hlstool_checkpoint. You can rerun HLSTool "
+      "in this directory and pass the --checkpoint flag instead of providing "
+      "paths and kernel names.")
+
+
 def parse_args(parser):
   global mode
   global args
@@ -694,9 +728,10 @@ def parse_args(parser):
 
   # First we validate the general arguments.
   if not args.tb_file and not args.kernel_file and not args.kernel_name:
-    parser.error(
-        "Must specify either testbench name (to infer kernel and kernel name)"
-        " or kernel file and kernel name.")
+    if not load_checkpoint(args):
+      parser.error(
+          "Must specify either testbench name (to infer kernel and kernel name)"
+          " or kernel file and kernel name.")
   if args.tb_file and not args.kernel_file and not args.kernel_name:
     # Infer kernel file and name from testbench
     print_info("Inferring kernel file and name from testbench name.")
@@ -726,6 +761,9 @@ def parse_args(parser):
   print_info("using kernel file: {}".format(args.kernel_file))
   print_info("using kernel name: {}".format(args.kernel_name))
   print_info("using testbench file: {}".format(args.tb_file))
+
+  # Store checkpoint
+  store_checkpoint(args)
 
   # Validate extra polygeist args
   if args.extra_polygeist_tb_args == None:
@@ -844,6 +882,14 @@ To see the arguments for a specific mode, use\n
       action='store_true',
       help="Run Vivado and generate a resource estimate. An output text file "
       "will be generated in the output directory.")
+
+  parser.add_argument(
+      "--checkpoint",
+      action='store_true',
+      help="Run HLSTool using a checkpoint file in the current directory. Each "
+      "time HLSTool is executed, it will store a checkpoint file in the working "
+      "directory which can be used to quickly reference the testbench and kernel "
+      "files that was passed to HLSTool.")
 
   parser.add_argument(
       "--mlir_kernel",
