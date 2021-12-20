@@ -5,8 +5,17 @@ import argparse
 import os
 import re
 import tempfile
+from dataclasses import dataclass
 
 from networkx.readwrite.json_graph import tree
+
+
+def toValues(values):
+  return [f"%{v}" for v in values]
+
+
+def stripQuotes(s):
+  return s.replace("\"", "")
 
 
 class ModuleWriter:
@@ -47,8 +56,10 @@ class TypeResolver:
     self.knownIndexValues = {}
     self.valueTypes = {}
 
-  def setValueType(self, SSAName, width=0, index=False):
-    if index:
+  def setValueType(self, SSAName, width=0, index=False, special=""):
+    if special != "":
+      self.valueTypes[SSAName] = special
+    elif index:
       self.knownIndexValues[SSAName] = True
       self.valueTypes[SSAName] = "index"
     elif width == 0:
@@ -70,6 +81,18 @@ class TypeResolver:
     for op in ops.values():
       for resIdx, resSSA in op.results.items():
         self.setValueType(SSAName=resSSA, width=op.outs[resIdx])
+
+      # Also register types of external memories
+      if op.type == "MC":
+        self.setValueType(SSAName=op.memInfo.memoryName,
+                          special=op.memInfo.getType())
+        opIdx = 0
+        for i in range(int(stripQuotes(op.dotNode[1]['stcount']))):
+          self.setValueType(op.operands[opIdx], index=True)
+          opIdx += 2
+        for i in range(int(stripQuotes(op.dotNode[1]['ldcount']))):
+          self.setValueType(op.operands[opIdx], index=True)
+          opIdx += 1
 
     # Add statically known type conversion when going to MLIR
     for op in ops.values():
@@ -101,7 +124,8 @@ to_handshake_opmap = {
     "Mux": "mux",
     "Merge": "merge",
     "Buffer": "buffer",
-    "Source": "source"
+    "Source": "source",
+    "MC": "extmemory"
 }
 
 
@@ -121,7 +145,9 @@ mlir_operator_map = {
     "and_op": "arith.andi",
     "or_op": "arith.ori",
     "xor_op": "arith.xori",
-    "ret_op": "return"
+    "ret_op": "return",
+    "mc_load_op": "load",
+    "mc_store_op": "store"
 }
 
 
@@ -134,15 +160,6 @@ def mlir_operator_type(type):
 # Global counter for creating new Values
 valueCntr = 0
 
-
-def toValues(values):
-  return [f"%{v}" for v in values]
-
-
-def stripQuotes(s):
-  return s.replace("\"", "")
-
-
 # Information regarding the entry fork which is used in the handshake dialect,
 # instead of the "Source" nodes in Dynamatic.
 entryFork = None
@@ -153,6 +170,24 @@ def nextValue():
   v = valueCntr
   valueCntr += 1
   return v
+
+
+@dataclass
+class MemInfo:
+  addressWidth: int = -1
+  dataWidth: int = -1
+  memoryName: str = ""
+  memorySize: int = -1
+
+  def getType(self):
+    s = "memref<"
+    if self.memorySize != -1:
+      s += f"{self.memorySize}"
+    else:
+      s += "?"
+
+    s += f"xi{self.dataWidth}>"
+    return s
 
 
 class Op:
@@ -172,6 +207,9 @@ class Op:
     # Resolved result names
     self.results = {}
     self.writer = None
+
+    # Information for MC nodes
+    self.memInfo = None
 
   def init(self):
     global valueCntr
@@ -219,6 +257,8 @@ class Op:
       self.writeBranch()
     elif self.type == "Operator":
       self.writeOperator()
+    elif self.type == "MC":
+      self.writeMC()
     elif self.isSOSTOp():
       self.writeSOSTOp()
     else:
@@ -296,7 +336,15 @@ class Op:
     self.writer.write(mlir_operator_type(self.operator) + " ")
     self.writeOperands()
 
-  def writeOperands(self, start=None, end=None):
+  def writeMC(self):
+    self.writer.write(to_handshake_op(self.type) + " ")
+    self.writer.write("[ld=" + self.dotNode[1]['ldcount'] + ", st=" +
+                      self.dotNode[1]['stcount'] + "] ")
+    self.writer.write("(%" + self.memInfo.memoryName + " : " +
+                      self.memInfo.getType() + ") ")
+    self.writeOperands(parens=True)
+
+  def writeOperands(self, start=None, end=None, parens=False):
     ops = [self.operands[k] for k in sorted(self.operands.keys())]
 
     if start is not None:
@@ -304,10 +352,34 @@ class Op:
     if end is not None:
       ops = ops[:end]
 
+    if parens:
+      self.writer.write("(")
     self.writer.write(", ".join(toValues(ops)))
+    if parens:
+      self.writer.write(")")
 
   def writeResults(self):
     self.writer.write(", ".join(toValues(self.results.values())))
+
+  def writeMCType(self):
+    ins = []
+    outs = []
+
+    for i in range(int(stripQuotes(self.dotNode[1]['stcount']))):
+      ins.append(f"i{self.memInfo.dataWidth}")
+      ins.append("index")
+      outs.insert(len(outs) - 1, f"none")
+
+    for i in range(int(stripQuotes(self.dotNode[1]['ldcount']))):
+      ins.append("index")
+      outs.append(f"i{self.memInfo.dataWidth}")
+      outs.insert(len(outs), f"none")
+
+    self.writer.write("(")
+    self.writer.write(", ".join(ins))
+    self.writer.write(") -> (")
+    self.writer.write(", ".join(outs))
+    self.writer.write(")")
 
   def writeOpType(self):
     if self.type == "Source":
@@ -315,7 +387,9 @@ class Op:
 
     self.writer.write(" : ")
 
-    if self.type == "Mux":
+    if self.type == "MC":
+      self.writeMCType()
+    elif self.type == "Mux":
       self.writer.write(typeResolver.getType(self.operands[0]))
       self.writer.write(", ")
       self.writer.write(typeResolver.getType(self.results[0]))
@@ -365,33 +439,59 @@ entryFork = EntryFork()
 
 
 def parseIO(ins):
+  memInfo = None
   ins = ins.split(' ')
   ins.sort()
   ins = [x.strip().replace("\"", "") for x in ins]
   ins = [x for x in ins if x != '']
-  ins = [int(i.split(':')[1]) for i in ins]
-  return ins
+  portwidths = []
+  for io in ins:
+    input, type = io.split(':')
+    if "*" in type:
+      if memInfo is None:
+        memInfo = MemInfo()
+      # This is a memory controller port. Parse the address and data widths
+      w, wType = type.split('*')
+      if wType.endswith("a"):
+        memInfo.addressWidth = int(w)
+      elif wType.endswith("d"):
+        memInfo.dataWidth = int(w)
+      type = w
+
+    portwidths.append(int(type))
+
+  # ins = [int(i.split(':')[1]) for i in ins]
+  return portwidths, memInfo
 
 
 def parseNodes(G):
+  orderedFuncArgNodes = []
   ops = {}
   for n in G.nodes(data=True):
     op = Op()
     op.name = stripQuotes(n[0])
     op.type = stripQuotes(n[1]['type'])
     if 'in' in n[1]:
-      op.ins = parseIO(stripQuotes(n[1]['in']))
+      op.ins, meminfo = parseIO(stripQuotes(n[1]['in']))
     if 'out' in n[1]:
-      op.outs = parseIO(stripQuotes(n[1]['out']))
+      op.outs, meminfo = parseIO(stripQuotes(n[1]['out']))
+
+    if meminfo != None:
+      op.memInfo = meminfo
+      op.memInfo.memoryName = stripQuotes(n[1]['memory'])
+
     op.dotNode = n
     op.init()
     ops[op.name] = op
+
+    if op.type in ["MC", "Entry"]:
+      orderedFuncArgNodes.append(op)
 
     # # Each source node is an additional output in the entry fork.
     # if op.type == "Source":
     #   entryFork.addOutput(op.name)
 
-  return ops
+  return ops, orderedFuncArgNodes
 
 
 def getTrailingNum(s):
@@ -440,15 +540,7 @@ def writeBody(ops, writer):
   raise RuntimeError("No return node found")
 
 
-def blockArgFromType(t):
-  v = f"%{nextValue()}"
-  barg = f"{v} : {toMLIRValueType(t)}"
-  return v, barg
-
-
 # Naively remove any 'subgraph ... {' and a following '}'
-
-
 def removeSubGraphs(filename):
   with open(filename, 'r') as f:
     lines = f.readlines()
@@ -483,17 +575,15 @@ def resolveFunctiontypes(nodes):
 
 
 # Returns the SSA values assigned to the start node outputs, in sorted order.
-def getEntryNodeSSAs(ops):
-  SSAOps = []
-  for n in ops.values():
+def getEntryNodeSSAs(ops, orderedFuncArgNodes):
+  SSAs = []
+  for n in orderedFuncArgNodes:
     if n.type == "Entry":
-      SSAOps.append(n)
+      SSAs.append(n.resultName(0))
+    elif n.type == "MC":
+      SSAs.append(n.memInfo.memoryName)
 
-  # Sort on the names on the start nodes; let's hope that this is in order with the actual function arguments!
-  SSAOps.sort(key=lambda x: x.name)
-
-  # Return the SSA values
-  return [x.resultName(0) for x in SSAOps]
+  return SSAs
 
 
 def getExitNodeSSAs(ops):
@@ -519,18 +609,18 @@ def parseDynamaticFile(fileName, outstream):
   basename = os.path.basename(fileName)
   basename = os.path.splitext(basename)[0]
   writer = ModuleWriter(outstream)
-  ops = parseNodes(G)
-  # We've gathered all node information and can now initialize the entry fork.
-  entryFork.init()
-  # Add entry ctrl to the entry fork
-  entryFork.operands[0] = f"ctrl"
+
+  # Maintain a list of the nodes which are involved in specifying the function
+  # signature. Hope that the ordering in the .dot file is the same as the
+  # source function...
+  ops, orderedFuncArgNodes = parseNodes(G)
   resolveEdges(G, ops)
 
   typeResolver.resolveTypes(ops)
 
   # Go in and figure out which SSA values are used in the
   # start/exit nodes, and use those when printing the arguments and to resolve types.
-  funcArgSSAValues = getEntryNodeSSAs(ops)
+  funcArgSSAValues = getEntryNodeSSAs(ops, orderedFuncArgNodes)
   funcResSSAValues = getExitNodeSSAs(ops)
 
   funcArgs = [
