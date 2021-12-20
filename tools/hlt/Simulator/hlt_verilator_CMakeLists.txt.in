@@ -5,6 +5,7 @@ set(CMAKE_POSITION_INDEPENDENT_CODE ON)
 
 project(HLTSimulator)
 
+find_package(Threads REQUIRED)
 find_package(verilator HINTS $ENV{VERILATOR_ROOT} ${VERILATOR_ROOT})
 if (NOT verilator_FOUND)
   message(FATAL_ERROR "Verilator was not found. Either install it, or set the VERILATOR_ROOT environment variable")
@@ -16,7 +17,15 @@ endif()
 
 set(HLT_LIBNAME hlt_${HLT_TESTNAME})
 
-add_library(${HLT_LIBNAME} SHARED "${HLT_TESTNAME}.cpp")
+set(HLT_EXEC_TB "main.cpp" CACHE STRING  "Executable testbench file, if HLT_EXEC is set")
+option(HLT_EXEC "Build an executable testbench" OFF)
+if(HLT_EXEC)
+  # We're building an executable version of the simulator
+  add_executable(${HLT_LIBNAME} "${HLT_TESTNAME}.cpp" "${HLT_TESTNAME}.h" ${HLT_EXEC_TB})
+else()
+  # We're building a shared library version of the simulator.
+  add_library(${HLT_LIBNAME} SHARED "${HLT_TESTNAME}.cpp")
+endif()
 target_include_directories(${HLT_LIBNAME} PUBLIC "@CIRCT_HLS_MAIN_INCLUDE_DIR@")
 target_include_directories(${HLT_LIBNAME} PUBLIC "@LLVM_MAIN_INCLUDE_DIR@")
 target_include_directories(${HLT_LIBNAME} PUBLIC "@LLVM_BINARY_DIR@/include")
@@ -27,9 +36,10 @@ add_definitions(-DLLVM_DISABLE_ABI_BREAKING_CHECKS_ENFORCING=1)
 include(ProcessorCount)
 ProcessorCount(NProcs)
 
-# If no specific thread cound is set, use the number of processors / 2.
+# If no specific thread cound is set, don't do any threading to ensure that
+# verilator succeeds.
 if(NOT (DEFINED HLT_THREADS))
-  math(EXPR HLT_THREADS "${NProcs} / 2")
+  set(HLT_THREADS 1)
 endif()
 
 # Add the Verilated circuit to the target
@@ -48,5 +58,4 @@ else()
     SOURCES ${HLT_TESTNAME}.sv)
 endif()
 
-find_package(Threads REQUIRED)
 target_link_libraries(${HLT_LIBNAME} PUBLIC Threads::Threads)
