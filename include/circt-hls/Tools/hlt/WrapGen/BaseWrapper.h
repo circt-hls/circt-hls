@@ -69,6 +69,10 @@ private:
   /// Creates an output file with filename fn, and associates os() and osi()
   /// with this file.
   LogicalResult createFile(Location loc, Twine fn);
+
+  /// Function signatures of the call and await functions. These will be written
+  /// to a separate header file.
+  std::string callSignature, awaitSignature;
 };
 
 } // namespace circt_hls

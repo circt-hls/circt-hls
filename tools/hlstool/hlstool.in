@@ -66,6 +66,14 @@ def copyToCurrentDir(file, filename=None):
 # =============================================================================
 
 
+def copyAllowSame(src, dst):
+  if os.path.exists(dst):
+    if os.path.samefile(src, dst):
+      print_info(f"File {dst} already exists, skipping copy...")
+      return
+  shutil.copy(src, dst)
+
+
 def runIfNotExists(file, func):
   if not args.rebuild and os.path.exists(file):
     print_info(f"File {file} already exists, skipping...")
@@ -295,7 +303,7 @@ class DynamicMode(HLSMode):
     dynamic_parser.add_argument(
         '--buffer_strategy',
         type=str,
-        default="all",
+        default="cycles",
         help="Buffer strategy to use, see 'circt-opt --handshake-insert-buffer'"
     )
 
@@ -414,11 +422,11 @@ class DynamicMode(HLSMode):
       print_info(f"Lowered to affine! (Polygeist)...! ({self.kernel_affine})")
     else:
       print_info("Skipping Polygeist lowering due to using an MLIR kernel")
-      shutil.copy(args.kernel_file, self.kernel_affine)
+      copyAllowSame(args.kernel_file, self.kernel_affine)
 
     if args.hs_kernel:
       print_info("Skipping handshake lowering due to using a handshake kernel")
-      shutil.copy(args.kernel_file, self.kernel_handshake)
+      copyAllowSame(args.kernel_file, self.kernel_handshake)
       expectedStdKernel = os.path.join(os.path.dirname(args.kernel_file),
                                        args.kernel_name + "_std.mlir")
       if not os.path.exists(expectedStdKernel):
@@ -428,7 +436,7 @@ class DynamicMode(HLSMode):
             "provided to describe the software interface of the handshake kernel."
         )
       else:
-        shutil.copy(expectedStdKernel, self.kernel_std)
+        copyAllowSame(expectedStdKernel, self.kernel_std)
     else:
       # Lower the affine code into flattened standard. By flattened, we mean that
       # all memrefs are unidimensional, since this is what is supported by the
