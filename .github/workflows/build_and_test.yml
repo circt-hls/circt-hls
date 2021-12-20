@@ -102,7 +102,7 @@ jobs:
       uses: actions/cache@v2
       with:
         path: Polygeist/llvm-project/build
-        key: ${{ matrix.build }}-${{ matrix.os }}-polygeist-llvm-${{ hashFiles('.git/modules/Polygeist/modules/llvm-project/HEAD') }}
+        key: ${{ matrix.build }}-${{ matrix.os }}-polygeist-llvm-v2-${{ hashFiles('.git/modules/Polygeist/modules/llvm-project/HEAD') }}
 
     - name: Polygeist LLVM+MLIR build
       if: steps.cache-polygeist-llvm.outputs.cache-hit != 'true'
@@ -126,7 +126,7 @@ jobs:
       uses: actions/cache@v2
       with:
         path: Polygeist/build
-        key: ${{ matrix.build }}-${{ matrix.os }}-polygeist-llvm-${{ hashFiles('.git/modules/Polygeist/HEAD') }}
+        key: ${{ matrix.build }}-${{ matrix.os }}-polygeist-v2-${{ hashFiles('.git/modules/Polygeist/HEAD') }}
 
     - name: Build Polygeist
       if: steps.cache-polygeist.outputs.cache-hit != 'true'
@@ -143,6 +143,7 @@ jobs:
           -DLLVM_ENABLE_ASSERTIONS=ON \
           -DCMAKE_BUILD_TYPE=${{ matrix.build }}
         ninja -j$(nproc)
+        ninja mlir-clang
 
     # # Step 3: Calyx setup
     # - name: Calyx setup
