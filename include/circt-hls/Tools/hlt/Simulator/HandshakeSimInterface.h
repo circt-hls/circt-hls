@@ -85,7 +85,8 @@ struct HandshakeInPort : public HandshakePort<SimulatorInPort> {
         this->keepAlive();
       } else
         txState = TransactNext;
-    }
+    } else
+      txState = Idle;
     return changed;
   }
 };
@@ -114,7 +115,8 @@ struct HandshakeOutPort : public HandshakePort<SimulatorOutPort> {
         this->keepAlive();
       } else
         txState = TransactNext;
-    }
+    } else
+      txState = Idle;
 
     // Implementing port determines whether there are any actual state changes
     // on the port signals.
@@ -257,6 +259,9 @@ class HandshakeMemoryInterface : public SimulatorInPort,
     std::shared_ptr<HandshakeDataOutPort<TData>> data;
     std::shared_ptr<HandshakeDataOutPort<TAddr>> addr;
     std::shared_ptr<HandshakeInPort> done;
+    bool storeNext = false;
+    TData nextData = 0;
+    TAddr nextAddr = 0;
 
     // Store port transaction rules:
     // Whenever data and address are valid, stores data into the memory.
@@ -277,10 +282,21 @@ class HandshakeMemoryInterface : public SimulatorInPort,
       if (this->hasTransacted(data.get()))
         changed |= setWithChange(*(data->readySig), 0);
 
-      // Write memory on address and data valid.
+      // Store the fact that we will write into the memory on the _next_ clock
+      // cycle. We do not do this immediately; a simple example of when this
+      // goes wrong is:
+      //  for (int i = 0; i < N; i++) {
+      //    if (a[i] == n)
+      //      a[i] = 0;
+      //  }
+      // If we store a[i] = 0 immediately, then a[i], when asynchronously loaded
+      // from memory, will be 0, and the if statement is then no longer true!
       if (*(addr->validSig) && (*data->validSig)) {
-        mem.write(*(addr->dataSig), *(data->dataSig));
-      }
+        storeNext = true;
+        nextData = *(data->dataSig);
+        nextAddr = *(addr->dataSig);
+      } else
+        storeNext = false;
 
       // After address and data has transacted, the done signal is valid,
       // mimicking a 1 cycle delay through the memory.
@@ -288,6 +304,16 @@ class HandshakeMemoryInterface : public SimulatorInPort,
         changed |= setWithChange(*(done->validSig), 1);
 
       return changed;
+    }
+
+    bool eval(bool firstInStep, HandshakeMemoryInterface &mem) {
+      // If we have a valid address and data in the previous cycle, store the
+      // data into the memory.
+      if (firstInStep && storeNext) {
+        mem.write(nextAddr, nextData);
+        storeNext = false;
+      }
+      return MemoryPortBundle::eval(firstInStep);
     }
   };
 
@@ -436,7 +462,7 @@ public:
 
     // Evaluate the ports
     for (auto &port : storePorts)
-      changed |= port.eval(firstInStep);
+      changed |= port.eval(firstInStep, *this);
     for (auto &port : loadPorts)
       changed |= port.eval(firstInStep);
 
@@ -503,18 +529,11 @@ public:
   // a valid output buffer.
   bool outValid() override { return this->outBuffer.valid(); }
 
-  void step() override {
-    // Rising edge
-    VerilatorSimImpl::clock_rising();
-
-    readToOutputBuffer();
-    writeFromInputBuffer();
-
+  void evaluate(bool risingEdge) {
     // Evaluate the ports until no more changes occur.
     bool changed = true;
     int changeCount = HLT_TIMEOUT;
-    bool firstInStep = true;
-    bool finalEval = false;
+    int finalEval = 2;
     while (changed || finalEval) {
       if (changeCount-- == 0) {
         std::cerr << "Evaluated handshake sim interface HLT_TIMEOUT timeout "
@@ -527,7 +546,7 @@ public:
       this->advanceTime();
       // Transact all I/O ports
       for (auto &port : llvm::enumerate(this->outPorts)) {
-        changed |= port.value()->eval(firstInStep);
+        changed |= port.value()->eval(risingEdge);
         auto transactable =
             dynamic_cast<TransactableTrait *>(port.value().get());
         assert(transactable);
@@ -535,7 +554,7 @@ public:
           outBuffer.transacted[port.index()] = true;
       }
       for (auto &port : llvm::enumerate(this->inPorts)) {
-        changed |= port.value()->eval(firstInStep);
+        changed |= port.value()->eval(risingEdge);
         auto transactable =
             dynamic_cast<TransactableTrait *>(port.value().get());
         assert(transactable);
@@ -544,25 +563,33 @@ public:
       }
 
       // Transact control ports
-      changed |= inCtrl->eval(firstInStep);
+      changed |= inCtrl->eval(risingEdge);
       if (inCtrl->transacted())
         inBuffer.value().transactedControl = true;
 
-      changed |= outCtrl->eval(firstInStep);
+      changed |= outCtrl->eval(risingEdge);
       if (outCtrl->transacted())
         outBuffer.transactedControl = true;
 
-      // This can no longer be the first evaluation
-      firstInStep = false;
+      // This can no longer be the rising edge
+      risingEdge = false;
 
       // If no change occured then we run the evaluation one final time, to let
       // the model react to any sim changes.
       if (!changed)
-        if (!finalEval) {
-          finalEval = true;
-        } else
-          finalEval = false;
+        finalEval--;
+      else
+        finalEval = 2;
     }
+  }
+
+  void step() override {
+    // Rising edge
+    VerilatorSimImpl::clock_rising();
+
+    readToOutputBuffer();
+    writeFromInputBuffer();
+    evaluate(/*risingEdge=*/true);
 
     // Set output ports readyness based on which outputs in the current output
     // buffer have been transacted. This also means that we'll start off with
@@ -578,6 +605,7 @@ public:
 
     // Falling edge
     VerilatorSimImpl::clock_falling();
+    evaluate(/*risingEdge=*/false);
     this->advanceTime();
     this->m_clockCycles++;
   }
