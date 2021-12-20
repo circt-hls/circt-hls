@@ -53,36 +53,53 @@ LogicalResult BaseWrapper::wrap(mlir::FuncOp _funcOp, Operation *refOp,
   osi() << "}\n\n";
 
   // Emit async call
-  os() << "extern \"C\" void " << funcOp.getName() + "_call"
-       << "(";
+  llvm::raw_string_ostream callSigStream(callSignature);
+  callSigStream << "extern \"C\" void " << funcOp.getName().str() + "_call"
+                << "(";
 
   // InterleaveComma doesn't accept enumerate(inTypes)
   int i = 0;
   bool failed = false;
-  interleaveComma(funcOp.getType().getInputs(), os(), [&](auto inType) {
-    auto varName = "in" + std::to_string(i++);
-    failed |= emitType(os(), kernelOp->getLoc(), inType, {varName}).failed();
-  });
+  interleaveComma(
+      funcOp.getType().getInputs(), callSigStream, [&](auto inType) {
+        auto varName = "in" + std::to_string(i++);
+        failed |= emitType(callSigStream, kernelOp->getLoc(), inType, {varName})
+                      .failed();
+      });
   if (failed)
     return failure();
-  os() << ") {\n";
+  callSigStream << ")";
+  os() << callSignature << "{\n";
   osi().indent();
   emitAsyncCall(kernelOp);
   osi().unindent();
   osi() << "}\n\n";
 
   // Emit async await
-  os() << "extern \"C\" ";
-  if (emitTypes(os(), funcOp.getLoc(), funcOp.getType().getResults()).failed())
+  llvm::raw_string_ostream awaitSigStream(awaitSignature);
+  awaitSigStream << "extern \"C\" ";
+  if (emitTypes(awaitSigStream, funcOp.getLoc(), funcOp.getType().getResults())
+          .failed())
     return failure();
-  os() << " " << funcOp.getName() + "_await"
-       << "() {\n";
+  awaitSigStream << " " << funcOp.getName().str() + "_await"
+                 << "()";
+  os() << awaitSignature << "{\n";
   osi().indent();
   emitAsyncAwait(kernelOp);
 
   // End
   osi().unindent();
   osi() << "}\n";
+
+  // Create wrapper header file
+  if (createFile(refOp->getLoc(), funcOp.getName() + ".h").failed())
+    return failure();
+  osi() << "// This file is generated. Do not modify!\n";
+  // cstdint should be included to support the int#_t types used in the function
+  // arguments.
+  osi() << "#include \"cstdint\"\n";
+  osi() << callSignature << ";\n";
+  osi() << awaitSignature << ";\n";
 
   return success();
 }
@@ -117,7 +134,6 @@ LogicalResult BaseWrapper::emitIOTypes(const TypeEmitter &emitter) {
 }
 
 LogicalResult BaseWrapper::createFile(Location loc, Twine fn) {
-  assert(!outputFile && "Output file already set");
   std::error_code EC;
   SmallString<128> absFn = outDir;
   sys::path::append(absFn, fn);
