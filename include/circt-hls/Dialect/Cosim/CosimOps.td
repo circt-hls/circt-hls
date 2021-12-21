@@ -11,12 +11,11 @@
 //===----------------------------------------------------------------------===//
 
 include "mlir/IR/OpAsmInterface.td"
+include "mlir/Interfaces/CallInterfaces.td"
 
 // InstanceOp
-def WrapOp : Cosim_Op<"wrap", [
-    NoRegionArguments,
-    SingleBlock,
-    NoTerminator
+def CallOp : Cosim_Op<"call", [
+    CallOpInterface
   ]> {
   let summary = "Wrap calls that should be cosimulated and coverified";
   let description = [{
@@ -34,8 +33,32 @@ def WrapOp : Cosim_Op<"wrap", [
     ```
   }];
 
-  let regions = (region SizedRegion<1>:$body);
-  let assemblyFormat = "$body attr-dict";
+  let arguments = (ins 
+    FlatSymbolRefAttr:$func,
+    AnyAttr:$ref,
+    ArrayAttr:$targets,
+    Variadic<AnyType>:$operands);
+
+  let results = (outs Variadic<AnyType>);
+  let assemblyFormat = [{
+    $func `(` $operands `)` `:` functional-type($operands, results) attr-dict
+  }];
+
+  let verifier = "return ::verify$cppClass(*this);";
+  let extraClassDeclaration = [{
+    /// Get the argument operands to the called function.
+    operand_range getArgOperands() {
+      return {arg_operand_begin(), arg_operand_end()};
+    }
+
+    operand_iterator arg_operand_begin() { return operand_begin(); }
+    operand_iterator arg_operand_end() { return operand_end(); }
+
+
+    mlir::CallInterfaceCallable getCallableForCallee() {
+      return (*this)->getAttrOfType<mlir::SymbolRefAttr>("func");
+    }
+  }];
 }
 
 def CompareOp : Cosim_Op<"compare", [
@@ -52,5 +75,5 @@ def CompareOp : Cosim_Op<"compare", [
   }];
 
   let arguments = (ins AnyType:$ref, AnyType:$cosim);
-  let assemblyFormat = "$ref `:` type($ref) `,` $cosim `:` type($cosim) attr-dict";
+  let assemblyFormat = "$ref `,` $cosim `:` type($ref) attr-dict";
 }

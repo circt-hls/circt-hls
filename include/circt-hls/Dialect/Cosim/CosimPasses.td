@@ -20,6 +20,8 @@ def CosimLowerWrap : FunctionPass<"cosim-lower-wrap"> {
   let description = [{
     This pass lowers cosim wrap operations into a sequence of input copying,
     target calls, and cosim.compare operations.
+
+    Copying is inserted at the point of definition of the input values.
   }];
   let constructor = "circt_hls::cosim::createCosimLowerWrapPass()";
 }

@@ -23,12 +23,12 @@
 #include "mlir/IR/OpDefinition.h"
 #include "mlir/IR/OpImplementation.h"
 #include "mlir/IR/Operation.h"
-#include "mlir/IR/RegionKindInterface.h"
 #include "mlir/IR/TypeSupport.h"
 #include "mlir/IR/Types.h"
 #include "mlir/Interfaces/SideEffectInterfaces.h"
 #include "mlir/Pass/Pass.h"
 #include "llvm/ADT/Any.h"
+#include "mlir/IR/FunctionSupport.h"
 
 
 #define GET_OP_CLASSES
