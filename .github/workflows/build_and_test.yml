@@ -102,7 +102,7 @@ jobs:
       uses: actions/cache@v2
       with:
         path: Polygeist/llvm-project/build
-        key: ${{ matrix.build }}-${{ matrix.os }}-polygeist-llvm-v2-${{ hashFiles('.git/modules/Polygeist/modules/llvm-project/HEAD') }}
+        key: ${{ matrix.build }}-${{ matrix.os }}-polygeist-llvm-v3-${{ hashFiles('.git/modules/Polygeist/modules/llvm-project/HEAD') }}
 
     - name: Polygeist LLVM+MLIR build
       if: steps.cache-polygeist-llvm.outputs.cache-hit != 'true'
@@ -113,7 +113,7 @@ jobs:
         mkdir -p Polygeist/llvm-project/build
         cd Polygeist/llvm-project/build
         cmake ../llvm -GNinja \
-          -DLLVM_ENABLE_PROJECTS="mlir;clang" \
+          -DLLVM_ENABLE_PROJECTS="llvm;clang;mlir;openmp" \
           -DBUILD_SHARED_LIBS=ON \
           -DLLVM_ENABLE_LLD=ON \
           -DLLVM_OPTIMIZED_TABLEGEN=ON \
