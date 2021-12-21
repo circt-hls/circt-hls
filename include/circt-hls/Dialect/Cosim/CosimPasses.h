@@ -18,11 +18,13 @@
 #include <memory>
 #include <set>
 
+
 namespace circt_hls {
 namespace cosim {
 class FuncOp;
 
-std::unique_ptr<mlir::Pass> createCosimLowerWrapPass();
+std::unique_ptr<mlir::Pass> createCosimLowerCallPass();
+std::unique_ptr<mlir::Pass> createCosimLowerComparePass();
 
 /// Generate the code for registering passes.
 #define GEN_PASS_REGISTRATION

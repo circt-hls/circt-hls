@@ -35,8 +35,8 @@ def CallOp : Cosim_Op<"call", [
 
   let arguments = (ins 
     FlatSymbolRefAttr:$func,
-    AnyAttr:$ref,
-    ArrayAttr:$targets,
+    StrAttr:$ref,
+    StrArrayAttr:$targets,
     Variadic<AnyType>:$operands);
 
   let results = (outs Variadic<AnyType>);
@@ -62,7 +62,7 @@ def CallOp : Cosim_Op<"call", [
 }
 
 def CompareOp : Cosim_Op<"compare", [
-    SameTypeConstraint<"ref", "cosim">
+    SameTypeConstraint<"ref", "target">
   ]> {
   let summary = "Compares a reference value with a cosimulated value";
   let description = [{
@@ -70,10 +70,21 @@ def CompareOp : Cosim_Op<"compare", [
 
     Example:
     ```mlir
-    cosim.compare(%1 : memref<100xi32>, %2 : memref<100xi32>)
+    cosim.compare %1, %2 : memref<100xi32>
     ```
   }];
 
-  let arguments = (ins AnyType:$ref, AnyType:$cosim);
-  let assemblyFormat = "$ref `,` $cosim `:` type($ref) attr-dict";
+  let arguments = (ins
+    AnyType:$ref, // Reference value to compare
+    AnyType:$target, // target value to compare
+    OptionalAttr<FlatSymbolRefAttr>:$ref_src,
+    OptionalAttr<FlatSymbolRefAttr>:$target_src
+  );
+  let assemblyFormat = "$ref `,` $target `:` type($ref) attr-dict";
+  let extraClassDeclaration = [{
+    // Get the type of the operands that are compared
+    mlir::Type type() {
+      return ref().getType();
+    }
+  }];
 }

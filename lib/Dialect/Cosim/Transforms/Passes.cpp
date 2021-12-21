@@ -9,7 +9,9 @@
 #include "PassDetails.h"
 #include "circt-hls/Dialect/Cosim/CosimOps.h"
 #include "circt-hls/Dialect/Cosim/CosimPasses.h"
+#include "mlir/Dialect/LLVMIR/LLVMDialect.h"
 #include "mlir/Dialect/MemRef/IR/MemRef.h"
+#include "mlir/Dialect/SCF/SCF.h"
 #include "mlir/Dialect/StandardOps/IR/Ops.h"
 #include "mlir/IR/BuiltinDialect.h"
 #include "mlir/IR/ImplicitLocOpBuilder.h"
@@ -82,9 +84,16 @@ static Value copyAtLastMutationBefore(Value v, Operation *beforeOp,
 
 static void compareToRefAfterOp(Value ref, Value cosim, Operation *op,
                                 PatternRewriter &rewriter) {
+  FlatSymbolRefAttr refSrc, cosimSrc;
+
+  if (auto refSrcOp = dyn_cast<mlir::CallOp>(ref.getDefiningOp()))
+    refSrc = FlatSymbolRefAttr::get(op->getContext(), refSrcOp.getCallee());
+  if (auto cosimSrcOp = dyn_cast<mlir::CallOp>(cosim.getDefiningOp()))
+    cosimSrc = FlatSymbolRefAttr::get(op->getContext(), cosimSrcOp.getCallee());
+
   auto ip = rewriter.saveInsertionPoint();
   rewriter.setInsertionPointAfter(op);
-  rewriter.create<cosim::CompareOp>(ref.getLoc(), ref, cosim);
+  rewriter.create<cosim::CompareOp>(ref.getLoc(), ref, cosim, refSrc, cosimSrc);
   rewriter.restoreInsertionPoint(ip);
 }
 
@@ -165,7 +174,7 @@ struct ConvertCallPattern : OpRewritePattern<cosim::CallOp> {
   }
 };
 
-struct CosimLowerWrapPass : public CosimLowerWrapBase<CosimLowerWrapPass> {
+struct CosimLowerCallPass : public CosimLowerCallBase<CosimLowerCallPass> {
   void runOnFunction() override {
 
     for (auto cosimCallOp : getOperation().getOps<cosim::CallOp>())
@@ -193,7 +202,7 @@ struct CosimLowerWrapPass : public CosimLowerWrapBase<CosimLowerWrapPass> {
     FunctionType opFuncType = FunctionType::get(
         op.getContext(), op.getOperandTypes(), op.getResultTypes());
     ImplicitLocOpBuilder builder(module.getLoc(), op.getContext());
-    builder.setInsertionPoint(funcOp);
+    builder.setInsertionPointAfter(funcOp);
     for (auto target : op.targets()) {
       auto targetName = target.cast<StringAttr>().strref();
       mlir::FuncOp targetFunc = module.lookupSymbol<mlir::FuncOp>(targetName);
@@ -208,8 +217,142 @@ struct CosimLowerWrapPass : public CosimLowerWrapBase<CosimLowerWrapPass> {
   }
 };
 
+/// NOTE: stolen directly from the MLIR LLVM lowering examples... this stuff
+/// isn't exposed any where in public libraries!
+/// Return a symbol reference to the printf function, inserting it into the
+/// module if necessary.
+static FlatSymbolRefAttr getOrInsertPrintf(PatternRewriter &rewriter,
+                                           ModuleOp module) {
+  auto *context = module.getContext();
+  if (module.lookupSymbol<LLVM::LLVMFuncOp>("printf"))
+    return SymbolRefAttr::get(context, "printf");
+
+  // Create a function declaration for printf, the signature is:
+  //   * `i32 (i8*, ...)`
+  auto llvmI32Ty = IntegerType::get(context, 32);
+  auto llvmI8PtrTy = LLVM::LLVMPointerType::get(IntegerType::get(context, 8));
+  auto llvmFnType = LLVM::LLVMFunctionType::get(llvmI32Ty, llvmI8PtrTy,
+                                                /*isVarArg=*/true);
+
+  // Insert the printf function into the body of the parent module.
+  PatternRewriter::InsertionGuard insertGuard(rewriter);
+  rewriter.setInsertionPointToStart(module.getBody());
+  rewriter.create<LLVM::LLVMFuncOp>(module.getLoc(), "printf", llvmFnType);
+  return SymbolRefAttr::get(context, "printf");
+}
+
+static void insertPrintfCall(Location loc, ModuleOp module,
+                             PatternRewriter &rewriter, ValueRange operands) {
+  auto printf = getOrInsertPrintf(rewriter, module);
+  // Resolve to the LLVMFuncOp
+  auto printfFuncOp = module.lookupSymbol<LLVM::LLVMFuncOp>(printf);
+  rewriter.create<LLVM::CallOp>(loc, printfFuncOp, operands);
+}
+
+/// NOTE: stolen directly from the MLIR LLVM lowering examples... this stuff
+/// isn't exposed any where in public libraries!
+/// Return a value representing an access into a global string with the given
+/// name, creating the string if necessary.
+static Value getOrCreateGlobalString(Location loc, OpBuilder &builder,
+                                     StringRef name, StringRef value,
+                                     ModuleOp module) {
+  // Create the global at the entry of the module.
+  LLVM::GlobalOp global;
+  if (!(global = module.lookupSymbol<LLVM::GlobalOp>(name))) {
+    OpBuilder::InsertionGuard insertGuard(builder);
+    builder.setInsertionPointToStart(module.getBody());
+    auto type = LLVM::LLVMArrayType::get(
+        IntegerType::get(builder.getContext(), 8), value.size());
+    global = builder.create<LLVM::GlobalOp>(loc, type, /*isConstant=*/true,
+                                            LLVM::Linkage::Internal, name,
+                                            builder.getStringAttr(value),
+                                            /*alignment=*/0);
+  }
+
+  // Get the pointer to the first character in the global string.
+  Value globalPtr = builder.create<LLVM::AddressOfOp>(loc, global);
+  Value cst0 = builder.create<LLVM::ConstantOp>(
+      loc, IntegerType::get(builder.getContext(), 64),
+      builder.getIntegerAttr(builder.getIndexType(), 0));
+  return builder.create<LLVM::GEPOp>(
+      loc,
+      LLVM::LLVMPointerType::get(IntegerType::get(builder.getContext(), 8)),
+      globalPtr, ArrayRef<Value>({cst0, cst0}));
+}
+
+static void insertIntegerLikeComparison(Location loc, ModuleOp module,
+                                        PatternRewriter &rewriter, Value a,
+                                        Value b) {
+  auto cmp =
+      rewriter.create<arith::CmpIOp>(loc, arith::CmpIPredicate::ne, a, b);
+  auto ifOp = rewriter.create<scf::IfOp>(loc, cmp);
+  rewriter.setInsertionPointToStart(ifOp.getBody());
+
+  llvm::SmallVector<Value> printfArgs;
+  printfArgs.push_back(getOrCreateGlobalString(
+      loc, rewriter, "cosimIntCmpErrStr", "COSIM: %d != %d", module));
+  printfArgs.push_back(a);
+  printfArgs.push_back(b);
+  insertPrintfCall(loc, module, rewriter, printfArgs);
+}
+
+struct ConvertCompareIntegerLike : OpRewritePattern<cosim::CompareOp> {
+  using OpRewritePattern::OpRewritePattern;
+
+  LogicalResult matchAndRewrite(cosim::CompareOp op,
+                                PatternRewriter &rewriter) const override {
+    if (!op.type().isIntOrIndex())
+      return failure();
+
+    insertIntegerLikeComparison(op.getLoc(), op->getParentOfType<ModuleOp>(),
+                                rewriter, op.ref(), op.target());
+    rewriter.eraseOp(op);
+    return success();
+  }
+};
+
+struct ConvertCompareMemref : OpRewritePattern<cosim::CompareOp> {
+  using OpRewritePattern::OpRewritePattern;
+
+  LogicalResult matchAndRewrite(cosim::CompareOp op,
+                                PatternRewriter &rewriter) const override {
+    MemRefType memrefType = op.type().dyn_cast<MemRefType>();
+    if (!memrefType)
+      return failure();
+
+    return success();
+  }
+};
+
+struct CosimLowerComparePass
+    : public CosimLowerCompareBase<CosimLowerComparePass> {
+  void runOnFunction() override {
+    auto *ctx = &getContext();
+    RewritePatternSet patterns(ctx);
+    patterns.insert<ConvertCompareIntegerLike, ConvertCompareMemref>(ctx);
+    ConversionTarget target(*ctx);
+    target.addIllegalOp<cosim::CallOp>();
+    target.addIllegalOp<cosim::CompareOp>();
+    target.addLegalDialect<memref::MemRefDialect>();
+    target.addLegalDialect<mlir::BuiltinDialect>();
+    target.addLegalDialect<mlir::StandardOpsDialect>();
+    target.addLegalDialect<arith::ArithmeticDialect>();
+    target.addLegalDialect<cosim::CosimDialect>();
+    target.addLegalDialect<scf::SCFDialect>();
+    target.addLegalDialect<LLVM::LLVMDialect>();
+
+    if (failed(applyPartialConversion(getOperation(), target,
+                                      std::move(patterns))))
+      return signalPassFailure();
+  }
+};
+
 } // namespace
 
-std::unique_ptr<mlir::Pass> circt_hls::cosim::createCosimLowerWrapPass() {
-  return std::make_unique<CosimLowerWrapPass>();
+std::unique_ptr<mlir::Pass> circt_hls::cosim::createCosimLowerCallPass() {
+  return std::make_unique<CosimLowerCallPass>();
+}
+
+std::unique_ptr<mlir::Pass> circt_hls::cosim::createCosimLowerComparePass() {
+  return std::make_unique<CosimLowerComparePass>();
 }

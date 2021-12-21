@@ -19,6 +19,16 @@
 #include "circt-hls/Dialect/Cosim/CosimOps.h"
 #include "mlir/Pass/Pass.h"
 
+namespace mlir {
+namespace scf {
+class SCFDialect;
+}
+namespace LLVM {
+class LLVMDialect;
+}
+
+} // namespace mlir
+
 namespace circt_hls {
 namespace cosim {
 

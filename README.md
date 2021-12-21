@@ -9,6 +9,7 @@ A collection of repositories and tools used to realise various end-to-end high-l
 - **Calyx native compiler:** A rust compiler for the [Calyx](https://calyxir.org/) Hardware IR
 - **HSDbg:** A visual debugging tool for Handshake (dataflow) circuits
 - **HLT:** An MLIR-to-Verilator cosimulation framework
+- **Cosim:** A dialect to support cosimulation and coverification
 - **hls-opt:** Various HLS-related MLIR passes, mostly to support the above tools.
 
 These are the (intended) end-to-end flows that can be driven from this directory:
