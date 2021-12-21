@@ -30,9 +30,9 @@ class HSDbgImageServer:
       def index():
         return render_template("index.html")
 
-      @app.route("/cycle")
-      def cycle():
-        return jsonify(cycle=self.hsdbg.currentCycle())
+      @app.route("/step")
+      def step():
+        return jsonify(step=self.hsdbg.currentStep())
 
       # Serve the svg file on any path request.
       @app.route("/<path:path>")

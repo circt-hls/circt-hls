@@ -125,7 +125,7 @@ class HSDbg():
 
     self.vcd = None
     self.parseVCD(vcdFile)
-    self.cycle = self.beginTime()
+    self.step = self.beginTime()
     self.resolveDotToVCD()
 
     if printBundles:
@@ -134,7 +134,7 @@ class HSDbg():
       return
 
     # Create the graph.
-    self.updateCurrentCycle(self.cycle)
+    self.updatecurrentStep(self.step)
 
   def printBundles(self):
     for b in self.bundles:
@@ -193,8 +193,8 @@ class HSDbg():
 
     return
 
-  def currentCycle(self):
-    return self.cycle
+  def currentStep(self):
+    return self.step
 
   def setupWorkingImage(self, dotFile):
     temp_dir = tempfile.gettempdir()
@@ -211,20 +211,20 @@ class HSDbg():
   def parseVCD(self, vcdFile):
     self.vcd = VCDVCD(vcdFile)
 
-  def updateCurrentCycle(self, cycle):
+  def updatecurrentStep(self, step):
     try:
-      cycle = int(cycle)
+      step = int(step)
     except ValueError:
-      print("Invalid cycle value: " + str(cycle))
+      print("Invalid step value: " + str(step))
       return
 
-    if cycle < self.beginTime():
+    if step < self.beginTime():
       print(f"Capping at minimum time ({self.beginTime()})")
-      cycle = self.beginTime()
-    elif cycle > self.endTime():
+      step = self.beginTime()
+    elif step > self.endTime():
       print(f"Capping at maximum time ({self.endTime()})")
-      cycle = self.endTime()
-    self.cycle = cycle
+      step = self.endTime()
+    self.step = step
 
     self.updateGraph()
 
@@ -232,7 +232,7 @@ class HSDbg():
     # Update edge state of all bundle edges.
     for bundle in self.bundles:
       self.dotFile.addAttributesToEdge(
-          bundle.edge, bundle.getEdgeStateAttrs(self.vcd, self.cycle))
+          bundle.edge, bundle.getEdgeStateAttrs(self.vcd, self.step))
 
     # Dump the modified dot file to a temporary file.
     workingDotfile = self.workingImagePath + ".dot"
@@ -248,15 +248,15 @@ class HSDbg():
 
   # A callback for handling left arrow presses.
   def left(self):
-    self.updateCurrentCycle(self.cycle - 1)
+    self.updatecurrentStep(self.step - 1)
 
     # A callback for handling right arrow presses.
   def right(self):
-    self.updateCurrentCycle(self.cycle + 1)
+    self.updatecurrentStep(self.step + 1)
 
     # A callback for handling "goto" commands.
-  def goto(self, cycle):
-    self.updateCurrentCycle(cycle)
+  def goto(self, step):
+    self.updatecurrentStep(step)
 
 
 def start_interactive_mode(port, hsdbg):
@@ -267,14 +267,14 @@ Usage:
 
     right arrow: step forward 1 timestep in vcd time
     left arrow: step backwards 1 timestep in vcd time
-    g <cycle>: step to a specific cycle in vcd time
+    g <step>: step to a specific step in vcd time
 
 "Entering interactive mode. Type 'q' to quit."
 """
   print(flush=True)
   print(msg)
   while True:
-    print(f"\r> [{hsdbg.currentCycle()}] ", end="")
+    print(f"\r> [{hsdbg.currentStep()}] ", end="")
     command = readchar.readkey()
     if command == "q":
       print("Exiting...")
@@ -284,7 +284,7 @@ Usage:
     elif command == '\x1b[C':
       hsdbg.right()
     elif command == "g":
-      address = input("Goto cycle: ")
+      address = input("Goto step: ")
       hsdbg.goto(address)
 
 
