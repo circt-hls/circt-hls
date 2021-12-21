@@ -8,6 +8,11 @@ add_llvm_tool(hls-opt
 llvm_update_compile_flags(hls-opt)
 target_link_libraries(hls-opt
   PRIVATE
+
+  CIRCTHLSTransforms
+  CIRCTHLSCosim
+  CIRCTHLSCosimTransforms
+
   CIRCTAffineToStaticLogic
   CIRCTAnalysisTestPasses
   CIRCTCalyx
@@ -37,7 +42,6 @@ target_link_libraries(hls-opt
   CIRCTStaticLogicOps
   CIRCTSV
   CIRCTSVTransforms
-  CIRCTHLSTransforms
 
   
   MLIRIR

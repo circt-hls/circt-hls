@@ -12,6 +12,8 @@
 //===----------------------------------------------------------------------===//
 
 #include "circt-hls/InitAllDialects.h"
+#include "circt-hls/InitAllPasses.h"
+
 #include "circt/Support/LoweringOptions.h"
 #include "mlir/Dialect/Affine/IR/AffineOps.h"
 #include "mlir/Dialect/Arithmetic/IR/Arithmetic.h"
@@ -22,8 +24,6 @@
 #include "mlir/Pass/PassRegistry.h"
 #include "mlir/Support/MlirOptMain.h"
 #include "mlir/Transforms/Passes.h"
-
-#include "circt-hls/Transforms/Passes.h"
 
 int main(int argc, char **argv) {
   mlir::DialectRegistry registry;
@@ -43,7 +43,8 @@ int main(int argc, char **argv) {
   mlir::registerSCCPPass();
   mlir::registerInlinerPass();
   mlir::registerCanonicalizerPass();
-  circt_hls::registerTransformsPasses();
+
+  circt_hls::registerAllPasses();
 
   return mlir::failed(mlir::MlirOptMain(
       argc, argv, "CIRCT HLS modular optimizer driver", registry,

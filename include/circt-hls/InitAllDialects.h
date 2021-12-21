@@ -28,6 +28,8 @@
 #include "circt/Dialect/StaticLogic/StaticLogic.h"
 #include "mlir/IR/Dialect.h"
 
+#include "circt-hls/Dialect/Cosim/CosimDialect.h"
+
 namespace circt_hls {
 
 // Add all the MLIR dialects to the provided registry.
@@ -35,7 +37,8 @@ inline void registerAllDialects(mlir::DialectRegistry &registry) {
   // clang-format off
   registry.insert<
     circt::calyx::CalyxDialect,
-    circt::handshake::HandshakeDialect
+    circt::handshake::HandshakeDialect,
+    circt_hls::cosim::CosimDialect
   >();
   // clang-format on
 }
