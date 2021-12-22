@@ -148,7 +148,7 @@ struct ConvertCallPattern : OpRewritePattern<cosim::CallOp> {
     };
 
     // Call the reference
-    emitCall(op.func().str(), op.getOperands());
+    emitCall(op.ref(), op.getOperands());
 
     // Create calls to the targets
     for (auto target : targetOperands)

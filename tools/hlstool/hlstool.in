@@ -95,7 +95,10 @@ def run_tool(args,
              exitOnError=True):
   cmd = " ".join(args)
 
-  print_info(f"Running: {cmd}")
+  infostr = f"Running: {cmd}"
+  if stdOutFile:
+    infostr += f" > {stdOutFile}"
+  print_info(infostr)
 
   def onError(returnCode, stdOut, stdErr):
     stdErr = str(stdErr).replace("\\n", "\n")
@@ -198,6 +201,12 @@ class HLSMode:
     self.tb_llvm = os.path.join(args.outdir, args.kernel_name + "_tb_llvm.mlir")
     self.tb_output = os.path.join(args.outdir,
                                   args.kernel_name + "_tb_output.txt")
+    self.cosim_call = os.path.join(args.outdir,
+                                   args.kernel_name + "_tb_cosim_call.txt")
+    self.cosim_compare = os.path.join(
+        args.outdir, args.kernel_name + "_tb_cosim_compare.txt")
+    self.cosim_lowered = os.path.join(
+        args.outdir, args.kernel_name + "_tb_cosim_lowered.txt")
 
     # Analysis files
     self.resource_estimate = os.path.join(
@@ -304,7 +313,7 @@ class DynamicMode(HLSMode):
         '--buffer_strategy',
         type=str,
         default="cycles",
-        help="Buffer strategy to use, see 'circt-opt --handshake-insert-buffer'"
+        help="Buffer strategy to use, see 'circt-opt --handshake-insert-buffers'"
     )
 
     dynamic_parser.add_argument(
@@ -312,7 +321,7 @@ class DynamicMode(HLSMode):
         type=int,
         default=2,
         help=
-        "Number of slots in each buffer, see 'circt-opt --handshake-insert-buffer'"
+        "Number of slots in each buffer, see 'circt-opt --handshake-insert-buffers'"
     )
 
   def parse_arguments(self, parser):
@@ -362,6 +371,12 @@ class DynamicMode(HLSMode):
     self.kernel_affine = os.path.join(args.outdir,
                                       args.kernel_name + "_affine.mlir")
     self.kernel_std = os.path.join(args.outdir, args.kernel_name + "_std.mlir")
+    # A renamed version of the kernel wherein the function name does not clash with
+    # the name of the handshake kernel.
+    self.kernel_std_ref = os.path.join(args.outdir,
+                                       args.kernel_name + "_std_ref.mlir")
+    self.kernel_name_ref = args.kernel_name + "_ref"
+
     self.kernel_std_max = os.path.join(args.outdir,
                                        args.kernel_name + "_std_max.mlir")
     self.kernel_handshake = os.path.join(args.outdir,
@@ -461,7 +476,7 @@ class DynamicMode(HLSMode):
       # Add buffers
       runIfNotExists(
           self.kernel_handshake_buffered, lambda: run_circt_opt([
-              f"--handshake-insert-buffer=\"strategies={args.buffer_strategy} buffer-size={args.buffer_size}\"",
+              f"--handshake-insert-buffers=\"strategy={args.buffer_strategy} buffer-size={args.buffer_size}\"",
           ], self.kernel_handshake_unbuffered, self.kernel_handshake_buffered))
 
       # Run the add-ids pass to ensure that we have a deterministic mapping between
@@ -613,12 +628,41 @@ class DynamicMode(HLSMode):
         f"flattened multidimensional memref's in calls to unidimensional ({self.tb_poly_flat})"
     )
 
+    tbFile = self.tb_mlir
+
+    # Cosimulate?
+    if args.cosim:
+      # Rename the std kernel so we don't have a name collision with the RTL kernel.
+      runIfNotExists(
+          self.kernel_std_ref, lambda: run_hls_opt([
+              f"--rename-func=\"f={args.kernel_name} to={self.kernel_name_ref}\""
+          ], self.kernel_std, self.kernel_std_ref))
+
+      # Add cosim.call to the testbench. We'll just do this inline, outside of the
+      # predetermined names...
+      run_hls_opt([
+          f"--cosim-convert-call=\"from={args.kernel_name} ref={self.kernel_name_ref} targets={args.kernel_name}\"",
+      ], self.tb_poly_flat, self.cosim_call)
+      print_info(
+          f"Added cosim call to ({self.cosim_call}). "
+          f"Reference function is {self.kernel_name_ref} and target function is {args.kernel_name}"
+      )
+
+      # Lower cosim operations
+      run_hls_opt([f"--cosim-lower-call"], self.cosim_call, self.cosim_compare)
+      run_hls_opt([f"--cosim-lower-compare"], self.cosim_compare,
+                  self.cosim_lowered)
+      print_info(f"Lowered cosim operations in ({self.cosim_lowered})")
+
+      # Set the current point of the testbench to the cosim-lowered testbench
+      tbFile = self.cosim_lowered
+
     # Asynchronize to adhere with HLT. We assume that the testname is equal to the
     # kernel name - which in turn is the function to asynchronize.
     runIfNotExists(
         self.tb_mlir, lambda: run_hls_opt([
             f"--asyncify-calls=\"function={args.kernel_name}\""
-        ], self.tb_poly_flat, self.tb_mlir))
+        ], tbFile, self.tb_mlir))
     print_info(f"Async-ified the testbench ({self.tb_mlir})")
 
     runIfNotExists(
@@ -890,6 +934,12 @@ To see the arguments for a specific mode, use\n
       action='store_true',
       help="Run Vivado and generate a resource estimate. An output text file "
       "will be generated in the output directory.")
+
+  parser.add_argument(
+      "--cosim",
+      action='store_true',
+      help="Modify and run the testbench in cosim mode. This requires that a "
+      "software version of the kernel is available (standard MLIR).")
 
   parser.add_argument(
       "--checkpoint",
