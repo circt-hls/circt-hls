@@ -59,6 +59,13 @@ def CallOp : Cosim_Op<"call", [
       return (*this)->getAttrOfType<mlir::SymbolRefAttr>("func");
     }
   }];
+
+  let skipDefaultBuilders = 1;
+  let builders = [
+    OpBuilder<
+    (ins "mlir::SymbolRefAttr":$func, "mlir::TypeRange":$results, "mlir::StringRef":$ref,
+      "mlir::ArrayRef<std::string>":$targets, CArg<"mlir::ValueRange", "{}">:$operands)>
+  ];
 }
 
 def CompareOp : Cosim_Op<"compare", [

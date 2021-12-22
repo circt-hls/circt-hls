@@ -141,22 +141,25 @@ struct ConvertCallPattern : OpRewritePattern<cosim::CallOp> {
       }
     }
 
-    // Add the reference function to targetOperands and just use the original
-    // inputs
-    for (auto operand : op.getOperands())
-      targetOperands[op.func().str()].push_back(operand);
+    std::map<std::string, mlir::CallOp> targetCalls;
+    auto emitCall = [&](StringRef callee, ValueRange operands) {
+      targetCalls[callee.str()] = rewriter.create<mlir::CallOp>(
+          op.getLoc(), targetFunctions.at(callee.str()), operands);
+    };
+
+    // Call the reference
+    emitCall(op.func().str(), op.getOperands());
 
     // Create calls to the targets
-    std::map<std::string, mlir::CallOp> targetCalls;
-    for (auto target : targetOperands) {
-      targetCalls[target.first] = rewriter.create<mlir::CallOp>(
-          op.getLoc(), targetFunctions.at(target.first), target.second);
-    }
+    for (auto target : targetOperands)
+      emitCall(target.first, target.second);
 
     // Emit cosim comparison between the reference function and the target
     // functions.
     mlir::CallOp refCall = targetCalls[op.ref().str()];
     for (auto &call : targetCalls) {
+      // Ignore the reference call; all other target calls will compare against
+      // this call.
       if (call.second == refCall)
         continue;
 
@@ -385,6 +388,45 @@ struct CosimLowerComparePass
   }
 };
 
+struct ConvertStdCallPattern : OpRewritePattern<mlir::CallOp> {
+  ConvertStdCallPattern(MLIRContext *ctx, StringRef from, StringRef ref,
+                        const std::vector<std::string> &targets)
+      : OpRewritePattern(ctx), from(from), ref(ref), targets(targets) {}
+  LogicalResult matchAndRewrite(mlir::CallOp op,
+                                PatternRewriter &rewriter) const override {
+    if (op.callee() != from)
+      return failure();
+
+    rewriter.replaceOpWithNewOp<cosim::CallOp>(op, op.getCalleeAttr(),
+                                               op.getResultTypes(), ref,
+                                               targets, op.getOperands());
+    return success();
+  }
+
+  StringRef from;
+  StringRef ref;
+  const std::vector<std::string> &targets;
+};
+
+struct CosimConvertCallPass
+    : public CosimConvertCallBase<CosimConvertCallPass> {
+  void runOnFunction() override {
+    auto funcOp = getOperation();
+    auto ctx = funcOp.getContext();
+
+    RewritePatternSet patterns(ctx);
+    patterns.insert<ConvertStdCallPattern>(ctx, from, ref, targets);
+    ConversionTarget target(*ctx);
+    target.addDynamicallyLegalOp<mlir::CallOp>(
+        [&](mlir::CallOp callOp) { return callOp.callee() != from; });
+    target.addLegalDialect<cosim::CosimDialect>();
+
+    if (failed(applyPartialConversion(getOperation(), target,
+                                      std::move(patterns))))
+      return signalPassFailure();
+  }
+};
+
 } // namespace
 
 std::unique_ptr<mlir::Pass> circt_hls::cosim::createCosimLowerCallPass() {
@@ -393,4 +435,8 @@ std::unique_ptr<mlir::Pass> circt_hls::cosim::createCosimLowerCallPass() {
 
 std::unique_ptr<mlir::Pass> circt_hls::cosim::createCosimLowerComparePass() {
   return std::make_unique<CosimLowerComparePass>();
+}
+
+std::unique_ptr<mlir::Pass> circt_hls::cosim::createCosimConvertCallPass() {
+  return std::make_unique<CosimConvertCallPass>();
 }

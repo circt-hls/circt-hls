@@ -130,3 +130,29 @@ module {
   }
   func private @foo(i32, i32) -> (i32)
 }
+
+
+// -----
+
+// This tests a bug where the ref call was emitted after the targets (and compares)
+// to the ref call results.
+
+// CHECK-LABEL:   func @ordering() {
+// CHECK:           %[[VAL_0:.*]] = arith.constant 0 : i32
+// CHECK:           %[[VAL_1:.*]] = arith.constant 1 : i32
+// CHECK:           %[[VAL_2:.*]] = call @foo(%[[VAL_0]], %[[VAL_1]]) : (i32, i32) -> i32
+// CHECK:           %[[VAL_3:.*]] = call @a(%[[VAL_0]], %[[VAL_1]]) : (i32, i32) -> i32
+// CHECK:           cosim.compare %[[VAL_2]], %[[VAL_3]] : i32 {ref_src = @foo, target_src = @a}
+// CHECK:           %[[VAL_4:.*]] = call @b(%[[VAL_0]], %[[VAL_1]]) : (i32, i32) -> i32
+// CHECK:           cosim.compare %[[VAL_2]], %[[VAL_4]] : i32 {ref_src = @foo, target_src = @b}
+// CHECK:           return
+// CHECK:         }
+module {
+  func @ordering() {
+    %c0_i32 = arith.constant 0 : i32
+    %c1_i32 = arith.constant 1 : i32
+    %0 = cosim.call @foo(%c0_i32, %c1_i32) : (i32, i32) -> i32 {ref = "foo", targets = ["a", "b"]}
+    return
+  }
+  func private @foo(i32, i32) -> i32
+}

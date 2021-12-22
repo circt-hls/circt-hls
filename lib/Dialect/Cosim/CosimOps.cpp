@@ -28,5 +28,22 @@ static LogicalResult verifyCallOp(cosim::CallOp op) {
   return success();
 }
 
+void cosim::CallOp::build(OpBuilder &odsBuilder, OperationState &state,
+                          SymbolRefAttr func, mlir::TypeRange results,
+                          StringRef ref, ArrayRef<std::string> targets,
+                          ValueRange operands) {
+  auto ctx = odsBuilder.getContext();
+  state.addOperands(operands);
+  state.addAttribute("func", func);
+  state.addTypes(results);
+  state.addAttribute("ref", StringAttr::get(ref, ctx));
+
+  llvm::SmallVector<Attribute> targetsAttr;
+  for (auto &target : targets)
+    targetsAttr.push_back(StringAttr::get(target, ctx));
+
+  state.addAttribute("targets", ArrayAttr::get(ctx, targetsAttr));
+}
+
 #define GET_OP_CLASSES
 #include "circt-hls/Dialect/Cosim/Cosim.cpp.inc"

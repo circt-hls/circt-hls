@@ -25,6 +25,7 @@ class FuncOp;
 
 std::unique_ptr<mlir::Pass> createCosimLowerCallPass();
 std::unique_ptr<mlir::Pass> createCosimLowerComparePass();
+std::unique_ptr<mlir::Pass> createCosimConvertCallPass();
 
 /// Generate the code for registering passes.
 #define GEN_PASS_REGISTRATION

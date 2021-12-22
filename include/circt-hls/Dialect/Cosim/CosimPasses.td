@@ -40,5 +40,25 @@ def CosimLowerCompare : FunctionPass<"cosim-lower-compare"> {
   ];
 }
 
+def CosimConvertCall : FunctionPass<"cosim-convert-call"> {
+  let summary = "Converts a std.call operation to a cosim.call operation";
+  let description = [{
+    This pass converts a std.call operation to a cosim.call operation.
+  }];
+  let constructor = "circt_hls::cosim::createCosimConvertCallPass()";
+  let options = [
+    Option<"from", "from", "std::string", "",
+      /*description=*/"Convert std.call operation(s) which call 'from'.">,
+    Option<"ref", "ref", "std::string", "",
+      /*description=*/"The name of the reference function to use.">,
+    ListOption<"targets", "targets", "std::string",
+      /*description=*/"The names of the target functions to use.",
+      "llvm::cl::MiscFlags::CommaSeparated">
+  ];
+  let dependentDialects = [
+    "circt_hls::cosim::CosimDialect"
+  ];
+}
+
 
 #endif // CIRCT_DIALECT_COSIM_COSIMPASSES_TD
