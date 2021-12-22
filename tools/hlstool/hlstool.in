@@ -207,6 +207,8 @@ class HLSMode:
         args.outdir, args.kernel_name + "_tb_cosim_compare.txt")
     self.cosim_lowered = os.path.join(
         args.outdir, args.kernel_name + "_tb_cosim_lowered.txt")
+    self.cosim_resolved = os.path.join(
+        args.outdir, args.kernel_name + "_tb_cosim_resolved.txt")
 
     # Analysis files
     self.resource_estimate = os.path.join(
@@ -654,8 +656,22 @@ class DynamicMode(HLSMode):
                   self.cosim_lowered)
       print_info(f"Lowered cosim operations in ({self.cosim_lowered})")
 
+      # Move the std reference kernel into the test bench file. This is a simpler
+      # way of resolving the symbol than the alternative (compile std kernel to
+      # llvmir and then into a shared library, and finally link against that dynamically
+      # at runtime).
+      run_tool([
+          os.path.join(CIRCT_HLS_BIN_DIR, "mlir-resolve"), "--file1",
+          self.cosim_lowered, "--file2", self.kernel_std_ref
+      ],
+               stdOutFile=self.cosim_resolved,
+               shell=True)
+      print_info(
+          f"Merged reference kernel {self.kernel_std_ref} into testbench {self.cosim_resolved}"
+      )
+
       # Set the current point of the testbench to the cosim-lowered testbench
-      tbFile = self.cosim_lowered
+      tbFile = self.cosim_resolved
 
     # Asynchronize to adhere with HLT. We assume that the testname is equal to the
     # kernel name - which in turn is the function to asynchronize.
