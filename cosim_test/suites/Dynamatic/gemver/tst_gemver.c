@@ -39,4 +39,5 @@ int main(void) {
     gemver(alpha[i], beta[i], A[i], u1[i], v1[i], u2[i], v2[i], w[i], x[i],
            y[i], z[i]);
   }
+  return 0;
 }

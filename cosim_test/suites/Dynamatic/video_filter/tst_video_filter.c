@@ -29,4 +29,5 @@ int main(void) {
     video_filter(pixel_red[i], pixel_blue[i], pixel_green[i], offset[i],
                  scale[i]);
   }
+  return 0;
 }

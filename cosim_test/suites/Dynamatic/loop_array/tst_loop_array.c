@@ -22,4 +22,5 @@ int main(void) {
   for (int i = 0; i < N_KERNEL_CALLS; ++i) {
     loop_array(n[i], k[i], c[i]);
   }
+  return 0;
 }

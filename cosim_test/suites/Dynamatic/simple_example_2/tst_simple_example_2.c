@@ -19,4 +19,5 @@ int main(void) {
   for (int i = 0; i < N_KERNEL_CALLS; ++i) {
     simple_example_2(a[i]);
   }
+  return 0;
 }

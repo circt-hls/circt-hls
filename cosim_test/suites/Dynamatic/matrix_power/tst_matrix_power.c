@@ -1,5 +1,6 @@
 // This circuit deadlocks if we use buffer size <=2
-// RUN: hlstool --no_trace --rebuild --tb_file %s dynamic --run_sim --buffer_size=3
+// RUN: hlstool --no_trace --rebuild --tb_file %s dynamic --run_sim
+// --buffer_size=3
 
 #include "matrix_power.h"
 #include <stdlib.h>
@@ -26,4 +27,5 @@ int main(void) {
   for (int i = 0; i < N_KERNEL_CALLS; ++i) {
     matrix_power(mat[i], row[i], col[i], a[i]);
   }
+  return 0;
 }

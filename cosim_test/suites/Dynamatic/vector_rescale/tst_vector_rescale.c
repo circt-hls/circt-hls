@@ -20,4 +20,5 @@ int main(void) {
   for (int i = 0; i < N_KERNEL_CALLS; ++i) {
     vector_rescale(a[i], c[i]);
   }
+  return 0;
 }

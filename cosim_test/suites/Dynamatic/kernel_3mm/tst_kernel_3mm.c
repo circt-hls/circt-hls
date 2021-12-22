@@ -31,4 +31,5 @@ int main(void) {
   for (int i = 0; i < N_KERNEL_CALLS; ++i) {
     kernel_3mm(A[i], B[i], C[i], D[i], E[i], F[i], G[i]);
   }
+  return 0;
 }

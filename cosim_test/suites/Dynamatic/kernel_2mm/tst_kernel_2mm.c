@@ -28,4 +28,5 @@ int main(void) {
   for (int i = 0; i < N_KERNEL_CALLS; ++i) {
     kernel_2mm(alpha[i], beta[i], tmp[i], A[i], B[i], C[i], D[i]);
   }
+  return 0;
 }

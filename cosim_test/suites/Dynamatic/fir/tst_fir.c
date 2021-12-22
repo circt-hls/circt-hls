@@ -21,4 +21,5 @@ int main(void) {
   for (int i = 0; i < 1; ++i) {
     fir(d_i[i], idx[i]);
   }
+  return 0;
 }

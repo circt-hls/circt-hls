@@ -20,4 +20,5 @@ int main(void) {
   for (int i = 0; i < N_KERNEL_CALLS; ++i) {
     matvec(M[i], V[i], Out[i]);
   }
+  return 0;
 }

@@ -15,4 +15,5 @@ int main(void) {
   for (int i = 0; i < N_KERNEL_CALLS; ++i) {
     sumi3_mem(a[i]);
   }
+  return 0;
 }

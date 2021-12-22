@@ -20,4 +20,5 @@ int main(void) {
   for (int i = 0; i < N_KERNEL_CALLS; ++i) {
     stencil_2d(orig[i], sol[i], filter[i]);
   }
+  return 0;
 }

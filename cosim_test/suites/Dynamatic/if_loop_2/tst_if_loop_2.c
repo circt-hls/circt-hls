@@ -18,4 +18,5 @@ int main(void) {
   for (int i = 0; i < N_KERNEL_CALLS; ++i) {
     if_loop_2(a[i], n[i]);
   }
+  return 0;
 }

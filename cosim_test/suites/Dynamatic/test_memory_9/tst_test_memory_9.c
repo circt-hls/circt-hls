@@ -19,4 +19,5 @@ int main(void) {
   for (int i = 0; i < N_KERNEL_CALLS; ++i) {
     test_memory_9(a[i], n[i]);
   }
+  return 0;
 }

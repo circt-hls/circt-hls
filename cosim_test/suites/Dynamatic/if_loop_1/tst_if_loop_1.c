@@ -18,4 +18,5 @@ int main(void) {
   for (int i = 0; i < 1; ++i) {
     if_loop_1(a[i], n[i]);
   }
+  return 0;
 }

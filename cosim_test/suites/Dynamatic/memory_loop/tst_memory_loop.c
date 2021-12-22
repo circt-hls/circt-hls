@@ -17,4 +17,5 @@ int main(void) {
   for (int i = 0; i < N_KERNEL_CALLS; ++i) {
     memory_loop(x[i], y[i]);
   }
+  return 0;
 }

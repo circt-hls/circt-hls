@@ -20,4 +20,5 @@ int main(void) {
   for (int i = 0; i < N_KERNEL_CALLS; ++i) {
     if_loop_3(a[i], b[i], n[i]);
   }
+  return 0;
 }

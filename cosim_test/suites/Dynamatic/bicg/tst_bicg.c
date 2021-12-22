@@ -27,4 +27,5 @@ int main(void) {
   for (int i = 0; i < N_KERNEL_CALLS; ++i) {
     bicg(A[i], s[i], q[i], p[i], r[i]);
   }
+  return 0;
 }

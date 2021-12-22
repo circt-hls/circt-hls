@@ -24,4 +24,5 @@ int main(void) {
   for (int i = 0; i < N_KERNEL_CALLS; ++i) {
     iir(y[i], x[i], a[i], b[i]);
   }
+  return 0;
 }

@@ -23,4 +23,5 @@ int main(void) {
   for (int i = 0; i < N_KERNEL_CALLS; ++i) {
     matrix(in_a[i], in_b[i], out_c[i]);
   }
+  return 0;
 }

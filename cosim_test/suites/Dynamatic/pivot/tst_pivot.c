@@ -17,4 +17,5 @@ int main(void) {
   for (int i = 0; i < N_KERNEL_CALLS; ++i) {
     pivot(x[i], a[i], 100, 2);
   }
+  return 0;
 }

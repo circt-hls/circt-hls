@@ -22,4 +22,5 @@ int main(void) {
   for (int i = 0; i < N_KERNEL_CALLS; ++i) {
     gaussian(c[i], A[i]);
   }
+  return 0;
 }

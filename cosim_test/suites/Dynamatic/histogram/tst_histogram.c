@@ -24,4 +24,5 @@ int main(void) {
   for (int i = 0; i < AMOUNT_OF_TEST; ++i) {
     histogram(feature[i], weight[i], hist[i], n[i]);
   }
+  return 0;
 }

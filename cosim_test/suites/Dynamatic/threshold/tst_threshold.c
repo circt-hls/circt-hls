@@ -21,4 +21,5 @@ int main(void) {
   for (int i = 0; i < N_KERNEL_CALLS; ++i) {
     threshold(red[i], green[i], blue[i], th[i]);
   }
+  return 0;
 }
