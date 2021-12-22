@@ -240,7 +240,7 @@ class HLSMode:
     self.tb_mlir = os.path.join(args.outdir, args.kernel_name + "_tb.mlir")
     self.tb_llvm = os.path.join(args.outdir, args.kernel_name + "_tb_llvm.mlir")
     self.tb_output = os.path.join(args.outdir,
-                                  args.kernel_name + "_tb_output.mlir")
+                                  args.kernel_name + "_tb_output.txt")
     self.cosim_call = os.path.join(args.outdir,
                                    args.kernel_name + "_tb_cosim_call.mlir")
     self.cosim_compare = os.path.join(
