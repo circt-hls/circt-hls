@@ -10,7 +10,6 @@
 int main(void) {
   int a[N_KERNEL_CALLS][N];
   int n[N_KERNEL_CALLS];
-  srand(13);
   for (int i = 0; i < N_KERNEL_CALLS; ++i) {
     n[i] = N / 2;
     for (int j = 0; j < N; ++j) {
