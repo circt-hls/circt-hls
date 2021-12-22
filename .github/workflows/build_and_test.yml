@@ -29,6 +29,9 @@ jobs:
       with:
         toolchain: stable
 
+    - name: Get Verilator
+      run: apt-get install libsystemc libsystemc-dev verilator
+
     # Step 1: Build CIRCT + LLVM + MLIR
 
     # Checkout CIRCT. This also checks out CIRCTs LLVM submodule
