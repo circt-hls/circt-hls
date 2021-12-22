@@ -19,16 +19,8 @@ using namespace circt_hls;
 using namespace cosim;
 
 static LogicalResult verifyCallOp(cosim::CallOp op) {
-  if (!op.ref().isa<StringAttr>())
-    return op.emitOpError() << "expected 'ref' to be a string.";
-
-  if (llvm::any_of(op.targets(),
-                   [&](Attribute attr) { return !attr.isa<StringAttr>(); }))
-    return op.emitOpError() << "expected 'targets' to be an array of strings.";
-
   if (llvm::any_of(op.targets(), [&](Attribute attr) {
-        return attr.cast<StringAttr>().strref() ==
-               op.ref().cast<StringAttr>().strref();
+        return attr.cast<StringAttr>().strref() == op.ref();
       }))
     return op.emitOpError() << "do not include the reference function in the "
                                "set of target functions.";

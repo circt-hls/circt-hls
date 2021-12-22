@@ -83,13 +83,19 @@ static Value copyAtLastMutationBefore(Value v, Operation *beforeOp,
 }
 
 static void compareToRefAfterOp(Value ref, Value cosim, Operation *op,
-                                PatternRewriter &rewriter) {
+                                PatternRewriter &rewriter,
+                                Operation *refSrcOp = nullptr,
+                                Operation *cosimSrcOp = nullptr) {
   FlatSymbolRefAttr refSrc, cosimSrc;
 
-  if (auto refSrcOp = dyn_cast<mlir::CallOp>(ref.getDefiningOp()))
-    refSrc = FlatSymbolRefAttr::get(op->getContext(), refSrcOp.getCallee());
-  if (auto cosimSrcOp = dyn_cast<mlir::CallOp>(cosim.getDefiningOp()))
-    cosimSrc = FlatSymbolRefAttr::get(op->getContext(), cosimSrcOp.getCallee());
+  if (!refSrcOp)
+    if (auto refSrcOp = dyn_cast<mlir::CallOp>(ref.getDefiningOp()))
+      refSrc = FlatSymbolRefAttr::get(op->getContext(), refSrcOp.getCallee());
+
+  if (!cosimSrcOp)
+    if (auto cosimSrcOp = dyn_cast<mlir::CallOp>(cosim.getDefiningOp()))
+      cosimSrc =
+          FlatSymbolRefAttr::get(op->getContext(), cosimSrcOp.getCallee());
 
   auto ip = rewriter.saveInsertionPoint();
   rewriter.setInsertionPointAfter(op);
@@ -116,7 +122,7 @@ struct ConvertCallPattern : OpRewritePattern<cosim::CallOp> {
              "expected all functions to be declared in the module");
       targetFunctions[targetName.str()] = targetFunc;
     }
-    auto refName = op.ref().cast<StringAttr>().str();
+    auto refName = op.ref().str();
     mlir::FuncOp refFunc = module.lookupSymbol<mlir::FuncOp>(refName);
     assert(refFunc && "expected all functions to be declared in the module");
     targetFunctions[refName] = refFunc;
@@ -149,7 +155,7 @@ struct ConvertCallPattern : OpRewritePattern<cosim::CallOp> {
 
     // Emit cosim comparison between the reference function and the target
     // functions.
-    mlir::CallOp refCall = targetCalls[op.ref().cast<StringAttr>().str()];
+    mlir::CallOp refCall = targetCalls[op.ref().str()];
     for (auto &call : targetCalls) {
       if (call.second == refCall)
         continue;
@@ -158,7 +164,8 @@ struct ConvertCallPattern : OpRewritePattern<cosim::CallOp> {
       for (auto [refOperand, targetOperand] :
            llvm::zip(refCall.getOperands(), call.second.getOperands())) {
         if (isMutable(refOperand.getType()))
-          compareToRefAfterOp(refOperand, targetOperand, call.second, rewriter);
+          compareToRefAfterOp(refOperand, targetOperand, call.second, rewriter,
+                              refCall, call.second);
       }
 
       // Emit comparison operations on results
@@ -203,17 +210,21 @@ struct CosimLowerCallPass : public CosimLowerCallBase<CosimLowerCallPass> {
         op.getContext(), op.getOperandTypes(), op.getResultTypes());
     ImplicitLocOpBuilder builder(module.getLoc(), op.getContext());
     builder.setInsertionPointAfter(funcOp);
-    for (auto target : op.targets()) {
-      auto targetName = target.cast<StringAttr>().strref();
-      mlir::FuncOp targetFunc = module.lookupSymbol<mlir::FuncOp>(targetName);
+
+    auto createFunc = [&](StringRef name) {
+      mlir::FuncOp targetFunc = module.lookupSymbol<mlir::FuncOp>(name);
       if (!targetFunc) {
         // Function doesn't exist in module; create private definition.
         builder.setInsertionPoint(funcOp);
         targetFunc =
-            builder.create<mlir::FuncOp>(op.getLoc(), targetName, opFuncType);
+            builder.create<mlir::FuncOp>(op.getLoc(), name, opFuncType);
         targetFunc.setPrivate();
       }
-    }
+    };
+
+    for (auto target : op.targets())
+      createFunc(target.cast<StringAttr>().str());
+    createFunc(op.ref());
   }
 };
 
@@ -320,6 +331,33 @@ struct ConvertCompareMemref : OpRewritePattern<cosim::CompareOp> {
     if (!memrefType)
       return failure();
 
+    // Create a loop wherein we load each value in each memory, and compare
+    // them.
+    auto zero = rewriter.create<arith::ConstantOp>(op.getLoc(),
+                                                   rewriter.getIndexAttr(0));
+    auto one = rewriter.create<arith::ConstantOp>(op.getLoc(),
+                                                  rewriter.getIndexAttr(1));
+
+    llvm::SmallVector<Value> indices;
+    scf::ForOp innerLoop = nullptr;
+    for (auto dim : memrefType.getShape()) {
+      auto ub = rewriter.create<arith::ConstantOp>(op.getLoc(),
+                                                   rewriter.getIndexAttr(dim));
+      innerLoop = rewriter.create<scf::ForOp>(op.getLoc(), zero, ub, one);
+      indices.push_back(innerLoop.getInductionVar());
+      rewriter.setInsertionPointToStart(innerLoop.getBody());
+    }
+
+    // Load values from the two compared memories
+    auto loadRef =
+        rewriter.create<memref::LoadOp>(op.getLoc(), op.ref(), indices);
+    auto targetRef =
+        rewriter.create<memref::LoadOp>(op.getLoc(), op.target(), indices);
+
+    // Insert integer comparison
+    insertIntegerLikeComparison(op.getLoc(), op->getParentOfType<ModuleOp>(),
+                                rewriter, loadRef, targetRef);
+    rewriter.eraseOp(op);
     return success();
   }
 };

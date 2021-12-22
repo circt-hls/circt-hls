@@ -59,4 +59,19 @@ def MaxSSAForm : FunctionPass<"max-ssa"> {
   ];
 }
 
+def RenameFunction : Pass<"rename-func", "ModuleOp"> {
+  let summary = "Change a builtin.func name";
+  let description = [{
+    Change a builtin.func name.
+  }];
+  let constructor = "circt_hls::createRenameFunctionPass()";
+  let options = [
+    Option<"targetFunc", "f", "std::string", "",
+      /*description=*/"The name of the called function to rename.">,
+    Option<"renameTo", "to", "std::string", "",
+      /*description=*/"The new name of the function.">
+  ];
+
+}
+
 #endif // CIRCT_HLS_TRANSFORMS_PASSES
