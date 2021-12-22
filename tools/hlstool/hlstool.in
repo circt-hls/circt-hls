@@ -670,7 +670,7 @@ class DynamicMode(HLSMode):
         f"flattened multidimensional memref's in calls to unidimensional ({self.tb_poly_flat})"
     )
 
-    tbFile = self.tb_mlir
+    tbFile = self.tb_poly_flat
 
     # Cosimulate?
     if args.cosim:

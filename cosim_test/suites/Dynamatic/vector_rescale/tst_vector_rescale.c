@@ -1,5 +1,10 @@
 // RUN: hlstool --no_trace --rebuild --tb_file %s dynamic --run_sim
 
+// hlstool will emit a {kernel_name}_tb_output.txt file when sim didn't crash.
+// RUN: FileCheck --input-file *tb_output.txt %s
+
+// CHECK: 0
+
 #include "vector_rescale.h"
 #include <stdlib.h>
 
