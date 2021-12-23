@@ -33,24 +33,11 @@ These are the (intended) end-to-end flows that can be driven from this directory
 **Since things are changing rapidly, the most reliable method of setting this up and getting things to work is to [replicate the steps done in CI](https://github.com/circt-hls/circt-hls/blob/main/.github/workflows/build_and_test.yml) (minus the caching steps).**
 
 ## Build CIRCT
-If you don't already have a CIRCT/MLIR build locally, checkout https://github.com/llvm/circt and go follow the instructions.
+If you don't already have a CIRCT/MLIR build locally, checkout https://github.com/llvm/circt and go follow the instructions. We **do not** include a CIRCT submodule in `circt-hls` since we assume that most people interested in this project will already be looking into CIRCT.
 
 ## Build Polygeist
 Polygeist is used as the primary front-end for ingesting high-level programs. While it *is* possible to build Polygeist with an external LLVM/MLIR build, it often occurs that the CIRCT and Polygeist LLVM versions have API-breaking differences. It is suggested that you try building Polygeist with an external LLVM build (reusing your CIRCT build), and as a fallback use the internal LLVM submodule of Polygeist, which is sure to work.
-**NOTE: modify these paths to point to your own CIRCT/MLIR builds**.
-```
-cd Polygeist
-mkdir build
-cd build
-cmake -G Ninja .. \
-  -DMLIR_DIR=$PWD/../circt/llvm-project/build/lib/cmake/mlir \
-  -DCLANG_DIR=$PWD/../circt/llvm-project/build/lib/cmake/clang \
-  -DLLVM_TARGETS_TO_BUILD="host" \
-  -DLLVM_ENABLE_ASSERTIONS=ON \
-  -DCMAKE_BUILD_TYPE=DEBUG
-ninja
-ninja check-mlir-clang
-```
+Information on how to build Polygeist is available in the [Polygeist repository](https://github.com/wsmoses/Polygeist).
 
 ## Setup and build Calyx and the HLS `fud` stages
 

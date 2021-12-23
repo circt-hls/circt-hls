@@ -33,7 +33,7 @@ namespace circt_hls {
 class HandshakeVerilatorWrapper : public BaseWrapper {
 public:
   using BaseWrapper::BaseWrapper;
-  LogicalResult init(Operation *refOp, Operation *kernelOp);
+  LogicalResult init(Operation *refOp, Operation *kernelOp) override;
   LogicalResult emitPreamble(Operation *kernelOp) override;
 
 protected:
