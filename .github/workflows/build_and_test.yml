@@ -29,10 +29,43 @@ jobs:
       with:
         toolchain: stable
 
-    - name: Get Verilator
-      run: apt-get install libsystemc libsystemc-dev verilator
 
-    # Step 1: Build CIRCT + LLVM + MLIR
+    # Checkout verilator. We build verilator ourselves due to needing a recent
+    # version - more recent than that which is available through apt-get.
+    - name: Checkout Verilator
+      uses: actions/checkout@v2
+      with:
+        repository: verilator/verilator
+        path: verilator
+        submodules: 'recursive'
+        fetch-depth: 1
+    
+    - name: Cache Verilator
+      id: cache-verilator
+      uses: actions/cache@v2
+      with:
+        path: |
+          verilator/bin
+          verilator/src/obj_dbg
+          verilator/src/obj_opt
+        key: ${{ matrix.build }}-${{ matrix.os }}-verilator-${{ hashFiles('verilator/.git/HEAD') }}
+
+    # Build Verilator. We don't do this conditionally on the cache since we still
+    # need to install it into path.
+    - name: Verilator build
+      env:
+          CC: ${{ matrix.compiler.cc }}
+          CXX: ${{ matrix.compiler.cxx }}
+      run: |
+        apt-get install git perl python3 make autoconf g++ flex bison ccache
+        apt-get install libgoogle-perftools-dev numactl perl-doc ccache
+        apt-get install libfl2 libfl-dev zlibc zlib1g zlib1g-dev
+        cd verilator
+        git checkout stable
+        autoconf
+        ./configure
+        make -j $(nproc)
+        make install
 
     # Checkout CIRCT. This also checks out CIRCTs LLVM submodule
     - name: Checkout CIRCT
