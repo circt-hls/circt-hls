@@ -214,11 +214,8 @@ jobs:
           -DCMAKE_BUILD_TYPE=${{ matrix.build }}
         ninja -j$(nproc)
 
+    # Step conditionals are evaluated before matrix expansion, so we cannot use
+    # ${{ matrix.tests }} in the 'if'...
     - name: Test CIRCT-HLS
-      if: ${{ matrix.tests }} == 'enabled'
       run: |
-        echo ${{ matrix.tests }}
-        cd build
-        ninja check-circt-hls
-        ninja check-circt-hls-integration
-        ninja check-circt-hls-integration-extended
+        bash .github/scripts/run_tests.sh ${{ matrix.tests }}
