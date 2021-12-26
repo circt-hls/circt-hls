@@ -218,4 +218,4 @@ jobs:
     # ${{ matrix.tests }} in the 'if'...
     - name: Test CIRCT-HLS
       run: |
-        bash .github/scripts/run_tests.sh ${{ matrix.tests }}
+        bash .github/workflows/scripts/run_tests.sh ${{ matrix.tests }}
