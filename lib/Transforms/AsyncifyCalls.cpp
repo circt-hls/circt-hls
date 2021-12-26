@@ -13,7 +13,9 @@
 #include "PassDetail.h"
 #include "mlir/Conversion/LLVMCommon/ConversionTarget.h"
 #include "mlir/Conversion/LLVMCommon/Pattern.h"
+#include "mlir/Dialect/Affine/IR/AffineOps.h"
 #include "mlir/Dialect/Arithmetic/IR/Arithmetic.h"
+#include "mlir/Dialect/LLVMIR/LLVMDialect.h"
 #include "mlir/Dialect/MemRef/IR/MemRef.h"
 #include "mlir/Dialect/SCF/SCF.h"
 #include "mlir/Dialect/StandardOps/IR/Ops.h"
@@ -269,8 +271,6 @@ public:
     if (failed(applyPartialConversion(getOperation(), target,
                                       std::move(patterns))))
       return signalPassFailure();
-
-    getOperation().dump();
   };
 
   void createExternalSymbols(FuncOp sourceOp);
@@ -282,11 +282,14 @@ private:
 };
 
 void AsyncifyCallsPass::addTargetLegalizations(ConversionTarget &target) {
+  // Expecting affine loops to be lowered to SCF
+  target.addIllegalDialect<mlir::AffineDialect>();
   target.addLegalDialect<scf::SCFDialect>();
   target.addLegalDialect<memref::MemRefDialect>();
   target.addLegalDialect<mlir::BuiltinDialect>();
   target.addLegalDialect<mlir::StandardOpsDialect>();
   target.addLegalDialect<arith::ArithmeticDialect>();
+  target.addLegalDialect<LLVM::LLVMDialect>();
   target.addDynamicallyLegalOp<mlir::CallOp>([&](CallOp op) {
     // We expect the target function to be removed after asyncification.
     return op.callee() != functionName;
