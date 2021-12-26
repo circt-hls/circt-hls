@@ -193,8 +193,8 @@ jobs:
       id: cache-circt-hls
       uses: actions/cache@v2
       with:
-        path: circt/build
-        key: ${{ matrix.build }}-${{ matrix.os }}-circt-hls-${{ hashFiles('.git/HEAD') }}
+        path: build
+        key: ${{ matrix.build }}-${{ matrix.os }}-circt-hls-v2-${{ hashFiles('.git/HEAD') }}
 
     # Build CIRCT-HLS
     - name: CIRCT-HLS build
@@ -214,9 +214,10 @@ jobs:
           -DCMAKE_BUILD_TYPE=${{ matrix.build }}
         ninja -j$(nproc)
 
-    - name: Test circt-hls
+    - name: Test CIRCT-HLS
       if: ${{ matrix.tests }} == 'enabled'
       run: |
+        echo ${{ matrix.tests }}
         cd build
         ninja check-circt-hls
         ninja check-circt-hls-integration
