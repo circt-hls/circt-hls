@@ -6,7 +6,7 @@ jobs:
   build:
     container:
       image: ghcr.io/circt/images/circt-ci-build:20211130162811
-    name: Build ${{ matrix.build }} ${{ matrix.os }} ${{ matrix.compiler }}
+    name: Build ${{ matrix.build }} ${{ matrix.os }} ${{ matrix.compiler }} Tests? ${{ matrix.tests }}
     runs-on: ${{ matrix.os }}
 
     strategy:
@@ -14,6 +14,7 @@ jobs:
       matrix:
         build: ["Release"] #, "Debug"] # "RelWithDebInfo"
         os: [ubuntu-latest]
+        tests: [enabled, disabled]
         compiler:
           - cc: clang
             cxx: clang++
@@ -213,9 +214,10 @@ jobs:
           -DCMAKE_BUILD_TYPE=${{ matrix.build }}
         ninja -j$(nproc)
 
-    # - name: Test circt-hls
-    #   run: |
-    #     cd build
-    #     ninja check-circt-hls
-    #     ninja check-circt-hls-integration
-    #     ninja check-circt-hls-integration-extended
+    - name: Test circt-hls
+      if: ${{ matrix.tests }} == 'enabled'
+      run: |
+        cd build
+        ninja check-circt-hls
+        ninja check-circt-hls-integration
+        ninja check-circt-hls-integration-extended
