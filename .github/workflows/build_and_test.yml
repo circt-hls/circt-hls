@@ -25,11 +25,14 @@ jobs:
         fetch-depth: 1
         submodules: 'recursive'
 
+    - name: Install Python requirements
+      run: |
+        pip3 install -r requirements.txt
+
     - name: Get rust toolchain
       uses: actions-rs/toolchain@v1
       with:
         toolchain: stable
-
 
     # Checkout verilator. We build verilator ourselves due to needing a recent
     # version - more recent than that which is available through apt-get.
