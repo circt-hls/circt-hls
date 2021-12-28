@@ -20,16 +20,19 @@
       console.log(jsonresp);
     }
     setInterval(updateStatus, 100);
+      document.getElementById("port").onchange = function () {
+      document.getElementById("img").src = "http://localhost:" + document.getElementById("port").value + "/image.svg";
+    }
   }
 </script>
 
 <body>
   <div style="text-align: center;">
     <h1>Handshake interactive viewer</h1>
+    <h2>Port:</h2>
+    <input type="text" id="port" value="8080">
     <h2>Step: <span id="step"></span></h2>
     <img id="img" src="http://localhost:8080/image.svg" />
   </div>
-
 </body>
-
 </html>
