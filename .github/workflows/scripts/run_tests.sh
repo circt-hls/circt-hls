@@ -7,7 +7,7 @@ if [ "$1" = "enabled" ]; then
   cd build
   ninja check-circt-hls
   ninja check-circt-hls-integration
-  ninja check-circt-cosim
+  ninja check-circt-hls-cosim
 else
   echo "Skipping tests..."
 fi
