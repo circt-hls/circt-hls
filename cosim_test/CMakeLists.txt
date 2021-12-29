@@ -5,6 +5,10 @@
 include(ProcessorCount)
 ProcessorCount(NCores)
 math(EXPR NJobs "${NCores}/4")
+if(NJobs EQUAL "0")
+  set(NJobs "1")
+endif()
+
 
 configure_lit_site_cfg(
   ${CMAKE_CURRENT_SOURCE_DIR}/lit.site.cfg.py.in
