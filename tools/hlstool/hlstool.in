@@ -494,25 +494,32 @@ class DynamicMode(HLSMode):
       else:
         copyAllowSame(expectedStdKernel, self.kernel_std)
     else:
-      # Lower the affine code into flattened standard. By flattened, we mean that
-      # all memrefs are unidimensional, since this is what is supported by the
-      # handshake passes.
+      lowerAffine = self.genPrefixedOutputFileName("scf.mlir")
       runIfNotExists(
-          self.kernel_std, lambda: run_fud("mlir-affine", "mlir-std-flattened",
-                                           self.kernel_affine, self.kernel_std))
+          lowerAffine, lambda: run_mlir_opt(
+              ["--lower-affine"], self.kernel_affine, outputFile=lowerAffine))
+
+      runIfNotExists(
+          self.kernel_std, lambda: run_mlir_opt(["--convert-scf-to-std"],
+                                                lowerAffine, self.kernel_std))
+
+      runIfNotExists(
+          self.kernel_std_flat,
+          lambda: run_circt_opt(["--flatten-memref", "--canonicalize"], self.
+                                kernel_std, self.kernel_std_flat))
 
       # Put into maximized SSA form (precondition for correct handshake lowering)
       runIfNotExists(
           self.kernel_std_max,
-          lambda: run_hls_opt(['--max-ssa=\"ignore-memref\"'], self.kernel_std,
-                              self.kernel_std_max))
+          lambda: run_hls_opt(['--max-ssa=\"ignore-memref\"'], self.
+                              kernel_std_flat, self.kernel_std_max))
       print_info(f"Lowered to standard...! ({self.kernel_std_max})")
 
       # Lower to handshake
       runIfNotExists(
-          self.kernel_handshake_unbuffered,
-          lambda: run_fud("mlir-std-flattened", "mlir-handshake", self.
-                          kernel_std_max, self.kernel_handshake_unbuffered))
+          self.kernel_handshake_unbuffered, lambda: run_circt_opt([
+              "-lower-std-to-handshake", "--canonicalize"
+          ], self.kernel_std_max, self.kernel_handshake_unbuffered))
 
       # Add buffers
       runIfNotExists(
@@ -531,14 +538,18 @@ class DynamicMode(HLSMode):
     # Lower to FIRRTL
     runIfNotExists(
         self.kernel_firrtl,
-        lambda: run_fud("mlir-handshake-buffered", "mlir-firrtl", self.
-                        kernel_handshake, self.kernel_firrtl))
+        lambda: run_circt_opt(["--lower-handshake-to-firrtl"], self.
+                              kernel_handshake, self.kernel_firrtl))
     print_info(f"Lowered to FIRRTL...! ({self.kernel_firrtl})")
 
     # Lower to SV
     runIfNotExists(
-        self.kernel_sv, lambda: run_fud("mlir-firrtl", "synth-verilog", self.
-                                        kernel_firrtl, self.kernel_sv))
+        self.kernel_sv, lambda: run_tool([
+            os.path.join(CIRCT_BIN_DIR, "firtool"), "--verilog",
+            "--format=mlir", self.kernel_firrtl
+        ],
+                                         self.kernel_sv,
+                                         shell=True))
     print_info(f"Lowered to RTL...! ({self.kernel_sv})")
 
   def run_print_dot(self):
