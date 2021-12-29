@@ -163,8 +163,8 @@ def run_tool(args,
             break
           stdOut, stdErr = b'', b''
       else:
-        code = proc.wait()
         stdOut, stdErr = proc.communicate()
+        code = proc.returncode
     else:
       res = subprocess.run(args, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
       code = res.returncode
