@@ -406,29 +406,28 @@ class DynamicMode(HLSMode):
       args.lower |= True
       print_info("enabling --lower required by --build_sim")
 
+  def genPrefixedOutputFileName(self, suffix):
+    return os.path.join(args.outdir, args.kernel_name + "_" + suffix)
+
   def gen_names_mode(self):
     # Generate dynamic-mode specific names.
 
     # Kernel files
-    self.kernel_affine = os.path.join(args.outdir,
-                                      args.kernel_name + "_affine.mlir")
-    self.kernel_std = os.path.join(args.outdir, args.kernel_name + "_std.mlir")
+    self.kernel_affine = self.genPrefixedOutputFileName("affine.mlir")
+    self.kernel_std = self.genPrefixedOutputFileName("std.mlir")
+    self.kernel_std_flat = self.genPrefixedOutputFileName("std_flat.mlir")
     # A renamed version of the kernel wherein the function name does not clash with
     # the name of the handshake kernel.
-    self.kernel_std_ref = os.path.join(args.outdir,
-                                       args.kernel_name + "_std_ref.mlir")
+    self.kernel_std_ref = self.genPrefixedOutputFileName("std_ref.mlir")
     self.kernel_name_ref = args.kernel_name + "_ref"
 
-    self.kernel_std_max = os.path.join(args.outdir,
-                                       args.kernel_name + "_std_max.mlir")
-    self.kernel_handshake = os.path.join(args.outdir,
-                                         args.kernel_name + "_handshake.mlir")
-    self.kernel_handshake_buffered = os.path.join(
-        args.outdir, args.kernel_name + "_handshake_buffered.mlir")
-    self.kernel_handshake_unbuffered = os.path.join(
-        args.outdir, args.kernel_name + "_handshake_unbuffered.mlir")
-    self.kernel_firrtl = os.path.join(args.outdir,
-                                      args.kernel_name + "_firrtl.mlir")
+    self.kernel_std_max = self.genPrefixedOutputFileName("std_max.mlir")
+    self.kernel_handshake = self.genPrefixedOutputFileName("handshake.mlir")
+    self.kernel_handshake_buffered = self.genPrefixedOutputFileName(
+        "handshake_buffered.mlir")
+    self.kernel_handshake_unbuffered = self.genPrefixedOutputFileName(
+        "handshake_unbuffered.mlir")
+    self.kernel_firrtl = self.genPrefixedOutputFileName("firrtl.mlir")
 
   def run_mode(self):
     # First, generate all of the names that we'll reference during the run.
