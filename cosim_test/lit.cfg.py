@@ -55,7 +55,10 @@ tool_dirs = [
     config.circt_tools_dir, config.mlir_tools_dir, config.llvm_tools_dir,
     config.circt_hls_tools_dir
 ]
-tools = ['hls-opt', 'hlt-wrapgen', 'dyn_incrementally_lower', 'dyn_hlt_lower']
+tools = [
+    'hls-opt', 'hlt-wrapgen', 'dyn_incrementally_lower', 'dyn_hlt_lower',
+    'hlstool'
+]
 
 # Enable Polygeist if it has been detected.
 if config.polygeist_bin_dir != "":
