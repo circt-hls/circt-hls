@@ -197,7 +197,7 @@ jobs:
       uses: actions/cache@v2
       with:
         path: build
-        key: ${{ matrix.build }}-${{ matrix.os }}-circt-hls-v2-${{ hashFiles('.git/HEAD') }}
+        key: ${{ matrix.build }}-${{ matrix.os }}-circt-hls-v2-${{ hashFiles('.git/refs/heads/main') }}
 
     # Build CIRCT-HLS
     - name: CIRCT-HLS build

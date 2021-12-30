@@ -524,14 +524,14 @@ class DynamicMode(HLSMode):
       # Add buffers
       runIfNotExists(
           self.kernel_handshake_buffered, lambda: run_circt_opt([
-              f"--handshake-insert-buffers=\"strategy={args.buffer_strategy} buffer-size={args.buffer_size}\"",
+              f"-handshake-insert-buffers=\"strategy={args.buffer_strategy} buffer-size={args.buffer_size}\"",
           ], self.kernel_handshake_unbuffered, self.kernel_handshake_buffered))
 
       # Run the add-ids pass to ensure that we have a deterministic mapping between
       # the FIRRTL/SV code and the Handshake IR/.dot file
       runIfNotExists(
           self.kernel_handshake, lambda: run_circt_opt([
-              "--handshake-add-ids"
+              "-handshake-add-ids"
           ], self.kernel_handshake_buffered, self.kernel_handshake))
       print_info(f"Lowered to handshake...! ({self.kernel_handshake})")
 
