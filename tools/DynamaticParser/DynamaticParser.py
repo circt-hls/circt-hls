@@ -56,7 +56,12 @@ class TypeResolver:
     self.knownIndexValues = {}
     self.valueTypes = {}
 
+  # Returns true if the type of SSAName changed
   def setValueType(self, SSAName, width=0, index=False, special=""):
+    preType = None
+    if SSAName in self.valueTypes:
+      preType = self.valueTypes[SSAName]
+
     if special != "":
       self.valueTypes[SSAName] = special
     elif index:
@@ -67,13 +72,42 @@ class TypeResolver:
     else:
       self.valueTypes[SSAName] = f"i{width}"
 
+    if not preType:
+      return True
+    else:
+      return preType != self.valueTypes[SSAName]
+
   def getType(self, SSAName):
     if SSAName not in self.valueTypes:
       raise Exception(f"Unknown value type for {SSAName}")
     return self.valueTypes[SSAName]
 
+  def isIndex(self, val):
+    return self.getType(val) == "index"
+
   def resolveTypesRecurse(self, ops):
-    # Don't need to do anything here yet
+    changed = False
+
+    for op in ops.values():
+      # fork
+      if op.type == "Fork" and self.isIndex(op.operands[0]):
+        for res in op.results:
+          changed |= self.setValueType(res, index=True)
+      # Mux
+      elif op.type == "Mux":
+        isIndexMux = False
+        for i in range(1, len(op.operands)):
+          if self.isIndex(op.operands[i]):
+            isIndexMux = True
+            break
+
+        if isIndexMux:
+          for i in range(1, len(op.operands)):
+            changed |= self.setValueType(op.operands[i], index=True)
+
+    if changed:
+      self.resolveTypesRecurse(ops)
+
     return
 
   def resolveTypes(self, ops):
@@ -101,6 +135,9 @@ class TypeResolver:
       elif op.type == "Source":
         # Source ops just provide a token in MLIR
         self.setValueType(op.results[0], width=0)
+      elif op.type == "Operator":
+        if op.operator == "mc_load_op":
+          self.setValueType(op.operands[1], index=True)
 
     # Iterate type inference until a fixed point is reached
     self.resolveTypesRecurse(ops)
@@ -136,8 +173,11 @@ def to_handshake_op(type):
 
 
 mlir_operator_map = {
+    "sext_op": "arith.extsi",
     "add_op": "arith.addi",
     "icmp_ult_op": "arith.cmpi ult,",
+    "icmp_sgt_op": "arith.cmpi sgt,",
+    "icmp_slt_op": "arith.cmpi slt,",
     "mul_op": "arith.muli",
     "sub_op": "arith.subi",
     "shl_op": "arith.shli",
@@ -334,7 +374,10 @@ class Op:
 
   def writeOperator(self):
     self.writer.write(mlir_operator_type(self.operator) + " ")
-    self.writeOperands()
+    if self.operator == "mc_load_op":
+      self.writer.write("[%" + self.operands[1] + "] %" + self.operands[0])
+    else:
+      self.writeOperands()
 
   def writeMC(self):
     self.writer.write(to_handshake_op(self.type) + " ")
