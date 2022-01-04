@@ -581,7 +581,7 @@ class DynamicMode(HLSMode):
     runIfNotExists(
         self.kernel_wrapper, lambda: run_tool([
             os.path.join(CIRCT_HLS_BIN_DIR, "hlt-wrapgen"
-                        ), "--func", self.kernel_std, "--ref", self.
+                        ), "--func", self.kernel_std_flat, "--ref", self.
             kernel_handshake, "--kernel", self.kernel_firrtl, "--name", args.
             kernel_name, "--type=handshakeFIRRTL", "-o", "."
         ],
