@@ -523,16 +523,16 @@ class DynamicMode(HLSMode):
           ))
 
       runIfNotExists(
-          self.kernel_std_pushedconstants,
-          lambda: run_hls_opt(["--push-constants"], self.kernel_std_mem2reg,
-                              self.kernel_std_pushedconstants))
-      # From hereon, we should _not_ perform canonicalization; this will undo
-      # the effects of --push-constants.
-
-      runIfNotExists(
           self.kernel_std_flat, lambda: run_circt_opt([
               "--flatten-memref"
           ], self.kernel_std_pushedconstants, self.kernel_std_flat))
+
+      runIfNotExists(
+          self.kernel_std_pushedconstants,
+          lambda: run_hls_opt(["--push-constants"], self.kernel_std_mem2reg,
+                              self.kernel_std_pushedconstants))
+      # From hereon, we should _not_ perform canonicalization while in standard;
+      # this will undo the effects of --push-constants.
 
       # Put into maximized SSA form (precondition for correct handshake lowering)
       runIfNotExists(
