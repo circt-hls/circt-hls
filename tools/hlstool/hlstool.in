@@ -14,7 +14,7 @@ CIRCT_BIN_DIR = "@CIRCT_INCLUDE_DIR@/../bin/"
 CIRCT_HLS_BIN_DIR = "@CIRCT_HLS_BINARY_DIR@/bin/"
 CIRCT_HLS_SOURCE_DIR = "@CIRCT_HLS_SOURCE_DIR@"
 LLVM_BIN_DIR = "@LLVM_BINARY_DIR@/bin"
-POLYGEIST_BINARY_DIR = "@POLYGEIST_BINARY_DIR@"
+POLYGEIST_BIN_DIR = "@POLYGEIST_BINARY_DIR@"
 
 ## Global variables used to drive the tool
 # Current mode
@@ -201,6 +201,10 @@ def run_opt_tool(tool_dir, tool_name, args, inputFile=None, outputFile=None):
   if inputFile:
     args.append(inputFile)
   run_tool(args, outputFile, shell=True)
+
+
+def run_polygeist_opt(args, inputFile=None, outputFile=None):
+  run_opt_tool(POLYGEIST_BIN_DIR, "polygeist-opt", args, inputFile, outputFile)
 
 
 def run_circt_opt(args, inputFile=None, outputFile=None):
@@ -415,6 +419,9 @@ class DynamicMode(HLSMode):
     # Kernel files
     self.kernel_affine = self.genPrefixedOutputFileName("affine.mlir")
     self.kernel_std = self.genPrefixedOutputFileName("std.mlir")
+    self.kernel_std_mem2reg = self.genPrefixedOutputFileName("std_mem2reg.mlir")
+    self.kernel_std_pushedconstants = self.genPrefixedOutputFileName(
+        "std_pushedconstants.mlir")
     self.kernel_std_flat = self.genPrefixedOutputFileName("std_flat.mlir")
     # A renamed version of the kernel wherein the function name does not clash with
     # the name of the handshake kernel.
@@ -462,14 +469,14 @@ class DynamicMode(HLSMode):
           self.kernel_affine,
           lambda: run_tool(
               [
-                  os.path.join(POLYGEIST_BINARY_DIR, "mlir-clang"),
+                  os.path.join(POLYGEIST_BIN_DIR, "mlir-clang"),
                   "-S",  # Emit assembly (MLIR)
                   "--function=*",  # Emit all functions
                   "--memref-fullrank",  # Emit fullrank memrefs
                   args.kernel_file,
                   *args.extra_polygeist_kernel_args,
                   "|",  # pipe stdout
-                  os.path.join(POLYGEIST_BINARY_DIR, "polygeist-opt"
+                  os.path.join(POLYGEIST_BIN_DIR, "polygeist-opt"
                               ),  # Run Polygeist optimization driver
                   "--canonicalize",  # ensure that the polygeist-emitted IR is canonical. This may remove some polygeist-dialect specific ops.
               ],
@@ -503,10 +510,29 @@ class DynamicMode(HLSMode):
           self.kernel_std, lambda: run_mlir_opt(["--convert-scf-to-std"],
                                                 lowerAffine, self.kernel_std))
 
+      # Run mem2reg to remove alloca's from the kernel. Then, canonicalize to
+      # simplify control flow
       runIfNotExists(
-          self.kernel_std_flat,
-          lambda: run_circt_opt(["--flatten-memref", "--canonicalize"], self.
-                                kernel_std, self.kernel_std_flat))
+          self.kernel_std_mem2reg, lambda: run_polygeist_opt(
+              [
+                  "--mem2reg",
+                  "--canonicalize",
+              ],
+              self.kernel_std,
+              self.kernel_std_mem2reg,
+          ))
+
+      runIfNotExists(
+          self.kernel_std_pushedconstants,
+          lambda: run_hls_opt(["--push-constants"], self.kernel_std_mem2reg,
+                              self.kernel_std_pushedconstants))
+      # From hereon, we should _not_ perform canonicalization; this will undo
+      # the effects of --push-constants.
+
+      runIfNotExists(
+          self.kernel_std_flat, lambda: run_circt_opt([
+              "--flatten-memref"
+          ], self.kernel_std_pushedconstants, self.kernel_std_flat))
 
       # Put into maximized SSA form (precondition for correct handshake lowering)
       runIfNotExists(
@@ -656,14 +682,14 @@ class DynamicMode(HLSMode):
         self.tb_poly,
         lambda: run_tool(
             [
-                os.path.join(POLYGEIST_BINARY_DIR, "mlir-clang"),
+                os.path.join(POLYGEIST_BIN_DIR, "mlir-clang"),
                 "-S",  # Emit assembly (MLIR)
                 "--function=*",  # Emit all functions
                 "--memref-fullrank",  # Emit fullrank memrefs
                 args.tb_file,
                 *args.extra_polygeist_tb_args,
                 "|",  # pipe stdout
-                os.path.join(POLYGEIST_BINARY_DIR, "polygeist-opt"
+                os.path.join(POLYGEIST_BIN_DIR, "polygeist-opt"
                             ),  # Run Polygeist optimization driver
                 "--canonicalize",  # ensure that the polygeist-emitted IR is canonical. This may remove some polygeist-dialect specific ops.
             ],
