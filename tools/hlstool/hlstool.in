@@ -523,14 +523,14 @@ class DynamicMode(HLSMode):
           ))
 
       runIfNotExists(
-          self.kernel_std_flat, lambda: run_circt_opt([
-              "--flatten-memref"
-          ], self.kernel_std_pushedconstants, self.kernel_std_flat))
+          self.kernel_std_flat,
+          lambda: run_circt_opt(["--flatten-memref"], self.kernel_std_mem2reg,
+                                self.kernel_std_flat))
 
       runIfNotExists(
           self.kernel_std_pushedconstants,
-          lambda: run_hls_opt(["--push-constants"], self.kernel_std_mem2reg,
-                              self.kernel_std_pushedconstants))
+          lambda: run_hls_opt(["--push-constants"], self.kernel_std_flat, self.
+                              kernel_std_pushedconstants))
       # From hereon, we should _not_ perform canonicalization while in standard;
       # this will undo the effects of --push-constants.
 
@@ -538,7 +538,7 @@ class DynamicMode(HLSMode):
       runIfNotExists(
           self.kernel_std_max,
           lambda: run_hls_opt(['--max-ssa=\"ignore-memref\"'], self.
-                              kernel_std_flat, self.kernel_std_max))
+                              kernel_std_pushedconstants, self.kernel_std_max))
       print_info(f"Lowered to standard...! ({self.kernel_std_max})")
 
       # Lower to handshake
