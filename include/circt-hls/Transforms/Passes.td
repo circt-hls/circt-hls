@@ -59,6 +59,16 @@ def MaxSSAForm : FunctionPass<"max-ssa"> {
   ];
 }
 
+def PushConstants : FunctionPass<"push-constants"> {
+  let summary = "Push constants into the basic blocks where they are referenced";
+  let description = [{
+    This pass moves constant definitions into the basic blocks where they are referenced.
+    If a constant is referenced in multiple basic blocks, a copy of the constant
+    is inserted in each basic block.
+  }];
+  let constructor = "circt_hls::createPushConstantsPass()";
+}
+
 def RenameFunction : Pass<"rename-func", "ModuleOp"> {
   let summary = "Change a builtin.func name";
   let description = [{
