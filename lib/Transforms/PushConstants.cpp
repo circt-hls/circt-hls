@@ -41,7 +41,12 @@ public:
       // multiple constant definitions in the same block.
       llvm::DenseMap<Block *, Operation *> copyInBlock;
 
-      for (auto user : constantOp->getUsers()) {
+      // llvm::make_early_inc_range doesn't seem to work, so we manually create
+      // a set.
+      llvm::SetVector<Operation *> users;
+      for (auto user : constantOp->getUsers())
+        users.insert(user);
+      for (auto user : users) {
         auto userBlock = user->getBlock();
         if (userBlock == constantBlock) {
           userInOwnBlock = true;
@@ -60,6 +65,7 @@ public:
         }
 
         user->replaceUsesOfWith(constantOp, newConstantOp->getResult(0));
+        copyInBlock[userBlock] = newConstantOp;
       }
       if (!userInOwnBlock)
         constantOp.erase();
