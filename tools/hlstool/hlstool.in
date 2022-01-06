@@ -473,6 +473,7 @@ class DynamicMode(HLSMode):
                   "-S",  # Emit assembly (MLIR)
                   "--function=*",  # Emit all functions
                   "--memref-fullrank",  # Emit fullrank memrefs
+                  "-scal-rep=0",  # see https://github.com/wsmoses/Polygeist/issues/142
                   args.kernel_file,
                   *args.extra_polygeist_kernel_args,
                   "|",  # pipe stdout
@@ -686,6 +687,7 @@ class DynamicMode(HLSMode):
                 "-S",  # Emit assembly (MLIR)
                 "--function=*",  # Emit all functions
                 "--memref-fullrank",  # Emit fullrank memrefs
+                "-scal-rep=0",  # see https://github.com/wsmoses/Polygeist/issues/142
                 args.tb_file,
                 *args.extra_polygeist_tb_args,
                 "|",  # pipe stdout
