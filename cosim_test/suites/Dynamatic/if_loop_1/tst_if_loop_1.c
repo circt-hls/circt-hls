@@ -20,7 +20,7 @@ int main(void) {
       a[i][j] = j % 10;
     }
   }
-  for (int i = 0; i < 1; ++i) {
+  for (int i = 0; i < N_KERNEL_CALLS; ++i) {
     if_loop_1(a[i], n[i]);
   }
   return 0;
