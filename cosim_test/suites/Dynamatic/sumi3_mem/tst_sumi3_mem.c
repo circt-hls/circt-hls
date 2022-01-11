@@ -8,7 +8,7 @@
 #include "sumi3_mem.h"
 #include <stdlib.h>
 
-#define N_KERNEL_CALLS 2
+#define N_KERNEL_CALLS 10
 
 int main(void) {
   int a[N_KERNEL_CALLS][1000];

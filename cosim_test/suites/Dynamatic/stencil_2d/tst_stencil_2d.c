@@ -7,7 +7,7 @@
 
 #include "stencil_2d.h"
 #ifndef N_KERNEL_CALLS
-#define N_KERNEL_CALLS 1
+#define N_KERNEL_CALLS 10
 #endif
 
 int main(void) {

@@ -8,7 +8,7 @@
 #include "image_resize.h"
 
 #ifndef N_KERNEL_CALLS
-#define N_KERNEL_CALLS 2
+#define N_KERNEL_CALLS 10
 #endif
 
 int main(void) {
