@@ -1,5 +1,5 @@
 // This circuit deadlocks if we use buffer size <=2
-// RUN: hlstool --no_trace --rebuild --tb_file %s dynamic --run_sim
+// RUN: hlstool --no_trace --rebuild --tb_file %s dynamic-polygeist --run_sim
 
 // hlstool will emit a {kernel_name}_tb_output.txt file when sim didn't crash.
 // RUN: FileCheck --input-file *tb_output.txt %s

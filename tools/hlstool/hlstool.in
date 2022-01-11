@@ -299,18 +299,18 @@ class HLSMode:
     run_tool(vivado_args, shell=True, liveOutput=not args.silent)
 
 
+# Mode class for dynamically scheduled HLS flows
 class DynamicMode(HLSMode):
 
-  def __init__(self):
-    super().__init__('dynamic')
+  def __init__(self, name='dynamic'):
+    super().__init__(name)
 
   def add_arguments(self, subparser):
-    dynamic_parser = subparser.add_parser('dynamic', help='Dynamic mode')
-    dynamic_parser.add_argument('--run_sim',
-                                action='store_true',
-                                help='Run the HLT testbench.')
+    subparser.add_argument('--run_sim',
+                           action='store_true',
+                           help='Run the HLT testbench.')
 
-    dynamic_parser.add_argument(
+    subparser.add_argument(
         '-e',
         '--genexec',
         type=str,
@@ -319,50 +319,51 @@ class DynamicMode(HLSMode):
         "mlir-cpu-runner, but instead want an executable file that you can debug"
         " with regular C++ tools")
 
-    dynamic_parser.add_argument(
-        '--print_dot',
-        help="Prints a dot file of the "
-        "handshake circuit",
-        action='store_true',
-    )
-    dynamic_parser.add_argument('--lower',
-                                action='store_true',
-                                help="Lower the C code to hardware.")
-    dynamic_parser.add_argument(
+    subparser.add_argument(
         '--build_sim',
         action='store_true',
         help="Lower the C code to hardware, build the simulator.")
-    dynamic_parser.add_argument(
+    subparser.add_argument(
         '--build_tb',
         action='store_true',
         help=
         "Lower the testbench to MLIR, asyncify it (for HLT use), convert to LLVM IR."
     )
-    dynamic_parser.add_argument(
+
+    subparser.add_argument(
+        '--print_dot',
+        help="Prints a dot file of the "
+        "handshake circuit",
+        action='store_true',
+    )
+    subparser.add_argument('--lower',
+                           action='store_true',
+                           help="Lower the C code to hardware.")
+    subparser.add_argument(
         '--hsdbg',
         action='store_true',
         help="Run HSDbg on the circuit. This"
         " assumes that a simulation has been run prior to this.")
 
-    dynamic_parser.add_argument('--hsdbg_port',
-                                type=int,
-                                default=8080,
-                                help="Port to run HSDbg server on.")
+    subparser.add_argument('--hsdbg_port',
+                           type=int,
+                           default=8080,
+                           help="Port to run HSDbg server on.")
 
-    dynamic_parser.add_argument(
+    subparser.add_argument(
         '--hs_kernel',
         action='store_true',
         help="The kernel is a handshake kernel. If this is set, will skip "
         "polygaist and standard to handshake lowering.")
 
-    dynamic_parser.add_argument(
+    subparser.add_argument(
         '--buffer_strategy',
         type=str,
         default="cycles",
         help="Buffer strategy to use, see 'circt-opt --handshake-insert-buffers'"
     )
 
-    dynamic_parser.add_argument(
+    subparser.add_argument(
         '--buffer_size',
         type=int,
         default=2,
@@ -460,33 +461,10 @@ class DynamicMode(HLSMode):
       self.run_sim()
 
   def run_lowering(self):
-    # Main HLS driver, for bring C to system verilog.
+    # Handshake lowering.
+    # In cases where a handshake kernel has not been provided, we expect that an
+    # inheriting pass has written a file to self.kernel_affine.
     print_step(f"Dynamically scheduled HLS'ing {args.kernel_file}...")
-
-    if not args.mlir_kernel:
-      # Run polygeist, generating affine/SCF level MLIR.
-      runIfNotExists(
-          self.kernel_affine,
-          lambda: run_tool(
-              [
-                  os.path.join(POLYGEIST_BIN_DIR, "mlir-clang"),
-                  "-S",  # Emit assembly (MLIR)
-                  "--function=*",  # Emit all functions
-                  "--memref-fullrank",  # Emit fullrank memrefs
-                  "-scal-rep=0",  # see https://github.com/wsmoses/Polygeist/issues/142
-                  args.kernel_file,
-                  *args.extra_polygeist_kernel_args,
-                  "|",  # pipe stdout
-                  os.path.join(POLYGEIST_BIN_DIR, "polygeist-opt"
-                              ),  # Run Polygeist optimization driver
-                  "--canonicalize",  # ensure that the polygeist-emitted IR is canonical. This may remove some polygeist-dialect specific ops.
-              ],
-              self.kernel_affine,
-              shell=True))
-      print_info(f"Lowered to affine! (Polygeist)...! ({self.kernel_affine})")
-    else:
-      print_info("Skipping Polygeist lowering due to using an MLIR kernel")
-      copyAllowSame(args.kernel_file, self.kernel_affine)
 
     if args.hs_kernel:
       print_info("Skipping handshake lowering due to using a handshake kernel")
@@ -814,6 +792,45 @@ class DynamicMode(HLSMode):
       print_info("VCD file is at: '{}'".format(args.vcd))
 
 
+class PolygeistDynamicMode(DynamicMode):
+
+  def __init__(self):
+    super().__init__('dynamic-polygeist')
+
+  def create_subparser(self, subparser):
+    return subparser.add_parser(self.name,
+                                help='Dynamic mode (from C through Polygeist)')
+
+  def run_lowering(self):
+    if not args.mlir_kernel:
+      # Run polygeist, generating affine/SCF level MLIR.
+      runIfNotExists(
+          self.kernel_affine,
+          lambda: run_tool(
+              [
+                  os.path.join(POLYGEIST_BIN_DIR, "mlir-clang"),
+                  "-S",  # Emit assembly (MLIR)
+                  "--function=*",  # Emit all functions
+                  "--memref-fullrank",  # Emit fullrank memrefs
+                  "-scal-rep=0",  # see https://github.com/wsmoses/Polygeist/issues/142
+                  args.kernel_file,
+                  *args.extra_polygeist_kernel_args,
+                  "|",  # pipe stdout
+                  os.path.join(POLYGEIST_BIN_DIR, "polygeist-opt"
+                              ),  # Run Polygeist optimization driver
+                  "--canonicalize",  # ensure that the polygeist-emitted IR is canonical. This may remove some polygeist-dialect specific ops.
+              ],
+              self.kernel_affine,
+              shell=True))
+      print_info(f"Lowered to affine! (Polygeist)...! ({self.kernel_affine})")
+    else:
+      print_info("Skipping Polygeist lowering due to using an MLIR kernel")
+      copyAllowSame(args.kernel_file, self.kernel_affine)
+
+    # Transition to handshake lowering
+    super().run_lowering()
+
+
 class StaticMode(HLSMode):
   # TODO: implement static mode
 
@@ -835,8 +852,10 @@ class MixedMode(HLSMode):
 
 
 # Handles for the global 'Mode' objects
-dynMode = DynamicMode()
+polygeistDynMode = PolygeistDynamicMode()
 staticMode = StaticMode()
+
+HLSModes = [polygeistDynMode, staticMode]
 
 
 # Loads a checkpoint file in the current directory
@@ -930,11 +949,13 @@ def parse_args(parser):
         " ")
 
   # Set current mode
-  if args.mode == 'dynamic':
-    mode = dynMode
-  elif args.mode == 'static':
-    mode = staticMode
-  else:
+  mode = None
+  for it in HLSModes:
+    if args.mode == it.name:
+      mode = it
+      break
+
+  if not mode:
     parser.print_help()
     sys.exit(1)
 
@@ -1071,7 +1092,7 @@ To see the arguments for a specific mode, use\n
       "a space-delimited string.",
       required=False)
   # Add mode arguments
-  dynMode.add_arguments(subparsers)
+  polygeistDynMode.add_arguments(polygeistDynMode.create_subparser(subparsers))
   staticMode.add_arguments(subparsers)
 
   # Parse arguments
