@@ -545,13 +545,15 @@ class DynamicMode(HLSMode):
       # Lower to handshake
       runIfNotExists(
           self.kernel_handshake_unbuffered, lambda: run_circt_opt([
-              "-lower-std-to-handshake", "--canonicalize"
+              "-lower-std-to-handshake=\"source-constants\"", "--canonicalize",
+              "--handshake-materialize-forks-sinks"
           ], self.kernel_std_max, self.kernel_handshake_unbuffered))
 
       # Add buffers
       runIfNotExists(
           self.kernel_handshake_buffered, lambda: run_circt_opt([
               f"-handshake-insert-buffers=\"strategy={args.buffer_strategy} buffer-size={args.buffer_size}\"",
+              "--handshake-remove-simple-merges", "--canonicalize"
           ], self.kernel_handshake_unbuffered, self.kernel_handshake_buffered))
 
       # Run the add-ids pass to ensure that we have a deterministic mapping between
