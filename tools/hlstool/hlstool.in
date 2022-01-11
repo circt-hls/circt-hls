@@ -699,6 +699,10 @@ class DynamicMode(HLSMode):
             shell=True))
     print_info(f"Lowered testbench to MLIR ({self.tb_poly})")
 
+    runIfNotExists(
+        self.tb_poly, lambda: run_polygeist_opt(["--lower-polygeist-ops"], self.
+                                                tb_poly, self.tb_poly))
+
     # Run memref-call flattening. This is specific to handshake kernels since they do
     # not support multidimensional memories at the moment
     runIfNotExists(
