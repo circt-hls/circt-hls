@@ -652,7 +652,7 @@ class DynamicMode(HLSMode):
         self.run_verilator_cmake(cmake_args)
       else:
         print_info("Could not figure out what went wrong...")
-        print_error(ret.stderr)
+        print_error(ret.stdErr)
 
     ret = run_tool(["cmake", *cmake_args], exitOnError=False)
     if ret != None:
