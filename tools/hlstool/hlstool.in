@@ -10,7 +10,7 @@ from dataclasses import dataclass
 from graphviz import Digraph
 
 ## CMake configured paths to the tools that we'll be using
-CIRCT_BIN_DIR = "@CIRCT_TOOLS_DIR@"
+CIRCT_BIN_DIR = "@CIRCT_BINARY_DIR@/bin/"
 CIRCT_HLS_BIN_DIR = "@CIRCT_HLS_BINARY_DIR@/bin/"
 CIRCT_HLS_SOURCE_DIR = "@CIRCT_HLS_SOURCE_DIR@"
 LLVM_BIN_DIR = "@LLVM_BINARY_DIR@/bin"
