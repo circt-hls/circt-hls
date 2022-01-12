@@ -6,7 +6,7 @@ While the main goal of `hlstool` is to expose commands that allows the synthesis
 Some features of the tool are:
 
 * Accepts relative as well as manual paths but executes all commands in absolute paths.
-* Each command executed is printed verbatum to the executing terminal. Given this, tool user can inspect the sequence of commands that was executed and easily copy/paste from the terminal, to reproduce any of the commands. All this, without a cryptic shell script in sight!
+* Each command executed is printed verbatim to the executing terminal. Given this, tool user can inspect the sequence of commands that was executed and easily copy/paste from the terminal, to reproduce any of the commands. All this, without a cryptic shell script in sight!
 * Automatically generates `CMakeLists.txt` files for compiling simulator libraries.
 * Iteratively `CMake`s a simulator library to achieve the maximum possible Verilator model parallelism.
 
@@ -19,7 +19,7 @@ hlstool [general arguments] {mode} [mode arguments]
 ~~~~
 
 
-The mode is intended to adjust `hlstool` behaviour to a specific HLS flow. At time of writing, only the `dynamic` mode has been implemented.
+The mode is intended to adjust `hlstool` behaviour to a specific HLS flow. At time of writing, only the `dynamic-polygeist` mode has been implemented.
 Since the tool is ever evolving, please reference the `hlstool --help` output for a complete and up-to-date description on the full set of capabilities of the tool.
 The following tutorial assumes that you have the `hlstool` available in your path. The tool will be located in `circt-hls/build/bin`.
 
@@ -81,7 +81,7 @@ On the testbench side, this will convert the testbench to MLIR using Polygeist (
 On the kernel side, it is at this point where the simulator library is built. A file `triangle.cpp` should now be present, which is the `hlt` wrapper around the verilated model. A `CMakeLists.txt` file is copied into the output directory. This file contains a call to Verilator, which will verilator the model upon executing CMake. Then, the `hlt` wrapper and the verilated model is compiled and linked together to produces `libhlt_triangle.so` - a shared library which implements the `triangle_call/triangle_await` functions used by the desynchronized.  
 Next, we will use `hlstool` to run the simulation:
 ~~~~bash
-$ hlstool --tb_file ../tst_triangle.c dynamic --run_sim
+$ hlstool --tb_file ../tst_triangle.c dynamic-polygeist --run_sim
 ~~~~
 Inspecting the output of `hlstool`, we see that `mlir-cpu-runner` is invoked to execute the testbench (paths minimized for brevity):
 ~~~~bash
@@ -105,7 +105,7 @@ $ hlstool --rebuild --cosim --tb_file ../tst_triangle.c dynamic
 Inspecting `triangle_tb.mlir`, we now see calls to the `triangle_call/await` functions and a call to `triangle_ref`. The implementation of `triangle_ref` should have been inlined within the module in `triangle_tb.mlir`.  
 The testbench can then be executed as before:  
 ~~~~bash
-$ hlstool --cosim --tb_file ../tst_triangle.c dynamic --run_sim
+$ hlstool --cosim --tb_file ../tst_triangle.c dynamic-polygeist --run_sim
 ~~~~
 
 Currently, cosimulation failure is indicated through `printf` calls. Given this, failing cases can be identified in the testbench output file `triangle_tb_output.txt`.
@@ -116,7 +116,7 @@ In cases where VCD inspection make be inconclusive in determining the behaviour 
 Starting `hsdbg` through `hlstool` is just a small convenience wrapper to ensure that the necessary files are available (Handshake MLIR version of the kernel and a Grapviz `.dot` file of this handshake kernel), and to pass them to `hsdbg`. `hsdbg` is available in `circt-hls/build/bin` and can be invoked separately, if needed.  
 In the `triangle_out` directory, run:
 ~~~~bash
-$ hlstool --checkpoint dynamic --hsdbg
+$ hlstool --checkpoint dynamic-polygeist --hsdbg
 ~~~~
 
 In this commandline, we used the `--checkpoint` option. When the `hlstool` is run, a `.hlstool_checkpoint` file is generated in the working directory of the run. This contains information that can be used to restore the tool arguments at a later point in time. The files loaded from a checkpoint are printed at the start of a run. Executing the above command, `hlstool` will output (path names shortened):
@@ -151,7 +151,7 @@ INFO:     Skipping Polygeist lowering due to using an MLIR kernel
 Or with a Handshake IR kernel; in this case we pass the mode argument `--hs_kernel` to direct the Handshake-specific part of `hlstool` to skip lowering:
 ~~~~bash
 $ hlstool --rebuild --mlir_kernel --kernel_name triangle \
-  --kernel_file triangle_handshake.mlir dynamic --hs_kernel
+  --kernel_file triangle_handshake.mlir dynamic-polygeist --hs_kernel
 ~~~~
 
 `hlstool` should now inform you that both the Polygeist and handshake steps were skipped:

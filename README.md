@@ -55,6 +55,14 @@ To initialize this, please run:
 fud config stages.circt_hls.toplevel ""
 ```
 
+## Install Python dependencies
+
+Some tooling relies on certain Python packages, which can be installed using `requirements.txt`:
+
+```
+pip install -r requirements.txt
+```
+
 ## Build and test CIRCT-HLS 
 
 This repository contains an LLVM tool called `circt-hls` which provides various passes used to realize the HLS flows. This is the primary place for incubating things which are intended to be eventually merged into CIRCT. 
