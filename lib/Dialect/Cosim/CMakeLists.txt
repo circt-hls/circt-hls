@@ -3,7 +3,7 @@ set(COSIM_SRCS
   CosimDialect.cpp
   )
 
-add_circt_dialect_library(CIRCTHLSCosim
+add_mlir_dialect_library(HLSCosim
   ${COSIM_SRCS}
 
   ADDITIONAL_HEADER_DIRS

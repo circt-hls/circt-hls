@@ -9,9 +9,9 @@ llvm_update_compile_flags(hls-opt)
 target_link_libraries(hls-opt
   PRIVATE
 
-  CIRCTHLSTransforms
-  CIRCTHLSCosim
-  CIRCTHLSCosimTransforms
+  HLSTransforms
+  HLSCosim
+  HLSCosimTransforms
 
   CIRCTAffineToStaticLogic
   CIRCTAnalysisTestPasses

@@ -1,11 +1,11 @@
-add_circt_dialect_library(CIRCTHLSCosimTransforms
+add_mlir_dialect_library(HLSCosimTransforms
   Passes.cpp
 
   DEPENDS
   MLIRCosimTransformsIncGen
 
   LINK_LIBS PUBLIC
-  CIRCTHLSCosim
+  HLSCosim
   MLIRIR
   MLIRPass
   MLIRTransformUtils
