@@ -14,6 +14,10 @@ import argparse
 import multiprocessing
 import concurrent
 import re
+import shutil
+import glob
+
+DYNAMATIC_DIR = ""
 
 
 def print_yellow(string):
@@ -278,6 +282,8 @@ class Experiment:
   synth: bool = True
   # Run simulation
   sim: bool = True
+  # dynamatic or circt-hls
+  style: str = "default"
 
   def run(self):
     print_header("Running experiment: " + self.name)
@@ -287,24 +293,10 @@ class Experiment:
     if not os.path.exists(self.outdir):
       os.makedirs(self.outdir)
 
-    # # Run HLSTool
-    hlstool_args = ["hlstool"]
-    if self.synth:
-      hlstool_args.append("--synth")  # Synthesize the design
-    hlstool_args.append("--rebuild")  # Always ensure fresh results
-    hlstool_args.append("--tb_file " + self.tb)
-    hlstool_args.append("--outdir " + self.outdir)
-    hlstool_args += self.args
-    # The # of kernel calls for this test is controlled through the #define in
-    # the testbenches. This is elaborated in the polygeist front-end, so inject
-    # that as an argument.
-    hlstool_args.append(
-        f"--extra_polygeist_tb_args=\"-DN_KERNEL_CALLS={self.kernel_calls}\"")
-    hlstool_args.append(self.mode)
-    if self.sim:
-      hlstool_args.append("--run_sim")  # Run the testbench
-    hlstool_args += self.mode_args
-    run_hls_tool(hlstool_args)
+    if self.style == "circt-hls":
+      self.run_hlstool()
+    elif self.style == "dynamatic":
+      self.run_dynamatic()
 
     if self.sim:
       # Extract # of cycles executed from simulator log file.
@@ -379,6 +371,65 @@ class Experiment:
     with open(summary_file, "r") as f:
       print(f.read())
 
+  def run_hlstool(self):
+    hlstool_args = ["hlstool"]
+    if self.synth:
+      hlstool_args.append("--synth")  # Synthesize the design
+    hlstool_args.append("--rebuild")  # Always ensure fresh results
+    hlstool_args.append("--tb_file " + self.tb)
+    hlstool_args.append("--outdir " + self.outdir)
+    hlstool_args += self.args
+    # The # of kernel calls for this test is controlled through the #define in
+    # the testbenches. This is elaborated in the polygeist front-end, so inject
+    # that as an argument.
+    hlstool_args.append(
+        f"--extra_polygeist_tb_args=\"-DN_KERNEL_CALLS={self.kernel_calls}\"")
+    hlstool_args.append(self.mode)
+    if self.sim:
+      hlstool_args.append("--run_sim")  # Run the testbench
+    hlstool_args += self.mode_args
+    run_hls_tool(hlstool_args)
+
+  def run_dynamatic(self):
+    # Dynamatic expects the kernel to be within a "src" directory. It is ok that the dir exists
+    # since it is created by the front-end.
+    src_dir = os.path.join(self.outdir, "src")
+    os.makedirs(src_dir, exist_ok=True)
+
+    # Copy the .sv file in the 'hdl' directory
+    sv_files = glob.glob(os.path.join(self.tb, "hdl", "*.vhd"))
+    # expect at least 1 sv file
+    assert len(sv_files) > 0
+    for sv_file in sv_files:
+      shutil.copy(sv_file, self.outdir)
+
+    # Copy the dynamatic library files to the hdl directory
+    dynamatic_lib_files = glob.glob(
+        os.path.join(DYNAMATIC_DIR, "components", "*.vhd"))
+    for lib_file in dynamatic_lib_files:
+      shutil.copy(lib_file, os.path.join(self.outdir))
+
+    # Copy synthesis files to the output directory.
+    script_dir = os.path.dirname(os.path.realpath(__file__))
+    synth_tcl = os.path.join(script_dir, os.path.pardir, "tools", "hlstool",
+                             "synth.tcl")
+    device_xdc = os.path.join(DYNAMATIC_DIR, "device.xdc")
+    shutil.copy(synth_tcl, self.outdir)
+    shutil.copy(device_xdc, self.outdir)
+
+    curdir = os.getcwd()
+    os.chdir(self.outdir)
+    # Run vivado
+    vivado_args = ["vivado", "-mode", "batch", "-source", "synth.tcl"]
+    # synth arguments (see synth.tcl)
+    vivado_args.append("-tclargs")
+    vivado_args.append(self.name)  # top level
+    vivado_args.append("xczu3eg-sbva484-1-e")  # part
+    vivado_args.append("vivado")  # outdir
+    vivado_args.append("1")  # do routing
+    subprocess.run([" ".join(vivado_args)], shell=True)
+    os.chdir(curdir)
+
 
 # =============================================================================
 # Experiments
@@ -396,7 +447,13 @@ if __name__ == "__main__":
       type=int,
       default=1)
 
+  parser.add_argument("--dynamatic_dir",
+                      help="Path to the dynamatic directory",
+                      type=str)
+
   args = parser.parse_args()
+
+  DYNAMATIC_DIR = args.dynamatic_dir
 
   if not os.path.isfile(args.experiments):
     print("Experiments file does not exist: ", args.experiments)
@@ -413,13 +470,13 @@ if __name__ == "__main__":
 
     # Load the test setup
     setup = expFile["setup"]
-    experiment_name = setup["name"]
     mode = setup["mode"]
     general_args = setup["args"]
     mode_args = setup["mode_args"]
     kernel_calls = setup["kernel_calls"]
     synth = setup["synth"]
     sim = setup["sim"]
+    style = setup["style"]
 
     def overrideIfExists(container, key, current):
       if key in container:
@@ -439,13 +496,8 @@ if __name__ == "__main__":
       run_sim = overrideIfExists(expValues, "sim", sim)
       run_tb = expValues["tb"]
 
-      # Fail if testbench doesn't exist
-      if not os.path.isfile(run_tb):
-        print_yellow("Testbench file does not exist: ", run_tb)
-        exit(1)
-
       experiments.append(
-          Experiment(experimentName=experiment_name,
+          Experiment(experimentName=experiments_file,
                      name=runName,
                      tb=run_tb,
                      kernel_calls=run_kernel_calls,
@@ -453,7 +505,8 @@ if __name__ == "__main__":
                      args=run_general_args,
                      mode_args=run_mode_args,
                      synth=run_synth,
-                     sim=run_sim))
+                     sim=run_sim,
+                     style=style))
 
   print_yellow("Loaded experiments:")
   for experiment in experiments:

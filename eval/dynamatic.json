@@ -1,0 +1,76 @@
+{
+  "setup": {
+    "mode": "dynamic-polygeist",
+    "args": [],
+    "mode_args": ["--buffer_strategy=cycles"],
+    "kernel_calls": 10,
+    "synth": true,
+    "sim": false,
+    "style": "dynamatic"
+  },
+  "runs": {
+    "matrix_power" : {
+      "tb": "/home/morten/Work/elastic-circuits/Regression_test/examples/matrix_power/"
+    },
+    "if_loop_1" : {
+      "tb": "/home/morten/Work/elastic-circuits/Regression_test/examples/if_loop_1/"
+    },
+    "if_loop_2" : {
+      "tb": "/home/morten/Work/elastic-circuits/Regression_test/examples/if_loop_2/"
+      },
+    "fir" : {
+      "tb": "/home/morten/Work/elastic-circuits/Regression_test/examples/fir/"
+    },
+    "histogram" : {
+      "tb": "/home/morten/Work/elastic-circuits/Regression_test/examples/histogram/"
+    },
+    "bicg" : {
+      "tb": "/home/morten/Work/elastic-circuits/Regression_test/examples/bicg/"
+    },
+    "iir" : {
+      "tb": "/home/morten/Work/elastic-circuits/Regression_test/examples/iir/"
+    },
+    "gemver" : {
+      "tb": "/home/morten/Work/elastic-circuits/Regression_test/examples/gemver/"
+    },
+    "gaussian" : {
+      "tb": "/home/morten/Work/elastic-circuits/Regression_test/examples/gaussian/"
+    },
+    "image_resize" : {
+      "tb": "/home/morten/Work/elastic-circuits/Regression_test/examples/image_resize/"
+    },
+    "insertion_sort" : {
+      "tb": "/home/morten/Work/elastic-circuits/Regression_test/examples/insertion_sort/"
+    },
+    "kernel_2mm" : {
+      "tb": "/home/morten/Work/elastic-circuits/Regression_test/examples/kernel_2mm/"
+    },
+    "kernel_3mm" : {
+      "tb": "/home/morten/Work/elastic-circuits/Regression_test/examples/kernel_3mm/"
+    },
+    "loop_array" : {
+      "tb": "/home/morten/Work/elastic-circuits/Regression_test/examples/loop_array/"
+    },
+    "matrix" : {
+      "tb": "/home/morten/Work/elastic-circuits/Regression_test/examples/matrix/"
+    },
+    "matvec" : {
+      "tb": "/home/morten/Work/elastic-circuits/Regression_test/examples/matvec/"
+    },
+    "pivot" : {
+      "tb": "/home/morten/Work/elastic-circuits/Regression_test/examples/pivot/"
+    },
+    "stencil_2d" : {
+      "tb": "/home/morten/Work/elastic-circuits/Regression_test/examples/stencil_2d/"
+    },
+    "threshold" : {
+      "tb": "/home/morten/Work/elastic-circuits/Regression_test/examples/threshold/"
+    },
+    "vector_rescale" : {
+      "tb": "/home/morten/Work/elastic-circuits/Regression_test/examples/vector_rescale/"
+    },
+    "video_filter" : {
+      "tb": "/home/morten/Work/elastic-circuits/Regression_test/examples/video_filter/"
+    }
+  }
+}

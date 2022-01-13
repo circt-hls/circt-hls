@@ -1,12 +1,12 @@
 {
   "setup": {
-    "name": "default_run",
     "mode": "dynamic-polygeist",
     "args": [],
     "mode_args": ["--buffer_strategy=cycles"],
     "kernel_calls": 10,
     "synth": true,
-    "sim": false
+    "sim": false,
+    "style": "circt-hls"
   },
   "runs": {
     "matrix_power" : {
