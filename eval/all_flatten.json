@@ -1,0 +1,28 @@
+{
+  "setup": {
+    "name": "default_run",
+    "mode": "dynamic-polygeist",
+    "args": [],
+    "mode_args": ["--buffer_strategy=cycles"],
+    "kernel_calls": 10,
+    "synth": true,
+    "sim": false
+  },
+  "runs": {
+    "matrix_power" : {
+      "tb": "../cosim_test/suites/Dynamatic/matrix_power/tst_matrix_power.c"
+    },
+    "if_loop_1" : {
+      "tb": "../cosim_test/suites/Dynamatic/if_loop_1/tst_if_loop_1.c"
+    },
+    "if_loop_2" : {
+      "tb": "../cosim_test/suites/Dynamatic/if_loop_2/tst_if_loop_2.c"
+      },
+    "fir" : {
+      "tb": "../cosim_test/suites/Dynamatic/fir/tst_fir.c"
+    },
+    "histogram" : {
+      "tb": "../cosim_test/suites/Dynamatic/histogram/tst_histogram.c"
+    }  
+  }
+}

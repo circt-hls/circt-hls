@@ -1,0 +1,76 @@
+{
+  "setup": {
+    "name": "default_run",
+    "mode": "dynamic-polygeist",
+    "args": [],
+    "mode_args": ["--buffer_strategy=cycles"],
+    "kernel_calls": 10,
+    "synth": true,
+    "sim": false
+  },
+  "runs": {
+    "matrix_power" : {
+      "tb": "../cosim_test/suites/Dynamatic/matrix_power/tst_matrix_power.c"
+    },
+    "if_loop_1" : {
+      "tb": "../cosim_test/suites/Dynamatic/if_loop_1/tst_if_loop_1.c"
+    },
+    "if_loop_2" : {
+      "tb": "../cosim_test/suites/Dynamatic/if_loop_2/tst_if_loop_2.c"
+      },
+    "fir" : {
+      "tb": "../cosim_test/suites/Dynamatic/fir/tst_fir.c"
+    },
+    "histogram" : {
+      "tb": "../cosim_test/suites/Dynamatic/histogram/tst_histogram.c"
+    },
+    "bicg" : {
+      "tb": "../cosim_test/suites/Dynamatic/bicg/tst_bicg.c"
+    },
+    "iir" : {
+      "tb": "../cosim_test/suites/Dynamatic/iir/tst_iir.c"
+    },
+    "gemver" : {
+      "tb": "../cosim_test/suites/Dynamatic/gemver/tst_gemver.c"
+    },
+    "gaussian" : {
+      "tb": "../cosim_test/suites/Dynamatic/gaussian/tst_gaussian.c"
+    },
+    "image_resize" : {
+      "tb": "../cosim_test/suites/Dynamatic/image_resize/tst_image_resize.c"
+    },
+    "insertion_sort" : {
+      "tb": "../cosim_test/suites/Dynamatic/insertion_sort/tst_insertion_sort.c"
+    },
+    "kernel_2mm" : {
+      "tb": "../cosim_test/suites/Dynamatic/kernel_2mm/tst_kernel_2mm.c"
+    },
+    "kernel_3mm" : {
+      "tb": "../cosim_test/suites/Dynamatic/kernel_3mm/tst_kernel_3mm.c"
+    },
+    "loop_array" : {
+      "tb": "../cosim_test/suites/Dynamatic/loop_array/tst_loop_array.c"
+    },
+    "matrix" : {
+      "tb": "../cosim_test/suites/Dynamatic/matrix/tst_matrix.c"
+    },
+    "matvec" : {
+      "tb": "../cosim_test/suites/Dynamatic/matvec/tst_matvec.c"
+    },
+    "pivot" : {
+      "tb": "../cosim_test/suites/Dynamatic/pivot/tst_pivot.c"
+    },
+    "stencil_2d" : {
+      "tb": "../cosim_test/suites/Dynamatic/stencil_2d/tst_stencil_2d.c"
+    },
+    "threshold" : {
+      "tb": "../cosim_test/suites/Dynamatic/threshold/tst_threshold.c"
+    },
+    "vector_rescale" : {
+      "tb": "../cosim_test/suites/Dynamatic/vector_rescale/tst_vector_rescale.c"
+    },
+    "video_filter" : {
+      "tb": "../cosim_test/suites/Dynamatic/video_filter/tst_video_filter.c"
+    }
+  }
+}

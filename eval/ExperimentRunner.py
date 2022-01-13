@@ -11,6 +11,8 @@ from dataclasses import dataclass
 import os
 import json
 import argparse
+import multiprocessing
+import concurrent
 import re
 
 
@@ -214,10 +216,13 @@ def run_hls_tool(args):
     else:
       break
 
+  proc.wait()
+  stdErr = proc.stderr.read().decode("utf-8")
   code = proc.returncode
-  if code and code != 0:
-    print(proc.stderr.readlines())
-    exit(code)
+
+  # if code and code != 0 or stdErr:
+  #   print(stdErr)
+  #   sys.exit(1)
 
 
 class HLTLogEval:
@@ -255,7 +260,9 @@ class HLTLogEval:
 
 @dataclass
 class Experiment:
-  # Name of this experiment
+  # Name of the experiment
+  experimentName: str
+  # Name of this experiment run
   name: str
   # Testbench file of the experiment. The kernel name is inferred from this.
   tb: str
@@ -269,40 +276,46 @@ class Experiment:
   mode_args: list
   # Run synthesis
   synth: bool = True
+  # Run simulation
+  sim: bool = True
 
   def run(self):
     print_header("Running experiment: " + self.name)
 
-    outdir = os.path.join(os.getcwd(), "results", self.name)
-    if not os.path.exists(outdir):
-      os.makedirs(outdir)
+    self.outdir = os.path.join(os.getcwd(), "results", self.experimentName,
+                               self.name)
+    if not os.path.exists(self.outdir):
+      os.makedirs(self.outdir)
 
     # # Run HLSTool
     hlstool_args = ["hlstool"]
-    # hlstool_args.append("--synth")  # Synthesize the design
+    if self.synth:
+      hlstool_args.append("--synth")  # Synthesize the design
     hlstool_args.append("--rebuild")  # Always ensure fresh results
     hlstool_args.append("--tb_file " + self.tb)
-    hlstool_args.append("--outdir " + outdir)
+    hlstool_args.append("--outdir " + self.outdir)
     hlstool_args += self.args
     # The # of kernel calls for this test is controlled through the #define in
     # the testbenches. This is elaborated in the polygeist front-end, so inject
     # that as an argument.
     hlstool_args.append(
         f"--extra_polygeist_tb_args=\"-DN_KERNEL_CALLS={self.kernel_calls}\"")
-    hlstool_args.append("dynamic")  # Dynamically scheduled HLS
-    hlstool_args.append("--run_sim")  # Run the testbench
+    hlstool_args.append(self.mode)
+    if self.sim:
+      hlstool_args.append("--run_sim")  # Run the testbench
     hlstool_args += self.mode_args
     run_hls_tool(hlstool_args)
 
-    # Extract # of cycles executed from simulator log file.
-    simlogpath = os.path.join(outdir, "sim.log")
-    self.cycleeval = HLTLogEval(simlogpath)
-    print_yellow(
-        f"Estimated execution time: {self.cycleeval.get_cycles()} cycles")
+    if self.sim:
+      # Extract # of cycles executed from simulator log file.
+      simlogpath = os.path.join(self.outdir, "sim.log")
+      self.cycleeval = HLTLogEval(simlogpath)
+      print_yellow(
+          f"Estimated execution time: {self.cycleeval.get_cycles()} cycles")
     if self.synth:
       # Get reports
       rpts = []
-      for root, dirs, files in os.walk(outdir):
+      for root, dirs, files in os.walk(self.outdir):
         for f in files:
           if f.endswith(".rpt"):
             rpts.append(os.path.join(root, f))
@@ -323,8 +336,7 @@ class Experiment:
     dsp_table = util.get_table(re.compile(r"4\. ARITHMETIC"), 2)
     timing_report = parse_timing_report(timingFile)
 
-    summary_file = os.path.join(os.getcwd(), "results", self.name,
-                                "experiment_summary.txt")
+    summary_file = os.path.join(self.outdir, "experiment_summary.txt")
     with open(summary_file, "w") as f:
       f.write("# Experiment setup:\n")
       f.write("   TB: " + self.tb + "\n")
@@ -335,17 +347,19 @@ class Experiment:
       f.write("\n")
 
       f.write("# Experiment results:\n")
-      f.write("cycles executed: " + str(self.cycleeval.get_cycles()) + "\n")
       wsn = float(timing_report["Design Timing Summary"]["WNS(ns)"])
       f.write("WNS(ns): " + str(wsn) + "\n")
       cp = float(timing_report["Clock Summary"]["Period(ns)"])
       f.write("Clock period(ns): " + str(cp) + "\n")
-      exectime = float(self.cycleeval.exectime(cp))
-      f.write("Execution time(ns): " + str(exectime) + "\n")
       max_cp = cp - wsn
       f.write("Max clock period(ns): " + str(max_cp) + "\n")
-      min_exectime = float(self.cycleeval.exectime(max_cp))
-      f.write("Min execution time(ns): " + str(min_exectime))
+
+      if self.sim:
+        min_exectime = float(self.cycleeval.exectime(max_cp))
+        exectime = float(self.cycleeval.exectime(cp))
+        f.write("cycles executed: " + str(self.cycleeval.get_cycles()) + "\n")
+        f.write("Execution time(ns): " + str(exectime) + "\n")
+        f.write("Min execution time(ns): " + str(min_exectime))
 
       clb = to_int(find_row(CLB_logic, "Site Type", "CLB")["Used"])
       clb_lut = to_int(find_row(slice_logic, "Site Type", "CLB LUTs")["Used"])
@@ -376,9 +390,11 @@ if __name__ == "__main__":
   parser.add_argument("experiments",
                       help="JSON file containing the experiments to run.",
                       type=str)
-  parser.add_argument("--concurrent",
-                      help="Run the experiments concurrently.",
-                      action="store_true")
+  parser.add_argument(
+      "--concurrency",
+      help="Run the experiments concurrently (specify # of threads)",
+      type=int,
+      default=1)
 
   args = parser.parse_args()
 
@@ -386,18 +402,58 @@ if __name__ == "__main__":
     print("Experiments file does not exist: ", args.experiments)
     exit(1)
 
+  # get path without extension
+  # Get basename of args.experiments
+  experiments_file = os.path.basename(args.experiments)
+  experiments_file = os.path.splitext(experiments_file)[0]
+
   experiments = []
   with open(args.experiments) as f:
     expFile = json.load(f)
-    for expName, expValues in expFile.items():
+
+    # Load the test setup
+    setup = expFile["setup"]
+    experiment_name = setup["name"]
+    mode = setup["mode"]
+    general_args = setup["args"]
+    mode_args = setup["mode_args"]
+    kernel_calls = setup["kernel_calls"]
+    synth = setup["synth"]
+    sim = setup["sim"]
+
+    def overrideIfExists(container, key, current):
+      if key in container:
+        return container[key]
+      return current
+
+    # Load the experiment runs
+    for runName, expValues in expFile["runs"].items():
+      # Experiment runs are allowed to override the default setup specified in
+      # the experiment file.
+      run_mode = overrideIfExists(expValues, "mode", mode)
+      run_general_args = overrideIfExists(expValues, "args", general_args)
+      run_mode_args = overrideIfExists(expValues, "mode_args", mode_args)
+      run_kernel_calls = overrideIfExists(expValues, "kernel_calls",
+                                          kernel_calls)
+      run_synth = overrideIfExists(expValues, "synth", synth)
+      run_sim = overrideIfExists(expValues, "sim", sim)
+      run_tb = expValues["tb"]
+
+      # Fail if testbench doesn't exist
+      if not os.path.isfile(run_tb):
+        print_yellow("Testbench file does not exist: ", run_tb)
+        exit(1)
+
       experiments.append(
-          Experiment(name=expName,
-                     tb=expValues["tb"],
-                     kernel_calls=expValues["kernel_calls"],
-                     mode=expValues["mode"],
-                     args=expValues["args"],
-                     mode_args=expValues["mode_args"],
-                     synth=expValues["synth"]))
+          Experiment(experimentName=experiment_name,
+                     name=runName,
+                     tb=run_tb,
+                     kernel_calls=run_kernel_calls,
+                     mode=run_mode,
+                     args=run_general_args,
+                     mode_args=run_mode_args,
+                     synth=run_synth,
+                     sim=run_sim))
 
   print_yellow("Loaded experiments:")
   for experiment in experiments:
@@ -406,12 +462,15 @@ if __name__ == "__main__":
   if not os.path.exists("results"):
     os.makedirs("results")
 
+  if not os.path.exists(os.path.join("results", experiments_file)):
+    os.makedirs(os.path.join("results", experiments_file))
+
   # Run the experiments
-  if args.concurrent:
-    from concurrent.futures import ThreadPoolExecutor
-    with ThreadPoolExecutor() as executor:
-      for experiment in experiments:
-        executor.submit(experiment.run)
-  else:
+  from concurrent.futures import ThreadPoolExecutor
+  futures = []
+  with ThreadPoolExecutor(max_workers=args.concurrency) as executor:
     for experiment in experiments:
-      experiment.run()
+      futures.append(executor.submit(experiment.run))
+    # join
+    for future in concurrent.futures.as_completed(futures):
+      future.result()
