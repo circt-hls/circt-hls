@@ -866,6 +866,32 @@ class StaticMode(HLSMode):
     pass
 
 
+class TorchDynamicMode(DynamicMode):
+
+  def __init__(self):
+    super().__init__('dynamic-torch')
+
+  def create_subparser(self, subparser):
+    return subparser.add_parser(self.name,
+                                help='Dynamic mode (from Torch through torch-mlir)')
+
+  def run_lowering(self):
+    if not args.mlir_kernel:
+      # Run torch-mlir and opts to generate affine level MLIR.
+      try:
+        import torch_mlir
+      except ModuleNotFoundError:
+        print_error("Please install torch_mlir to use dynamic-torch mode")
+
+        print_info(f"Lowered to affine! (Torch)...! ({self.kernel_affine})")
+    else:
+      print_info("Skipping Torch lowering due to using an MLIR kernel")
+      copyAllowSame(args.kernel_file, self.kernel_affine)
+
+    # Transition to handshake lowering
+    super().run_lowering()
+
+
 class MixedMode(HLSMode):
   # TODO: implement mixed dynamic/static mode
 
@@ -879,8 +905,9 @@ class MixedMode(HLSMode):
 # Handles for the global 'Mode' objects
 polygeistDynMode = PolygeistDynamicMode()
 staticMode = StaticMode()
+torchMode = TorchDynamicMode()
 
-HLSModes = [polygeistDynMode, staticMode]
+HLSModes = [polygeistDynMode, staticMode, torchMode]
 
 
 # Loads a checkpoint file in the current directory
@@ -1119,6 +1146,7 @@ To see the arguments for a specific mode, use\n
   # Add mode arguments
   polygeistDynMode.add_arguments(polygeistDynMode.create_subparser(subparsers))
   staticMode.add_arguments(subparsers)
+  torchMode.add_arguments(torchMode.create_subparser(subparsers))
 
   # Parse arguments
   parse_args(parser)

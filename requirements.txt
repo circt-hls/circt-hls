@@ -1,5 +1,9 @@
+-f https://download.pytorch.org/whl/nightly/cpu/torch_nightly.html
+--pre
+
 readchar
 graphviz
 vcdvcd
 flask
 psutil
+torch
