@@ -16,7 +16,18 @@ set_param general.maxThreads 8
 # (*.sv) and Xilinx constraint files (*.xdc), which contain directives for
 # connecting design signals to physical FPGA pins.
 create_project -force -part $part $top $outdir
-add_files [glob ./*.sv]
+
+foreach item [glob -nocomplain ./*.sv] {
+  add_files -norecurse $item
+}
+foreach item [glob -nocomplain ./*.vhd] {
+  add_files -norecurse $item
+  # Enforce VHDL-2008 on the file
+  set file [file normalize $item]
+  set file_obj [get_files -of_objects [get_filesets sources_1] [list "*$file"]]
+  set_property -name "file_type" -value "VHDL 2008" -objects $file_obj
+}
+
 add_files -fileset constrs_1 [glob ./*.xdc]
 set_property top $top [current_fileset]
 
@@ -24,7 +35,7 @@ set_property top $top [current_fileset]
 # hook up every input & output wire to a physical device pin.
 set_property \
     -name {STEPS.SYNTH_DESIGN.ARGS.MORE OPTIONS} \
-    -value {-mode out_of_context -flatten_hierarchy "rebuilt"} \
+    -value {-mode out_of_context -flatten_hierarchy "full"} \
     -objects [get_runs synth_1]
 
 # Run synthesis. This is enough to generate the utilization report mentioned
