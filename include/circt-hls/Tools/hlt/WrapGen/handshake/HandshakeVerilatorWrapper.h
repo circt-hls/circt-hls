@@ -54,6 +54,9 @@ private:
   std::string getResName(unsigned idx);
   std::string getInputName(unsigned idx);
 
+  // Returns the data width for a port. The port is expected to be a firrtl bundle.
+  unsigned getBundleDataWidth(firrtl::BundleType idx);
+
   // Operations representing the reference and firrtl modules of the kernel.
   handshake::FuncOp hsOp;
   firrtl::FModuleLike firrtlOp;

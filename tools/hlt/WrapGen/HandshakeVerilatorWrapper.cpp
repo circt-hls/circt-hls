@@ -82,6 +82,13 @@ std::string HandshakeVerilatorWrapper::getInputName(unsigned idx) {
   return firrtlOp.getPortName(idx).str();
 }
 
+unsigned
+HandshakeVerilatorWrapper::getBundleDataWidth(firrtl::BundleType bundleType) {
+  auto dataSig = bundleType.getElement("data");
+  assert(dataSig.hasValue() && "Expected bundle to have a data signal");
+  return dataSig.getValue().type.getBitWidthOrSentinel();
+}
+
 unsigned HandshakeVerilatorWrapper::inCtrlIdx() {
   return funcOp.getNumArguments();
 }
@@ -148,12 +155,22 @@ LogicalResult HandshakeVerilatorWrapper::emitExtMemPort(MemRefType memref,
   auto shape = memref.getShape();
   assert(shape.size() == 1 && "Only support unidimensional memories");
   std::string name = getInputName(idx);
-  Type addrType = IndexType::get(hsOp.getContext());
+
+  // Find any ldAddr#/stAddr# bundle within the memory port
+  auto bundleType = firrtlOp.getPortType(idx).cast<firrtl::BundleType>();
+  unsigned addrWidth = 0;
+  for (auto sig : bundleType.getElements()) {
+    if (sig.name.strref().startswith("ldAddr") ||
+        sig.name.strref().startswith("stAddr"))
+      addrWidth = getBundleDataWidth(sig.type.cast<firrtl::BundleType>());
+  }
+  assert(addrWidth > 0 && "Found no address signal in memory bundle!");
+
   osi() << "auto " << name << " = addInputPort<HandshakeMemoryInterface<";
   if (emitVerilatorType(osi(), hsOp.getLoc(), memref.getElementType()).failed())
     return failure();
   osi() << ", ";
-  if (emitVerilatorType(osi(), hsOp.getLoc(), addrType).failed())
+  if (emitVerilatorTypeFromWidth(osi(), hsOp.getLoc(), addrWidth).failed())
     return failure();
   osi() << ">>(/*size=*/" << shape.front() << ");\n";
 
@@ -180,7 +197,7 @@ LogicalResult HandshakeVerilatorWrapper::emitExtMemPort(MemRefType memref,
 
     // Address port
     osi() << "std::make_shared<HandshakeDataOutPort<";
-    if (emitVerilatorType(os(), hsOp.getLoc(), addrType).failed())
+    if (emitVerilatorTypeFromWidth(os(), hsOp.getLoc(), addrWidth).failed())
       return failure();
     osi() << ">>";
     emitHSPortCtor(osi(), name + "_ldAddr" + std::to_string(i));
@@ -210,7 +227,7 @@ LogicalResult HandshakeVerilatorWrapper::emitExtMemPort(MemRefType memref,
 
     // Address port
     osi() << "std::make_shared<HandshakeDataOutPort<";
-    if (emitVerilatorType(os(), hsOp.getLoc(), addrType).failed())
+    if (emitVerilatorTypeFromWidth(os(), hsOp.getLoc(), addrWidth).failed())
       return failure();
     osi() << ">>";
     emitHSPortCtor(osi(), name + "_stAddr" + std::to_string(i));

@@ -24,6 +24,8 @@ namespace circt_hls {
 /// Outputs Verilator types based on MLIR integer types.
 LogicalResult emitVerilatorType(llvm::raw_ostream &os, Location loc, Type type,
                                 Optional<StringRef> varName = {});
+LogicalResult emitVerilatorTypeFromWidth(llvm::raw_ostream &os, Location loc,
+                                unsigned width);
 
 } // namespace circt_hls
 

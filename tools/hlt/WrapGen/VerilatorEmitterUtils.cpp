@@ -18,23 +18,28 @@ using namespace mlir;
 
 namespace circt_hls {
 
+LogicalResult emitVerilatorTypeFromWidth(llvm::raw_ostream &os, Location loc,
+                                         unsigned width) {
+  if (width <= 8)
+    os << "CData";
+  else if (width <= 16)
+    os << "SData";
+  else if (width <= 32)
+    os << "IData";
+  else if (width <= 64)
+    os << "QData";
+  else
+    return emitError(loc)
+           << "Integers wider than 64 bits are unhandled for now";
+  return success();
+}
+
 LogicalResult emitVerilatorType(llvm::raw_ostream &os, Location loc, Type type,
                                 Optional<StringRef>) {
   return llvm::TypeSwitch<Type, LogicalResult>(type)
       .Case<IntegerType>([&](IntegerType type) -> LogicalResult {
         unsigned bits = type.getIntOrFloatBitWidth();
-        if (bits <= 8)
-          os << "CData";
-        else if (bits <= 16)
-          os << "SData";
-        else if (bits <= 32)
-          os << "IData";
-        else if (bits <= 64)
-          os << "QData";
-        else
-          return emitError(loc)
-                 << "Integers wider than 64 bits are unhandled for now";
-        return success();
+        return emitVerilatorTypeFromWidth(os, loc, bits);
       })
       .Case<IndexType>([&](IndexType type) {
         return emitVerilatorType(
