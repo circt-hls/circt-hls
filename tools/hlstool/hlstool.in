@@ -868,8 +868,15 @@ class StaticMode(HLSMode):
 
 class TorchDynamicMode(DynamicMode):
 
+  PASSES = ",".join([
+    "torchscript-module-to-torch-backend-pipeline",
+    "torch-backend-to-linalg-on-tensors-backend-pipeline"
+  ])
+
+
   def __init__(self):
     super().__init__('dynamic-torch')
+
 
   def create_subparser(self, subparser):
     return subparser.add_parser(self.name,
@@ -879,11 +886,69 @@ class TorchDynamicMode(DynamicMode):
     if not args.mlir_kernel:
       # Run torch-mlir and opts to generate affine level MLIR.
       try:
-        import torch_mlir
+        import torch.jit
+        from torch_mlir.dialects.torch.importer.jit_ir import (
+          ClassAnnotator, ModuleBuilder)
+        from torch_mlir.dialects.torch.importer.jit_ir.torchscript_annotations import (
+          extract_annotations)
+        from torch_mlir.passmanager import PassManager
       except ModuleNotFoundError:
         print_error("Please install torch_mlir to use dynamic-torch mode")
 
-        print_info(f"Lowered to affine! (Torch)...! ({self.kernel_affine})")
+      import importlib.util
+      import sys
+
+      # Import the Python kernel file.
+      kernel_file = args.kernel_file
+      kernel_name = args.kernel_name
+      spec = importlib.util.spec_from_file_location(kernel_name, kernel_file)
+      module = importlib.util.module_from_spec(spec)
+      sys.modules[kernel_name] = module
+      spec.loader.exec_module(module)
+
+      # Instantiate the kernel torch.nn.Module and run it through the Torch JIT.
+      program = module.__dict__[kernel_name]()
+      mb = ModuleBuilder()
+      scripted = torch.jit.script(program)
+      class_annotator = ClassAnnotator()
+
+      # Import and compile the module with torch-mlir.
+      extract_annotations(program, scripted, class_annotator)
+      mb.import_module(scripted._c, class_annotator)
+      with mb.module.context:
+        pm = PassManager.parse(self.PASSES)
+        pm.run(mb.module)
+
+      # Output the MLIR at the level of the torch-mlir backend contract.
+      torch_mlir_outfile = self.genPrefixedOutputFileName("torch_mlir.mlir")
+      with open(torch_mlir_outfile, 'w') as f:
+        print(mb.module, file=f)
+
+      # Lower from linalg on tensors to affine loops.
+      affine_initial_outfile = self.genPrefixedOutputFileName("affine_initial.mlir")
+      runIfNotExists(
+        self.kernel_affine, lambda: run_mlir_opt([
+          "--linalg-comprehensive-module-bufferize=\"allow-return-memref use-alloca\"",
+          "--convert-linalg-to-affine-loops"
+        ], torch_mlir_outfile, affine_initial_outfile))
+
+      # Detect reduction loops to turn memrefs into iter args.
+      affine_opt_outfile = self.genPrefixedOutputFileName("affine_opt.mlir")
+      runIfNotExists(
+        affine_initial_outfile, lambda: run_polygeist_opt([
+          "--detect-reduction",
+        ], affine_initial_outfile, affine_opt_outfile))
+
+      # Replace memrefs with scalars.
+      runIfNotExists(
+        affine_opt_outfile, lambda: run_mlir_opt([
+          "--affine-scalrep"
+        ], affine_opt_outfile, self.kernel_affine))
+
+      # The top level is now the torch.nn.Module forward method.
+      args.kernel_name = "forward"
+
+      print_info(f"Lowered to affine! (Torch)...! ({self.kernel_affine})")
     else:
       print_info("Skipping Torch lowering due to using an MLIR kernel")
       copyAllowSame(args.kernel_file, self.kernel_affine)
