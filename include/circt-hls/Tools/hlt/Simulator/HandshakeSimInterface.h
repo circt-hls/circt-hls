@@ -165,25 +165,45 @@ struct HandshakeDataOutPort : HandshakeDataPort<TData, HandshakeOutPort> {
 // the memory interface during simulation. The memory interface inherits from
 // SimulatorInPort due to handshake circuits receiving a memory interface as a
 // memref input.
-template <typename TData, typename TAddr>
-class HandshakeMemoryInterface : public SimulatorInPort,
-                                 public TransactableTrait {
+
+// When iterating over ports in writeInputRec, we dynamic_cast them to check for
+// their type. This is difficult to do if we dyn_cast on
+// HandshakeMemoryInterface due to TAddr (not directly known from a value that
+// is pushed onto the simulator).
+template <typename TData>
+class HandshakeMemoryInterfaceBase : public SimulatorInPort,
+                                     public TransactableTrait {
+protected:
   // The memory pointer is set by the simulation engine during execution.
   TData *memory_ptr = nullptr;
+
+public:
+  void setMemory(void *memory) {
+    if (memory_ptr != nullptr)
+      assert(memory_ptr == memory &&
+             "The memory should always point to the same base address "
+             "throughout simulation.");
+    memory_ptr = reinterpret_cast<TData *>(memory);
+    txState = TransactNext;
+  }
+};
+
+template <typename TData, typename TAddr>
+class HandshakeMemoryInterface : public HandshakeMemoryInterfaceBase<TData> {
 
   // The size of the memory associated with this interface.
   size_t memorySize;
 
   void write(const TAddr &addr, const TData &data) {
-    assert(memory_ptr != nullptr && "Memory not set.");
+    assert(this->memory_ptr != nullptr && "Memory not set.");
     assert(addr < memorySize && "Address out of bounds.");
-    memory_ptr[addr] = data;
+    this->memory_ptr[addr] = data;
   }
 
   TData read(const TAddr &addr) {
-    assert(memory_ptr != nullptr && "Memory not set.");
+    assert(this->memory_ptr != nullptr && "Memory not set.");
     assert(addr < memorySize && "Address out of bounds.");
-    return memory_ptr[addr];
+    return this->memory_ptr[addr];
   }
 
   class MemoryPortBundle : public SimulatorPort {
@@ -391,15 +411,6 @@ public:
 
   void dump(std::ostream &os) const {}
 
-  void setMemory(void *memory) {
-    if (memory_ptr != nullptr)
-      assert(memory_ptr == memory &&
-             "The memory should always point to the same base address "
-             "throughout simulation.");
-    memory_ptr = reinterpret_cast<TData *>(memory);
-    txState = TransactNext;
-  }
-
   virtual ~HandshakeMemoryInterface() = default;
 
   void
@@ -440,14 +451,14 @@ public:
   // signal of his handshake bundle.
   bool eval(bool firstInStep) override {
     bool changed = false;
-    switch (txState) {
-    case Idle:
+    switch (this->txState) {
+    case TransactableTrait::Idle:
       break;
-    case TransactNext:
-      txState = Transacted;
+    case TransactableTrait::TransactNext:
+      this->txState = TransactableTrait::Transacted;
       break;
-    case Transacted:
-      txState = Idle;
+    case TransactableTrait::Transacted:
+      this->txState = TransactableTrait::Idle;
       break;
     }
 
@@ -668,8 +679,8 @@ public:
         }
       }
       // Memory interface?
-      else if (auto inMemPort = dynamic_cast<HandshakeMemoryInterface<
-                   std::remove_pointer_t<decltype(value)>, QData> *>(p);
+      else if (auto inMemPort = dynamic_cast<HandshakeMemoryInterfaceBase<
+                   std::remove_pointer_t<decltype(value)>> *>(p);
                inMemPort) {
         inMemPort->setMemory(reinterpret_cast<void *>(value));
       } else {
