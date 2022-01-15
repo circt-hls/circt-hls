@@ -357,6 +357,12 @@ class DynamicMode(HLSMode):
         "polygaist and standard to handshake lowering.")
 
     subparser.add_argument(
+        '--flatten_firrtl',
+        action='store_true',
+        help="Flattens the handshake top-level FIRRTL component.",
+        default=False)
+
+    subparser.add_argument(
         '--buffer_strategy',
         type=str,
         default="cycles",
@@ -531,7 +537,7 @@ class DynamicMode(HLSMode):
       runIfNotExists(
           self.kernel_handshake_buffered, lambda: run_circt_opt([
               f"-handshake-insert-buffers=\"strategy={args.buffer_strategy} buffer-size={args.buffer_size}\"",
-              "--handshake-remove-simple-merges", "--canonicalize"
+              "--canonicalize"
           ], self.kernel_handshake_unbuffered, self.kernel_handshake_buffered))
 
       # Run the add-ids pass to ensure that we have a deterministic mapping between
@@ -543,10 +549,12 @@ class DynamicMode(HLSMode):
       print_info(f"Lowered to handshake...! ({self.kernel_handshake})")
 
     # Lower to FIRRTL
+    lowerToFIRRTLArg = "--lower-handshake-to-firrtl"
+    if args.flatten_firrtl:
+      lowerToFIRRTLArg += "=\"flatten\""
     runIfNotExists(
-        self.kernel_firrtl,
-        lambda: run_circt_opt(["--lower-handshake-to-firrtl"], self.
-                              kernel_handshake, self.kernel_firrtl))
+        self.kernel_firrtl, lambda: run_circt_opt(
+            [lowerToFIRRTLArg], self.kernel_handshake, self.kernel_firrtl))
     print_info(f"Lowered to FIRRTL...! ({self.kernel_firrtl})")
 
     # Lower to SV
