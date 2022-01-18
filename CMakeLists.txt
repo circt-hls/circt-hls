@@ -12,8 +12,8 @@ set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED YES)
 
 if( CMAKE_SOURCE_DIR STREQUAL CMAKE_CURRENT_SOURCE_DIR )
-  find_package(CIRCT REQUIRED CONFIG)
   project(circt-hls LANGUAGES CXX C)
+  find_package(CIRCT REQUIRED CONFIG)
 
   option(LLVM_INCLUDE_TOOLS "Generate build targets for the LLVM tools." ON)
   option(LLVM_BUILD_TOOLS "Build the LLVM tools. If OFF, just generate build targets." ON)
