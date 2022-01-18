@@ -1044,13 +1044,18 @@ def parse_args(parser):
       ext = ".mlir"
     args.kernel_file = os.path.join(dirname, basename + ext)
     args.kernel_name = basename
-  elif not args.kernel_file and not args.kernel_name:
-    parser.error("Must specify kernel file and kernel name")
 
   # Ensure provided files are absolute paths
   if args.tb_file:
     args.tb_file = os.path.abspath(args.tb_file)
   args.kernel_file = os.path.abspath(args.kernel_file)
+
+  # End of inference; kernel name and kernel file must have been fully specified
+  if not args.kernel_file:
+    parser.error("Must specify kernel file (--kernel_file")
+
+  if not args.kernel_name:
+    parser.error("Must specify kernel name (--kernel_name)")
 
   print_info("using kernel file: {}".format(args.kernel_file))
   print_info("using kernel name: {}".format(args.kernel_name))
