@@ -29,10 +29,6 @@ def dirAndToolExists(replstr, dir, tool):
     sys.exit(1)
 
 
-print("CIRCT_BINARY_DIR " + CIRCT_BIN_DIR + "\n")
-print("CIRCT_HLS_BINARY_DIR " + CIRCT_HLS_BIN_DIR + "\n")
-print("POLYGEIST_BINARY_DIR " + POLYGEIST_BIN_DIR + "\n")
-
 dirAndToolExists("CIRCT_BINARY_DIR", CIRCT_BIN_DIR, "circt-opt")
 dirAndToolExists("CIRCT_HLS_BINARY_DIR", CIRCT_HLS_BIN_DIR, "hls-opt")
 dirAndToolExists("POLYGEIST_BINARY_DIR", POLYGEIST_BIN_DIR, "polygeist-opt")
