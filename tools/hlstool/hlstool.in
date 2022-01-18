@@ -16,6 +16,27 @@ CIRCT_HLS_SOURCE_DIR = "@CIRCT_HLS_SOURCE_DIR@"
 LLVM_BIN_DIR = "@LLVM_BINARY_DIR@/bin"
 POLYGEIST_BIN_DIR = "@POLYGEIST_BINARY_DIR@"
 
+
+# Sanity check that the tools we need are available
+def dirAndToolExists(replstr, dir, tool):
+  if not dir or not os.path.exists(dir):
+    print(
+        f"Error: {dir} does not exist. Should have been generated from {replstr}"
+    )
+    sys.exit(1)
+  if not os.path.exists(os.path.join(dir, tool)):
+    print(f"Error: {tool} does not exist in {dir}")
+    sys.exit(1)
+
+
+print("CIRCT_BINARY_DIR " + CIRCT_BIN_DIR + "\n")
+print("CIRCT_HLS_BINARY_DIR " + CIRCT_HLS_BIN_DIR + "\n")
+print("POLYGEIST_BINARY_DIR " + POLYGEIST_BIN_DIR + "\n")
+
+dirAndToolExists("CIRCT_BINARY_DIR", CIRCT_BIN_DIR, "circt-opt")
+dirAndToolExists("CIRCT_HLS_BINARY_DIR", CIRCT_HLS_BIN_DIR, "hls-opt")
+dirAndToolExists("POLYGEIST_BINARY_DIR", POLYGEIST_BIN_DIR, "polygeist-opt")
+
 ## Global variables used to drive the tool
 # Current mode
 mode = None
