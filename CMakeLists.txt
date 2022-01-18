@@ -40,8 +40,6 @@ if( CMAKE_SOURCE_DIR STREQUAL CMAKE_CURRENT_SOURCE_DIR )
   include(AddLLVM)
   include(AddMLIR)
 
-  list(APPEND CMAKE_MODULE_PATH "${CIRCT_MAIN_SRC_DIR}/cmake/modules")
-  include(AddCIRCT)
   include(HandleLLVMOptions)
 else ()
   set(MLIR_MAIN_SRC_DIR ${LLVM_MAIN_SRC_DIR}/../mlir ) # --src-root
