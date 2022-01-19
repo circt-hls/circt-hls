@@ -21,6 +21,7 @@ namespace circt_hls {
 //===----------------------------------------------------------------------===//
 // Passes
 //===----------------------------------------------------------------------===//
+std::unique_ptr<mlir::Pass> createAffineScalRepPass();
 std::unique_ptr<mlir::Pass> createPushConstantsPass();
 std::unique_ptr<mlir::Pass> createAsyncifyCallsPass();
 std::unique_ptr<mlir::Pass> createMaxSSAFormPass();

@@ -16,6 +16,16 @@
 include "mlir/Pass/PassBase.td"
 include "mlir/Rewrite/PassUtil.td"
 
+def AffineScalRep : FunctionPass<"affine-scalrep"> {
+  let summary = "Additional scalar replacement transforms";
+  let description = [{
+    Additional scalar replacement transforms on top of upstream MLIR. It
+    forwards stores to returns, which can optimize away memrefs allocated
+    for returned tensors during bufferization.
+  }];
+  let constructor = "circt_hls::createAffineScalRepPass()";
+}
+
 def AsyncifyCalls : Pass<"asyncify-calls", "ModuleOp"> {
   let summary = "Async-ifies calls to a function (HLT)";
   let description = [{

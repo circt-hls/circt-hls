@@ -927,23 +927,29 @@ class TorchDynamicMode(DynamicMode):
       # Lower from linalg on tensors to affine loops.
       affine_initial_outfile = self.genPrefixedOutputFileName("affine_initial.mlir")
       runIfNotExists(
-        self.kernel_affine, lambda: run_mlir_opt([
+        affine_initial_outfile, lambda: run_mlir_opt([
           "--linalg-comprehensive-module-bufferize=\"allow-return-memref use-alloca\"",
           "--convert-linalg-to-affine-loops"
         ], torch_mlir_outfile, affine_initial_outfile))
 
       # Detect reduction loops to turn memrefs into iter args.
-      affine_opt_outfile = self.genPrefixedOutputFileName("affine_opt.mlir")
+      affine_opt1_outfile = self.genPrefixedOutputFileName("affine_opt1.mlir")
       runIfNotExists(
-        affine_initial_outfile, lambda: run_polygeist_opt([
+        affine_opt1_outfile, lambda: run_polygeist_opt([
           "--detect-reduction",
-        ], affine_initial_outfile, affine_opt_outfile))
+        ], affine_initial_outfile, affine_opt1_outfile))
 
       # Replace memrefs with scalars.
+      affine_opt2_outfile = self.genPrefixedOutputFileName("affine_opt2.mlir")
       runIfNotExists(
-        affine_opt_outfile, lambda: run_mlir_opt([
+        affine_opt2_outfile, lambda: run_mlir_opt([
           "--affine-scalrep"
-        ], affine_opt_outfile, self.kernel_affine))
+       ], affine_opt1_outfile, affine_opt2_outfile))
+
+      runIfNotExists(
+        self.kernel_affine, lambda: run_hls_opt([
+          "--affine-scalrep"
+        ], affine_opt2_outfile, self.kernel_affine))
 
       # The top level is now the torch.nn.Module forward method.
       args.kernel_name = "forward"

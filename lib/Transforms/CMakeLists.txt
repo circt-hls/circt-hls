@@ -1,4 +1,5 @@
 add_mlir_library(HLSTransforms
+  AffineScalRep.cpp
   AsyncifyCalls.cpp
   MaxSSA.cpp
   RenameFunc.cpp
