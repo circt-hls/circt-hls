@@ -40,6 +40,14 @@ if( CMAKE_SOURCE_DIR STREQUAL CMAKE_CURRENT_SOURCE_DIR )
   include(AddLLVM)
   include(AddMLIR)
 
+  # todo(fix me): Temporary fix for ensuring that CIRCT_BINARY_DIR is defined.
+  if(NOT DEFINED CIRCT_BINARY_DIR)
+    # As a fallback, we assume that CIRCTConfig is located somewhere like
+    # circt/build/lib/cmake/circt
+    # ... as long as it fixes CI, it's good enough for now.
+    set(CIRCT_BINARY_DIR "${CIRCT_DIR}/../../..")
+  endif()
+
   include(HandleLLVMOptions)
 else ()
   set(MLIR_MAIN_SRC_DIR ${LLVM_MAIN_SRC_DIR}/../mlir ) # --src-root
