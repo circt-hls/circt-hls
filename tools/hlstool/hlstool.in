@@ -31,6 +31,7 @@ def dirAndToolExists(replstr, dir, tool):
 
 
 dirAndToolExists("CIRCT_BINARY_DIR", CIRCT_BIN_DIR, "circt-opt")
+dirAndToolExists("CIRCT_BINARY_DIR", CIRCT_BIN_DIR, "circt-translate")
 dirAndToolExists("CIRCT_HLS_BINARY_DIR", CIRCT_HLS_BIN_DIR, "hls-opt")
 dirAndToolExists("POLYGEIST_BINARY_DIR", POLYGEIST_BIN_DIR, "polygeist-opt")
 
@@ -229,6 +230,10 @@ def run_circt_opt(args, inputFile=None, outputFile=None):
   run_opt_tool(CIRCT_BIN_DIR, "circt-opt", args, inputFile, outputFile)
 
 
+def run_circt_translate(args, inputFile=None, outputFile=None):
+  run_opt_tool(CIRCT_BIN_DIR, "circt-translate", args, inputFile, outputFile)
+
+
 def run_hls_opt(args, inputFile=None, outputFile=None):
   run_opt_tool(CIRCT_HLS_BIN_DIR, "hls-opt", args, inputFile, outputFile)
 
@@ -247,6 +252,9 @@ class HLSMode:
 
   def parse_arguments(self, parser):
     raise NotImplementedError("implement me in a subclass")
+
+  def genPrefixedOutputFileName(self, suffix):
+    return os.path.join(args.outdir, args.kernel_name + "_" + suffix)
 
   def gen_names(self):
     # Generates all possible output file names which we'll reference during the run.
@@ -434,9 +442,6 @@ class DynamicMode(HLSMode):
       # Building the sim requires lowering the kernel.
       args.lower |= True
       print_info("enabling --lower required by --build_sim")
-
-  def genPrefixedOutputFileName(self, suffix):
-    return os.path.join(args.outdir, args.kernel_name + "_" + suffix)
 
   def gen_names_mode(self):
     # Generate dynamic-mode specific names.
@@ -858,16 +863,54 @@ class PolygeistDynamicMode(DynamicMode):
 
 
 class StaticMode(HLSMode):
-  # TODO: implement static mode
-
-  def __init__(self):
-    super().__init__('static')
+  def __init__(self, name='static'):
+    super().__init__(name)
 
   def add_arguments(self, subparser):
     pass
 
+  def parse_arguments(self, subparser):
+    pass
 
-class TorchDynamicMode(DynamicMode):
+  def gen_names_mode(self):
+    self.kernel_affine = self.genPrefixedOutputFileName("affine.mlir")
+    self.kernel_scf = self.genPrefixedOutputFileName("scf.mlir")
+    self.kernel_calyx = self.genPrefixedOutputFileName("calyx.mlir")
+    self.kernel_calyx_futil = self.genPrefixedOutputFileName("calyx.futil")
+
+  def run_mode(self):
+    self.gen_names()
+    self.run_lowering()
+
+  def run_lowering(self):
+    print_step(f"Statically scheduled HLS'ing {args.kernel_file}...")
+
+    runIfNotExists(
+      self.kernel_scf, lambda: run_mlir_opt([
+        "--lower-affine",
+        "--scf-for-to-while",
+      ], self.kernel_affine, self.kernel_scf))
+    print_info(f"Lowered to SCF...! ({self.kernel_scf})")
+
+    runIfNotExists(
+      self.kernel_calyx, lambda: run_circt_opt([
+        f"--lower-scf-to-calyx=\"top-level-function={args.method}\""
+      ], self.kernel_scf, self.kernel_calyx))
+    print_info(f"Lowered to Calyx MLIR...! ({self.kernel_calyx})")
+
+    runIfNotExists(
+      self.kernel_calyx_futil, lambda: run_circt_translate([
+        "--export-calyx"
+      ], self.kernel_calyx, self.kernel_calyx_futil))
+    print_info(f"Lowered to Calyx Futil...! ({self.kernel_calyx_futil})")
+
+    runIfNotExists(
+      self.kernel_sv, lambda: run_fud(
+        "futil", "verilog", self.kernel_calyx_futil, self.kernel_sv))
+    print_info(f"Lowered to RTL...! ({self.kernel_sv})")
+
+
+class TorchMode:
 
   PASSES = ",".join([
     "torchscript-module-to-torch-backend-pipeline",
@@ -875,9 +918,6 @@ class TorchDynamicMode(DynamicMode):
   ])
 
   TYPE_REGEX = re.compile("\[(.+)\],\W*(.+),\W*(.+)")
-
-  def __init__(self):
-    super().__init__('dynamic-torch')
 
   @classmethod
   def parse_type(cls, string):
@@ -899,8 +939,9 @@ class TorchDynamicMode(DynamicMode):
     return (shape, dtype, has_value_semantics)
 
   def create_subparser(self, subparser):
+    pretty_name = self.name.split("-")[0].capitalize()
     parser = subparser.add_parser(self.name,
-                                  help='Dynamic mode (from Torch through torch-mlir)')
+                                  help=f'{pretty_name} mode (from Torch through torch-mlir)')
 
     parser.add_argument(
         "--method",
@@ -916,88 +957,111 @@ class TorchDynamicMode(DynamicMode):
 
     return parser
 
+  def run_torch_mlir(self):
+    # Run torch-mlir and opts to generate affine level MLIR.
+    try:
+      import torch.jit
+      from torch_mlir.dialects.torch.importer.jit_ir import (
+        ClassAnnotator, ModuleBuilder)
+      from torch_mlir.passmanager import PassManager
+    except ModuleNotFoundError:
+      print_error("Please install torch_mlir to use dynamic-torch mode")
+
+    import importlib.util
+    import sys
+
+    # Import the Python kernel file.
+    kernel_file = args.kernel_file
+    kernel_name = args.kernel_name
+    spec = importlib.util.spec_from_file_location(kernel_name, kernel_file)
+    module = importlib.util.module_from_spec(spec)
+    sys.modules[kernel_name] = module
+    spec.loader.exec_module(module)
+
+    # Instantiate the kernel torch.nn.Module and run it through the Torch JIT.
+    program = module.__dict__[kernel_name]()
+    mb = ModuleBuilder()
+    scripted = torch.jit.script(program)
+    class_annotator = ClassAnnotator()
+
+    # Import and compile the module with torch-mlir.
+    types = [None] + args.types
+    class_annotator.exportNone(scripted._c._type())
+    class_annotator.exportPath(scripted._c._type(), [args.method])
+    class_annotator.annotateArgs(scripted._c._type(), [args.method], types)
+
+    mb.import_module(scripted._c, class_annotator)
+    with mb.module.context:
+      pm = PassManager.parse(self.PASSES)
+      pm.run(mb.module)
+
+    # Output the MLIR at the level of the torch-mlir backend contract.
+    torch_mlir_outfile = self.genPrefixedOutputFileName("torch_mlir.mlir")
+    with open(torch_mlir_outfile, 'w') as f:
+      print(mb.module, file=f)
+
+    # Lower from linalg on tensors to affine loops.
+    affine_initial_outfile = self.genPrefixedOutputFileName("affine_initial.mlir")
+    runIfNotExists(
+      affine_initial_outfile, lambda: run_mlir_opt([
+        "--linalg-comprehensive-module-bufferize=\"allow-return-memref use-alloca\"",
+        "--convert-linalg-to-affine-loops"
+      ], torch_mlir_outfile, affine_initial_outfile))
+
+    # Detect reduction loops to turn memrefs into iter args.
+    affine_opt1_outfile = self.genPrefixedOutputFileName("affine_opt1.mlir")
+    runIfNotExists(
+      affine_opt1_outfile, lambda: run_polygeist_opt([
+        "--detect-reduction",
+      ], affine_initial_outfile, affine_opt1_outfile))
+
+    # Replace memrefs with scalars.
+    affine_opt2_outfile = self.genPrefixedOutputFileName("affine_opt2.mlir")
+    runIfNotExists(
+      affine_opt2_outfile, lambda: run_mlir_opt([
+        "--affine-scalrep"
+     ], affine_opt1_outfile, affine_opt2_outfile))
+
+    runIfNotExists(
+      self.kernel_affine, lambda: run_hls_opt([
+        "--affine-scalrep"
+      ], affine_opt2_outfile, self.kernel_affine))
+
+    # The top level is now the torch.nn.Module method.
+    args.kernel_name = args.method
+
+
+class TorchDynamicMode(TorchMode, DynamicMode):
+
+  def __init__(self):
+    super().__init__('dynamic-torch')
+
   def run_lowering(self):
     if not args.mlir_kernel:
-      # Run torch-mlir and opts to generate affine level MLIR.
-      try:
-        import torch.jit
-        from torch_mlir.dialects.torch.importer.jit_ir import (
-          ClassAnnotator, ModuleBuilder)
-        from torch_mlir.dialects.torch.importer.jit_ir.torchscript_annotations import (
-          extract_annotations)
-        from torch_mlir.passmanager import PassManager
-      except ModuleNotFoundError:
-        print_error("Please install torch_mlir to use dynamic-torch mode")
-
-      import importlib.util
-      import sys
-
-      # Import the Python kernel file.
-      kernel_file = args.kernel_file
-      kernel_name = args.kernel_name
-      spec = importlib.util.spec_from_file_location(kernel_name, kernel_file)
-      module = importlib.util.module_from_spec(spec)
-      sys.modules[kernel_name] = module
-      spec.loader.exec_module(module)
-
-      # Instantiate the kernel torch.nn.Module and run it through the Torch JIT.
-      program = module.__dict__[kernel_name]()
-      mb = ModuleBuilder()
-      scripted = torch.jit.script(program)
-      class_annotator = ClassAnnotator()
-
-      # Import and compile the module with torch-mlir.
-      types = [None] + args.types
-      class_annotator.exportNone(scripted._c._type())
-      class_annotator.exportPath(scripted._c._type(), [args.method])
-      class_annotator.annotateArgs(scripted._c._type(), [args.method], types)
-
-      mb.import_module(scripted._c, class_annotator)
-      with mb.module.context:
-        pm = PassManager.parse(self.PASSES)
-        pm.run(mb.module)
-
-      # Output the MLIR at the level of the torch-mlir backend contract.
-      torch_mlir_outfile = self.genPrefixedOutputFileName("torch_mlir.mlir")
-      with open(torch_mlir_outfile, 'w') as f:
-        print(mb.module, file=f)
-
-      # Lower from linalg on tensors to affine loops.
-      affine_initial_outfile = self.genPrefixedOutputFileName("affine_initial.mlir")
-      runIfNotExists(
-        affine_initial_outfile, lambda: run_mlir_opt([
-          "--linalg-comprehensive-module-bufferize=\"allow-return-memref use-alloca\"",
-          "--convert-linalg-to-affine-loops"
-        ], torch_mlir_outfile, affine_initial_outfile))
-
-      # Detect reduction loops to turn memrefs into iter args.
-      affine_opt1_outfile = self.genPrefixedOutputFileName("affine_opt1.mlir")
-      runIfNotExists(
-        affine_opt1_outfile, lambda: run_polygeist_opt([
-          "--detect-reduction",
-        ], affine_initial_outfile, affine_opt1_outfile))
-
-      # Replace memrefs with scalars.
-      affine_opt2_outfile = self.genPrefixedOutputFileName("affine_opt2.mlir")
-      runIfNotExists(
-        affine_opt2_outfile, lambda: run_mlir_opt([
-          "--affine-scalrep"
-       ], affine_opt1_outfile, affine_opt2_outfile))
-
-      runIfNotExists(
-        self.kernel_affine, lambda: run_hls_opt([
-          "--affine-scalrep"
-        ], affine_opt2_outfile, self.kernel_affine))
-
-      # The top level is now the torch.nn.Module forward method.
-      args.kernel_name = "forward"
-
+      self.run_torch_mlir()
       print_info(f"Lowered to affine! (Torch)...! ({self.kernel_affine})")
     else:
       print_info("Skipping Torch lowering due to using an MLIR kernel")
       copyAllowSame(args.kernel_file, self.kernel_affine)
 
     # Transition to handshake lowering
+    super().run_lowering()
+
+
+class TorchStaticMode(TorchMode, StaticMode):
+
+  def __init__(self):
+    super().__init__('static-torch')
+
+  def run_lowering(self):
+    if not args.mlir_kernel:
+      self.run_torch_mlir()
+      print_info(f"Lowered to affine! (Torch)...! ({self.kernel_affine})")
+    else:
+      print_info("Skipping Torch lowering due to using an MLIR kernel")
+      copyAllowSame(args.kernel_file, self.kernel_affine)
+
+    # Transition to Calyx lowering
     super().run_lowering()
 
 
@@ -1013,10 +1077,10 @@ class MixedMode(HLSMode):
 
 # Handles for the global 'Mode' objects
 polygeistDynMode = PolygeistDynamicMode()
-staticMode = StaticMode()
-torchMode = TorchDynamicMode()
+torchStaticMode = TorchStaticMode()
+torchDynamicMode = TorchDynamicMode()
 
-HLSModes = [polygeistDynMode, staticMode, torchMode]
+HLSModes = [polygeistDynMode, torchDynamicMode, torchStaticMode]
 
 
 # Loads a checkpoint file in the current directory
@@ -1259,8 +1323,8 @@ To see the arguments for a specific mode, use\n
       required=False)
   # Add mode arguments
   polygeistDynMode.add_arguments(polygeistDynMode.create_subparser(subparsers))
-  staticMode.add_arguments(subparsers)
-  torchMode.add_arguments(torchMode.create_subparser(subparsers))
+  torchDynamicMode.add_arguments(torchDynamicMode.create_subparser(subparsers))
+  torchStaticMode.add_arguments(torchStaticMode.create_subparser(subparsers))
 
   # Parse arguments
   parse_args(parser)
