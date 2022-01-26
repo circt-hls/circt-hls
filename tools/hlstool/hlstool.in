@@ -867,7 +867,11 @@ class StaticMode(HLSMode):
     super().__init__(name)
 
   def add_arguments(self, subparser):
-    pass
+    subparser.add_argument(
+        '--pipeline',
+        action='store_true',
+        help="Pipelines the loops at the Affine level.",
+        default=False)
 
   def parse_arguments(self, subparser):
     pass
@@ -875,6 +879,7 @@ class StaticMode(HLSMode):
   def gen_names_mode(self):
     self.kernel_affine = self.genPrefixedOutputFileName("affine.mlir")
     self.kernel_scf = self.genPrefixedOutputFileName("scf.mlir")
+    self.kernel_staticlogic = self.genPrefixedOutputFileName("staticlogic.mlir")
     self.kernel_calyx = self.genPrefixedOutputFileName("calyx.mlir")
     self.kernel_calyx_futil = self.genPrefixedOutputFileName("calyx.futil")
 
@@ -885,17 +890,25 @@ class StaticMode(HLSMode):
   def run_lowering(self):
     print_step(f"Statically scheduled HLS'ing {args.kernel_file}...")
 
-    runIfNotExists(
-      self.kernel_scf, lambda: run_mlir_opt([
-        "--lower-affine",
-        "--scf-for-to-while",
-      ], self.kernel_affine, self.kernel_scf))
-    print_info(f"Lowered to SCF...! ({self.kernel_scf})")
+    if args.pipeline:
+      runIfNotExists(
+        self.kernel_staticlogic, lambda: run_circt_opt([
+          "--convert-affine-to-staticlogic",
+        ], self.kernel_affine, self.kernel_staticlogic))
+      lowered_loops = self.kernel_staticlogic
+    else:
+      runIfNotExists(
+        self.kernel_scf, lambda: run_mlir_opt([
+          "--lower-affine",
+          "--scf-for-to-while",
+        ], self.kernel_affine, self.kernel_scf))
+      lowered_loops = self.kernel_scf
+    print_info(f"Lowered to loops...! ({lowered_loops})")
 
     runIfNotExists(
       self.kernel_calyx, lambda: run_circt_opt([
         f"--lower-scf-to-calyx=\"top-level-function={args.method}\""
-      ], self.kernel_scf, self.kernel_calyx))
+      ], lowered_loops, self.kernel_calyx))
     print_info(f"Lowered to Calyx MLIR...! ({self.kernel_calyx})")
 
     runIfNotExists(
