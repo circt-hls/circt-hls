@@ -394,7 +394,7 @@ struct ConvertStdCallPattern : OpRewritePattern<mlir::CallOp> {
       : OpRewritePattern(ctx), from(from), ref(ref), targets(targets) {}
   LogicalResult matchAndRewrite(mlir::CallOp op,
                                 PatternRewriter &rewriter) const override {
-    if (op.callee() != from)
+    if (op.getCallee() != from)
       return failure();
 
     rewriter.replaceOpWithNewOp<cosim::CallOp>(op, op.getCalleeAttr(),
@@ -418,7 +418,7 @@ struct CosimConvertCallPass
     patterns.insert<ConvertStdCallPattern>(ctx, from, ref, targets);
     ConversionTarget target(*ctx);
     target.addDynamicallyLegalOp<mlir::CallOp>(
-        [&](mlir::CallOp callOp) { return callOp.callee() != from; });
+        [&](mlir::CallOp callOp) { return callOp.getCallee() != from; });
     target.addLegalDialect<cosim::CosimDialect>();
 
     if (failed(applyPartialConversion(getOperation(), target,
