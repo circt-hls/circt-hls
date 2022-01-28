@@ -36,11 +36,12 @@ void cosim::CallOp::build(OpBuilder &odsBuilder, OperationState &state,
   state.addOperands(operands);
   state.addAttribute("func", func);
   state.addTypes(results);
-  state.addAttribute("ref", StringAttr::get(ref, ctx));
-
+  state.addAttribute("ref",
+                     StringAttr::get(ctx, std::string(ref.bytes().begin(),
+                                                      ref.bytes().end())));
   llvm::SmallVector<Attribute> targetsAttr;
   for (auto &target : targets)
-    targetsAttr.push_back(StringAttr::get(target, ctx));
+    targetsAttr.push_back(StringAttr::get(ctx, target));
 
   state.addAttribute("targets", ArrayAttr::get(ctx, targetsAttr));
 }

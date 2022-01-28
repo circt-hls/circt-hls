@@ -40,9 +40,9 @@ namespace {
 static void addLoopToLoopMapping(BlockAndValueMapping &mapping, scf::ForOp from,
                                  scf::ForOp to) {
   mapping.map(from.getInductionVar(), to.getInductionVar());
-  mapping.map(from.step(), to.step());
-  mapping.map(from.lowerBound(), to.lowerBound());
-  mapping.map(from.upperBound(), to.upperBound());
+  mapping.map(from.getStep(), to.getStep());
+  mapping.map(from.getLowerBound(), to.getLowerBound());
+  mapping.map(from.getUpperBound(), to.getUpperBound());
 }
 
 static void mapAllResults(BlockAndValueMapping &mapping, Operation *from,
@@ -150,7 +150,7 @@ struct ForOpConversion : public AsyncConversionPattern<scf::ForOp> {
 
     auto callOps = op.getOps<mlir::CallOp>();
     if (!llvm::all_of(callOps, [&](auto callOp) {
-          return callOp.callee() == targetName;
+          return callOp.getCallee() == targetName;
         }))
       return op.emitOpError()
              << "Cannot transform a for loop which calls both the target "
@@ -178,8 +178,8 @@ struct ForOpConversion : public AsyncConversionPattern<scf::ForOp> {
 
     // Create the await loop after the call loop.
     rewriter.setInsertionPointAfter(op);
-    auto awaitLoop = rewriter.create<scf::ForOp>(op.getLoc(), op.lowerBound(),
-                                                 op.upperBound(), op.step());
+    auto awaitLoop = rewriter.create<scf::ForOp>(op.getLoc(), op.getLowerBound(),
+                                                 op.getUpperBound(), op.getStep());
 
     // Move result dependencies (and upstream dependencies of downstream ops) of
     // the call to the await loop.
@@ -211,7 +211,7 @@ struct CallOpConversion : public AsyncConversionPattern<mlir::CallOp> {
   LogicalResult
   matchAndRewrite(mlir::CallOp op, OpAdaptor adaptor,
                   ConversionPatternRewriter &rewriter) const override {
-    assert(op.callee().equals(targetName) && "Legalizer should not allow this");
+    assert(op.getCallee().equals(targetName) && "Legalizer should not allow this");
     assert(isa<FuncOp>(op->getParentOp()) &&
            "Call ops nested within anything but a FuncOp should have been "
            "converted prior to this conversion pattern applying. This pattern "
@@ -236,9 +236,9 @@ public:
       // Try to infer the callee function.
       StringRef callee;
       auto res = getOperation().walk([&](mlir::CallOp op) {
-        if (!callee.empty() && !callee.equals(op.callee()))
+        if (!callee.empty() && !callee.equals(op.getCallee()))
           return WalkResult::interrupt();
-        callee = op.callee();
+        callee = op.getCallee();
         return WalkResult::advance();
       });
 
@@ -292,7 +292,7 @@ void AsyncifyCallsPass::addTargetLegalizations(ConversionTarget &target) {
   target.addLegalDialect<LLVM::LLVMDialect>();
   target.addDynamicallyLegalOp<mlir::CallOp>([&](CallOp op) {
     // We expect the target function to be removed after asyncification.
-    return op.callee() != functionName;
+    return op.getCallee() != functionName;
   });
   target.addDynamicallyLegalOp<scf::ForOp>([&](scf::ForOp op) {
     // Loops are legal when they don't have a call to the target function OR
@@ -302,26 +302,26 @@ void AsyncifyCallsPass::addTargetLegalizations(ConversionTarget &target) {
     auto callOps = op.getOps<CallOp>();
     auto hasAsyncPair = [&](StringRef callee) {
       bool call = llvm::any_of(callOps, [&](CallOp callOp) {
-        return callOp.callee().equals((callee + "_call").str());
+        return callOp.getCallee().equals((callee + "_call").str());
       });
       bool await = llvm::any_of(callOps, [&](CallOp callOp) {
-        return callOp.callee().equals((callee + "_await").str());
+        return callOp.getCallee().equals((callee + "_await").str());
       });
       return call && await;
     };
 
     for (auto callOp : callOps) {
-      if (!callOp.callee().equals(functionName))
+      if (!callOp.getCallee().equals(functionName))
         continue;
 
       // Is there an async call?
-      if (!hasAsyncPair(callOp.callee()))
+      if (!hasAsyncPair(callOp.getCallee()))
         return false;
     }
     return true;
 
     return llvm::none_of(callOps, [&](CallOp callOp) {
-      return callOp.callee().equals(functionName);
+      return callOp.getCallee().equals(functionName);
     });
   });
 }
