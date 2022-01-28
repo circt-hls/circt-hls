@@ -121,7 +121,7 @@ jobs:
       uses: actions/cache@v2
       with:
         path: circt/build
-        key: ${{ matrix.build }}-${{ matrix.os }}-circt-${{ hashFiles('circt/.git/HEAD') }}
+        key: ${{ matrix.build }}-${{ matrix.os }}-circt-${{ secrets.CIRCT_CACHE_VERSION }}-${{ hashFiles('circt/.git/HEAD') }}
 
     # Build CIRCT
     - name: CIRCT build
