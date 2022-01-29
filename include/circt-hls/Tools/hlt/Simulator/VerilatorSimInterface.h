@@ -17,6 +17,42 @@ double sc_time_stamp() { return 0; }
 namespace circt {
 namespace hlt {
 
+template <typename TSigType>
+class VerilatorSignal {
+  // This class encapsulates a top-level verilator signal. We override the
+  // assignment operator to be able to track modifications to the top-level
+  // I/O of a verilated model.
+public:
+  VerilatorSignal(TSigType *sig) : m_sig(sig) {}
+
+  VerilatorSignal &operator=(const TSigType &rhs) {
+    assert(m_sig && "VerilatorSignal: null signal");
+    *m_sig = rhs;
+    return *this;
+  }
+
+  operator TSigType() const {
+    assert(m_sig && "VerilatorSignal: null signal");
+    return *m_sig;
+  }
+
+  /// Assigns a value to this verilator signal, and returns true if the
+  /// assignment modified the current value of the signal.
+  bool assign(const TSigType &rhs) {
+    assert(m_sig && "VerilatorSignal: null signal");
+    if (*m_sig != rhs) {
+      *m_sig = rhs;
+      return true;
+    }
+    return false;
+  }
+
+private:
+  /// Pointer to a member variable of a verilated model that represents an I/O
+  /// signal.
+  TSigType *m_sig = nullptr;
+};
+
 /// Generic interface to access various parts of the verilated model. This is
 /// needed due to verilator models themselves not inheriting from some form of
 /// interface.

@@ -97,14 +97,13 @@ struct SimulatorPort : SimBase {
   virtual bool eval(bool firstInStep) = 0;
 };
 
-// A SimulatorInPort represents a mapping from a software-like input variable
-// to its underlying representation in the simulator.
+// A SimulatorOutPort is the base class of a logical software input port.
+
 struct SimulatorInPort : public SimulatorPort {
   virtual bool ready() = 0;
 };
 
-// A SimulatorOutPort represents a mapping from a software-like output variable
-// to its underlying representation in the simulator.
+// A SimulatorOutPort is the base class of a logical software output port.
 struct SimulatorOutPort : public SimulatorPort {
   virtual bool valid() = 0;
 };

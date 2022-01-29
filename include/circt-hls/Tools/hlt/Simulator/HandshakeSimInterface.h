@@ -9,17 +9,6 @@
 namespace circt {
 namespace hlt {
 
-// Utility function which assigns value 'newVal' to 'oldVal' if they are not
-// already equal, and returns true upon change.
-template <typename T, typename T2>
-bool setWithChange(T &oldVal, const T2 &newVal) {
-  if (oldVal != newVal) {
-    oldVal = newVal;
-    return true;
-  }
-  return false;
-}
-
 struct TransactableTrait {
   enum State {
     // No transaction
@@ -36,23 +25,24 @@ struct TransactableTrait {
 
 template <typename TSimPort>
 struct HandshakePort : public TSimPort, public TransactableTrait {
-  HandshakePort() {}
-
   HandshakePort(CData *readySig, CData *validSig)
-      : readySig(readySig), validSig(validSig){};
+      : readySig(std::make_unique<VerilatorSignal<CData>>(readySig)),
+        validSig(std::make_unique<VerilatorSignal<CData>>(validSig)){};
   HandshakePort(const std::string &name, CData *readySig, CData *validSig)
-      : name(name), readySig(readySig), validSig(validSig){};
+      : name(name),
+        readySig(std::make_unique<VerilatorSignal<CData>>(readySig)),
+        validSig(std::make_unique<VerilatorSignal<CData>>(validSig)){};
 
   void dump(std::ostream &out) const {
     out << (name.empty() ? "?" : name) << ">\t";
     out << "r: " << static_cast<int>(*readySig)
         << "\tv: " << static_cast<int>(*validSig);
   }
-  bool valid() { return *(this->validSig) == 1; }
-  bool ready() { return *(this->readySig) == 1; }
+  bool valid() { return *this->validSig == 1; }
+  bool ready() { return *this->readySig == 1; }
 
-  CData *readySig = nullptr;
-  CData *validSig = nullptr;
+  std::unique_ptr<VerilatorSignal<CData>> readySig;
+  std::unique_ptr<VerilatorSignal<CData>> validSig;
   std::string name;
 };
 
@@ -79,7 +69,7 @@ struct HandshakeInPort : public HandshakePort<SimulatorInPort> {
     bool transacted = txState == TransactNext && firstInStep;
     if (handshaking || transacted) {
       if (transacted) {
-        changed |= setWithChange(*this->validSig, 0);
+        changed |= this->validSig->assign(0);
         txState = Transacted;
         // Transactions are considered a valid keepAlive reason.
         this->keepAlive();
@@ -292,15 +282,15 @@ class HandshakeMemoryInterface : public HandshakeMemoryInterfaceBase<TData> {
 
       // Ready mode implies address and data signals are ready.
       if (this->ready()) {
-        changed |= setWithChange(*(addr->readySig), 1);
-        changed |= setWithChange(*(data->readySig), 1);
+        changed |= addr->readySig->assign(1);
+        changed |= data->readySig->assign(1);
       }
 
       // Deassert ready signals on address and data once transacted
       if (this->hasTransacted(addr.get()))
-        changed |= setWithChange(*(addr->readySig), 0);
+        changed |= addr->readySig->assign(0);
       if (this->hasTransacted(data.get()))
-        changed |= setWithChange(*(data->readySig), 0);
+        changed |= data->readySig->assign(0);
 
       // Store the fact that we will write into the memory on the _next_ clock
       // cycle. We do not do this immediately; a simple example of when this
@@ -321,7 +311,7 @@ class HandshakeMemoryInterface : public HandshakeMemoryInterfaceBase<TData> {
       // After address and data has transacted, the done signal is valid,
       // mimicking a 1 cycle delay through the memory.
       if (this->hasTransacted(addr.get()) && this->hasTransacted(data.get()))
-        changed |= setWithChange(*(done->validSig), 1);
+        changed |= done->validSig->assign(1);
 
       return changed;
     }
@@ -357,7 +347,7 @@ class HandshakeMemoryInterface : public HandshakeMemoryInterfaceBase<TData> {
       bool changed = false;
 
       if (this->ready()) {
-        changed |= setWithChange(*(addr->readySig), 0);
+        changed |= addr->readySig->assign(0);
       }
 
       if (*(addr->validSig)) {
@@ -369,21 +359,21 @@ class HandshakeMemoryInterface : public HandshakeMemoryInterfaceBase<TData> {
 
       if (*(addr->validSig)) {
         if (!this->hasTransacted(data.get())) {
-          changed |= setWithChange(*(data->validSig), 1);
+          changed |= data->validSig->assign(1);
           *(data->dataSig) = lastReadData;
         } else
-          changed |= setWithChange(*(data->validSig), 0);
+          changed |= data->validSig->assign(0);
 
         if (!this->hasTransacted(done.get()))
-          changed |= setWithChange(*(done->validSig), 1);
+          changed |= done->validSig->assign(1);
         else
-          changed |= setWithChange(*(done->validSig), 0);
+          changed |= done->validSig->assign(0);
       }
 
       // Set address ready whenever we'll have transacted both the data and
       // done ports in the next cycle.
       if (this->hasTransacted(done.get()) && this->hasTransacted(data.get()))
-        changed |= setWithChange(*(addr->readySig), 1);
+        changed |= addr->readySig->assign(1);
 
       return changed;
     }
@@ -526,11 +516,7 @@ public:
     }
   };
 
-  HandshakeSimInterface() : VerilatorSimImpl() {
-    // Allocate in- and output control ports.
-    inCtrl = std::make_unique<HandshakeInPort>();
-    outCtrl = std::make_unique<HandshakeOutPort>();
-  }
+  HandshakeSimInterface() : VerilatorSimImpl() {}
 
   // The handshake simulator is ready to accept inputs whenever it is not
   // currently transacting an input buffer.

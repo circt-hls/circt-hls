@@ -109,10 +109,11 @@ LogicalResult HandshakeVerilatorWrapper::emitSimulator() {
   auto inCtrlName = getInputName(inCtrlIdx());
   auto outCtrlName = getResName(funcOp.getNumResults());
   osi() << "// --- Handshake interface\n";
-  osi() << "inCtrl->readySig = &dut->" << inCtrlName << "_ready;\n";
-  osi() << "inCtrl->validSig = &dut->" << inCtrlName << "_valid;\n";
-  osi() << "outCtrl->readySig = &dut->" << outCtrlName << "_ready;\n";
-  osi() << "outCtrl->validSig = &dut->" << outCtrlName << "_valid;\n\n";
+  osi() << "inCtrl = std::make_unique<HandshakeInPort>(&dut->" << inCtrlName
+        << "_ready, &dut->" << inCtrlName << "_valid);\n";
+  osi() << "outCtrl = std::make_unique<HandshakeOutPort>(&dut->" << outCtrlName
+        << "_ready, &dut->" << outCtrlName << "_valid);\n";
+  osi() << "\n";
 
   // We expect equivalence between the order of function arguments and the ports
   // of the FIRRTL module. Additionally, the handshake layer has then added
