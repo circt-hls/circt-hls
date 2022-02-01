@@ -1,6 +1,9 @@
-// RUN: dyn_hlt_lower %s
-// RUN: dyn_hlt_build_sim %s
-// RUN: dyn_hlt_build_tb %s
+// RUN: hlstool --no_trace --rebuild --tb_file %s dynamic-polygeist --run_sim
+
+// hlstool will emit a {kernel_name}_tb_output.txt file when sim didn't crash.
+// RUN: FileCheck --input-file *tb_output.txt %s
+
+// CHECK: 0
 
 #include "kernel_3mm.h"
 #ifndef N_KERNEL_CALLS

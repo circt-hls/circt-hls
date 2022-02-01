@@ -508,6 +508,10 @@ class DynamicMode(HLSMode):
         )
       else:
         copyAllowSame(expectedStdKernel, self.kernel_std)
+        # A flattened std kernel representation is required for the simulator.
+        runIfNotExists(
+            self.kernel_std_flat, lambda: run_circt_opt(
+                ["--flatten-memref"], self.kernel_std, self.kernel_std_flat))
     else:
       lowerAffine = self.genPrefixedOutputFileName("scf.mlir")
       runIfNotExists(

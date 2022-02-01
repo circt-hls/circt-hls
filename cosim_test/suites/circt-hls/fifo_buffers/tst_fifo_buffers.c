@@ -1,5 +1,6 @@
 // RUN: hlstool --rebuild --tb_file %s --mlir_kernel dynamic-polygeist --run_sim --hs_kernel
 // CHECK: 0
+
 #ifndef N_KERNEL_CALLS
 #define N_KERNEL_CALLS 10
 #endif
