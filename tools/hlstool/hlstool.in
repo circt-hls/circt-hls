@@ -863,15 +863,15 @@ class PolygeistDynamicMode(DynamicMode):
 
 
 class StaticMode(HLSMode):
+
   def __init__(self, name='static'):
     super().__init__(name)
 
   def add_arguments(self, subparser):
-    subparser.add_argument(
-        '--pipeline',
-        action='store_true',
-        help="Pipelines the loops at the Affine level.",
-        default=False)
+    subparser.add_argument('--pipeline',
+                           action='store_true',
+                           help="Pipelines the loops at the Affine level.",
+                           default=False)
 
   def parse_arguments(self, subparser):
     pass
@@ -892,42 +892,41 @@ class StaticMode(HLSMode):
 
     if args.pipeline:
       runIfNotExists(
-        self.kernel_staticlogic, lambda: run_circt_opt([
-          "--convert-affine-to-staticlogic",
-        ], self.kernel_affine, self.kernel_staticlogic))
+          self.kernel_staticlogic, lambda: run_circt_opt([
+              "--convert-affine-to-staticlogic",
+          ], self.kernel_affine, self.kernel_staticlogic))
       lowered_loops = self.kernel_staticlogic
     else:
       runIfNotExists(
-        self.kernel_scf, lambda: run_mlir_opt([
-          "--lower-affine",
-          "--scf-for-to-while",
-        ], self.kernel_affine, self.kernel_scf))
+          self.kernel_scf, lambda: run_mlir_opt([
+              "--lower-affine",
+              "--scf-for-to-while",
+          ], self.kernel_affine, self.kernel_scf))
       lowered_loops = self.kernel_scf
     print_info(f"Lowered to loops...! ({lowered_loops})")
 
     runIfNotExists(
-      self.kernel_calyx, lambda: run_circt_opt([
-        f"--lower-scf-to-calyx=\"top-level-function={args.method}\""
-      ], lowered_loops, self.kernel_calyx))
+        self.kernel_calyx, lambda: run_circt_opt([
+            f"--lower-scf-to-calyx=\"top-level-function={args.method}\""
+        ], lowered_loops, self.kernel_calyx))
     print_info(f"Lowered to Calyx MLIR...! ({self.kernel_calyx})")
 
     runIfNotExists(
-      self.kernel_calyx_futil, lambda: run_circt_translate([
-        "--export-calyx"
-      ], self.kernel_calyx, self.kernel_calyx_futil))
+        self.kernel_calyx_futil, lambda: run_circt_translate(
+            ["--export-calyx"], self.kernel_calyx, self.kernel_calyx_futil))
     print_info(f"Lowered to Calyx Futil...! ({self.kernel_calyx_futil})")
 
     runIfNotExists(
-      self.kernel_sv, lambda: run_fud(
-        "futil", "verilog", self.kernel_calyx_futil, self.kernel_sv))
+        self.kernel_sv, lambda: run_fud("futil", "verilog", self.
+                                        kernel_calyx_futil, self.kernel_sv))
     print_info(f"Lowered to RTL...! ({self.kernel_sv})")
 
 
 class TorchMode:
 
   PASSES = ",".join([
-    "torchscript-module-to-torch-backend-pipeline",
-    "torch-backend-to-linalg-on-tensors-backend-pipeline"
+      "torchscript-module-to-torch-backend-pipeline",
+      "torch-backend-to-linalg-on-tensors-backend-pipeline"
   ])
 
   TYPE_REGEX = re.compile("\[(.+)\],\W*(.+),\W*(.+)")
@@ -953,13 +952,12 @@ class TorchMode:
 
   def create_subparser(self, subparser):
     pretty_name = self.name.split("-")[0].capitalize()
-    parser = subparser.add_parser(self.name,
-                                  help=f'{pretty_name} mode (from Torch through torch-mlir)')
+    parser = subparser.add_parser(
+        self.name, help=f'{pretty_name} mode (from Torch through torch-mlir)')
 
-    parser.add_argument(
-        "--method",
-        required=True,
-        help="Kernel method to compile")
+    parser.add_argument("--method",
+                        required=True,
+                        help="Kernel method to compile")
 
     parser.add_argument(
         "--types",
@@ -974,8 +972,8 @@ class TorchMode:
     # Run torch-mlir and opts to generate affine level MLIR.
     try:
       import torch.jit
-      from torch_mlir.dialects.torch.importer.jit_ir import (
-        ClassAnnotator, ModuleBuilder)
+      from torch_mlir.dialects.torch.importer.jit_ir import (ClassAnnotator,
+                                                             ModuleBuilder)
       from torch_mlir.passmanager import PassManager
     except ModuleNotFoundError:
       print_error("Please install torch_mlir to use dynamic-torch mode")
@@ -1014,31 +1012,30 @@ class TorchMode:
       print(mb.module, file=f)
 
     # Lower from linalg on tensors to affine loops.
-    affine_initial_outfile = self.genPrefixedOutputFileName("affine_initial.mlir")
+    affine_initial_outfile = self.genPrefixedOutputFileName(
+        "affine_initial.mlir")
     runIfNotExists(
-      affine_initial_outfile, lambda: run_mlir_opt([
-        "--linalg-comprehensive-module-bufferize=\"allow-return-memref use-alloca\"",
-        "--convert-linalg-to-affine-loops"
-      ], torch_mlir_outfile, affine_initial_outfile))
+        affine_initial_outfile, lambda: run_mlir_opt([
+            "--linalg-comprehensive-module-bufferize=\"allow-return-memref use-alloca\"",
+            "--convert-linalg-to-affine-loops"
+        ], torch_mlir_outfile, affine_initial_outfile))
 
     # Detect reduction loops to turn memrefs into iter args.
     affine_opt1_outfile = self.genPrefixedOutputFileName("affine_opt1.mlir")
     runIfNotExists(
-      affine_opt1_outfile, lambda: run_polygeist_opt([
-        "--detect-reduction",
-      ], affine_initial_outfile, affine_opt1_outfile))
+        affine_opt1_outfile, lambda: run_polygeist_opt([
+            "--detect-reduction",
+        ], affine_initial_outfile, affine_opt1_outfile))
 
     # Replace memrefs with scalars.
     affine_opt2_outfile = self.genPrefixedOutputFileName("affine_opt2.mlir")
     runIfNotExists(
-      affine_opt2_outfile, lambda: run_mlir_opt([
-        "--affine-scalrep"
-     ], affine_opt1_outfile, affine_opt2_outfile))
+        affine_opt2_outfile, lambda: run_mlir_opt(
+            ["--affine-scalrep"], affine_opt1_outfile, affine_opt2_outfile))
 
     runIfNotExists(
-      self.kernel_affine, lambda: run_hls_opt([
-        "--affine-scalrep"
-      ], affine_opt2_outfile, self.kernel_affine))
+        self.kernel_affine, lambda: run_hls_opt(
+            ["--affine-scalrep"], affine_opt2_outfile, self.kernel_affine))
 
     # The top level is now the torch.nn.Module method.
     args.kernel_name = args.method
