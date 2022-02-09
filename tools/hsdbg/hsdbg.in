@@ -13,4 +13,4 @@
 # ===---------------------------------------------------------------------===//
 
 set -e
-python3 @CIRCT_HLS_SOURCE_DIR@/tools/hsdbg/hsdbg.py ${@:1}
+python3 @CIRCT_HLS_SOURCE_DIR@/tools/hsdbg/main.py ${@:1}
