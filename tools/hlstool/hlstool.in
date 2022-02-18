@@ -827,7 +827,32 @@ class DynamicMode(HLSMode):
       print_info("VCD file is at: '{}'".format(args.vcd))
 
 
-class PolygeistDynamicMode(DynamicMode):
+class PolygeistMode:
+
+  def run_polygeist(self):
+    # Run polygeist, generating affine/SCF level MLIR.
+    runIfNotExists(
+        self.kernel_affine,
+        lambda: run_tool(
+            [
+                os.path.join(POLYGEIST_BIN_DIR, "mlir-clang"),
+                "-S",  # Emit assembly (MLIR)
+                "--function=*",  # Emit all functions
+                "--memref-fullrank",  # Emit fullrank memrefs
+                "-scal-rep=0",  # see https://github.com/wsmoses/Polygeist/issues/142
+                args.kernel_file,
+                *args.extra_polygeist_kernel_args,
+                "|",  # pipe stdout
+                os.path.join(POLYGEIST_BIN_DIR, "polygeist-opt"
+                            ),  # Run Polygeist optimization driver
+                "--canonicalize",  # ensure that the polygeist-emitted IR is canonical. This may remove some polygeist-dialect specific ops.
+            ],
+            self.kernel_affine,
+            shell=True))
+    print_info(f"Lowered to affine! (Polygeist)...! ({self.kernel_affine})")
+
+
+class PolygeistDynamicMode(DynamicMode, PolygeistMode):
 
   def __init__(self):
     super().__init__('dynamic-polygeist')
@@ -838,32 +863,13 @@ class PolygeistDynamicMode(DynamicMode):
 
   def run_lowering(self):
     if not args.mlir_kernel:
-      # Run polygeist, generating affine/SCF level MLIR.
-      runIfNotExists(
-          self.kernel_affine,
-          lambda: run_tool(
-              [
-                  os.path.join(POLYGEIST_BIN_DIR, "mlir-clang"),
-                  "-S",  # Emit assembly (MLIR)
-                  "--function=*",  # Emit all functions
-                  "--memref-fullrank",  # Emit fullrank memrefs
-                  "-scal-rep=0",  # see https://github.com/wsmoses/Polygeist/issues/142
-                  args.kernel_file,
-                  *args.extra_polygeist_kernel_args,
-                  "|",  # pipe stdout
-                  os.path.join(POLYGEIST_BIN_DIR, "polygeist-opt"
-                              ),  # Run Polygeist optimization driver
-                  "--canonicalize",  # ensure that the polygeist-emitted IR is canonical. This may remove some polygeist-dialect specific ops.
-              ],
-              self.kernel_affine,
-              shell=True))
-      print_info(f"Lowered to affine! (Polygeist)...! ({self.kernel_affine})")
+      self.run_polygeist()
     else:
       print_info("Skipping Polygeist lowering due to using an MLIR kernel")
       copyAllowSame(args.kernel_file, self.kernel_affine)
 
     # Transition to handshake lowering
-    super().run_lowering()
+    DynamicMode.run_lowering(self)
 
 
 class StaticMode(HLSMode):
@@ -1079,22 +1085,40 @@ class TorchStaticMode(TorchMode, StaticMode):
     super().run_lowering()
 
 
-class MixedMode(HLSMode):
-  # TODO: implement mixed dynamic/static mode
+class PolygeistStaticMode(PolygeistMode, StaticMode):
 
   def __init__(self):
-    super().__init__('mixed')
+    super().__init__('static-polygeist')
 
-  def add_arguments(self, subparser):
-    pass
+  def create_subparser(self, subparser):
+    parser = subparser.add_parser(self.name,
+                                  help='Static mode (from C through Polygeist)')
+    parser.add_argument("--method",
+                        required=True,
+                        help="Kernel method to compile")
+    return parser
+
+  def run_lowering(self):
+    if not args.mlir_kernel:
+      self.run_polygeist()
+      print_info(f"Lowered to affine! (Torch)...! ({self.kernel_affine})")
+    else:
+      print_info("Skipping Polygeist lowering due to using an MLIR kernel")
+      copyAllowSame(args.kernel_file, self.kernel_affine)
+
+    # Transition to Calyx lowering
+    super().run_lowering()
 
 
 # Handles for the global 'Mode' objects
 polygeistDynMode = PolygeistDynamicMode()
+polygeistStaticMode = PolygeistStaticMode()
 torchStaticMode = TorchStaticMode()
 torchDynamicMode = TorchDynamicMode()
 
-HLSModes = [polygeistDynMode, torchDynamicMode, torchStaticMode]
+HLSModes = [
+    polygeistDynMode, torchDynamicMode, torchStaticMode, polygeistStaticMode
+]
 
 
 # Loads a checkpoint file in the current directory
@@ -1337,6 +1361,8 @@ To see the arguments for a specific mode, use\n
       required=False)
   # Add mode arguments
   polygeistDynMode.add_arguments(polygeistDynMode.create_subparser(subparsers))
+  polygeistStaticMode.add_arguments(
+      polygeistStaticMode.create_subparser(subparsers))
   torchDynamicMode.add_arguments(torchDynamicMode.create_subparser(subparsers))
   torchStaticMode.add_arguments(torchStaticMode.create_subparser(subparsers))
 
