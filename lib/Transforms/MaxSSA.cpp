@@ -76,7 +76,7 @@ backtrackAndConvert(Block *use, Block *succ, Value v,
   if (inBlockValues[v].count(use) == 0) {
 
     // Rewrite this blocks' block arguments to take in a new value of 'v' type.
-    use->addArgument(v.getType());
+    use->addArgument(v.getType(), v.getLoc());
     Value newBarg = use->getArguments().back();
 
     // Register the converted block argument in case other branches in the CFG
@@ -232,7 +232,7 @@ LogicalResult convertToMaximalSSA(Value value) {
 
 struct MaxSSAFormPass : public MaxSSAFormBase<MaxSSAFormPass> {
 public:
-  void runOnFunction() override {
+  void runOnOperation() override {
     FuncOp func = getOperation();
 
     // Do not modify memref's

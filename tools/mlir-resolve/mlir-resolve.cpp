@@ -47,7 +47,7 @@ static cl::opt<std::string>
     inputFile2("file2", cl::Optional, cl::desc("<second file>"), cl::init("-"));
 
 /// Container for the current set of loaded modules.
-static SmallVector<OwningModuleRef> modules;
+static SmallVector<mlir::OwningOpRef<mlir::ModuleOp>> modules;
 
 /// Load a module from the argument file fn into the modules vector.
 static ModuleOp getModule(MLIRContext *ctx, StringRef fn) {

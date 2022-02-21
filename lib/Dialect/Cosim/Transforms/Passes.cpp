@@ -185,7 +185,7 @@ struct ConvertCallPattern : OpRewritePattern<cosim::CallOp> {
 };
 
 struct CosimLowerCallPass : public CosimLowerCallBase<CosimLowerCallPass> {
-  void runOnFunction() override {
+  void runOnOperation() override {
 
     for (auto cosimCallOp : getOperation().getOps<cosim::CallOp>())
       createExternalSymbols(cosimCallOp);
@@ -367,7 +367,7 @@ struct ConvertCompareMemref : OpRewritePattern<cosim::CompareOp> {
 
 struct CosimLowerComparePass
     : public CosimLowerCompareBase<CosimLowerComparePass> {
-  void runOnFunction() override {
+  void runOnOperation() override {
     auto *ctx = &getContext();
     RewritePatternSet patterns(ctx);
     patterns.insert<ConvertCompareIntegerLike, ConvertCompareMemref>(ctx);
@@ -410,7 +410,7 @@ struct ConvertStdCallPattern : OpRewritePattern<mlir::CallOp> {
 
 struct CosimConvertCallPass
     : public CosimConvertCallBase<CosimConvertCallPass> {
-  void runOnFunction() override {
+  void runOnOperation() override {
     auto funcOp = getOperation();
     auto ctx = funcOp.getContext();
 

@@ -27,7 +27,7 @@ namespace {
 // constants together.
 struct PushConstantsPass : public PushConstantsBase<PushConstantsPass> {
 public:
-  void runOnFunction() override {
+  void runOnOperation() override {
     auto f = getOperation();
     auto ctx = f.getContext();
 

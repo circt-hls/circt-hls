@@ -16,7 +16,7 @@
 include "mlir/Pass/PassBase.td"
 include "mlir/Rewrite/PassUtil.td"
 
-def AffineScalRep : FunctionPass<"affine-scalrep"> {
+def AffineScalRep : Pass<"affine-scalrep", "mlir::FuncOp"> {
   let summary = "Additional scalar replacement transforms";
   let description = [{
     Additional scalar replacement transforms on top of upstream MLIR. It
@@ -40,7 +40,7 @@ def AsyncifyCalls : Pass<"asyncify-calls", "ModuleOp"> {
   ];
 }
 
-def MaxSSAForm : FunctionPass<"max-ssa"> {
+def MaxSSAForm : Pass<"max-ssa", "mlir::FuncOp"> {
   let summary = "Converts a program into maximal SSA form";
   let description = [{
     This pass converts a program into maximal SSA form. In this form, any value
@@ -69,7 +69,7 @@ def MaxSSAForm : FunctionPass<"max-ssa"> {
   ];
 }
 
-def PushConstants : FunctionPass<"push-constants"> {
+def PushConstants : Pass<"push-constants", "mlir::FuncOp"> {
   let summary = "Push constants into the basic blocks where they are referenced";
   let description = [{
     This pass moves constant definitions into the basic blocks where they are referenced.

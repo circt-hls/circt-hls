@@ -22,7 +22,7 @@ using namespace circt_hls;
 namespace {
 struct AffineScalRepPass : public AffineScalRepBase<AffineScalRepPass> {
 public:
-  void runOnFunction() override;
+  void runOnOperation() override;
 
 private:
   void forwardStoreToReturn(ReturnOp returnOp,
@@ -101,9 +101,9 @@ void AffineScalRepPass::forwardStoreToReturn(
   return;
 }
 
-void AffineScalRepPass::runOnFunction() {
+void AffineScalRepPass::runOnOperation() {
   // Only supports single block functions at the moment.
-  FuncOp f = getFunction();
+  FuncOp f = getOperation();
 
   // Load op's whose results were replaced by those forwarded from stores.
   SmallVector<Operation *, 8> opsToErase;

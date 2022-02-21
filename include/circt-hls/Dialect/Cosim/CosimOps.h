@@ -28,8 +28,6 @@
 #include "mlir/Interfaces/SideEffectInterfaces.h"
 #include "mlir/Pass/Pass.h"
 #include "llvm/ADT/Any.h"
-#include "mlir/IR/FunctionSupport.h"
-
 
 #define GET_OP_CLASSES
 #include "circt-hls/Dialect/Cosim/Cosim.h.inc"

@@ -25,7 +25,7 @@ class SameTypeConstraint<string lhs, string rhs>
                    lhs, rhs, [{ $_self }]>;
 
 // Base class for Cosim dialect ops.
-class Cosim_Op<string mnemonic, list<OpTrait> traits = []>
+class Cosim_Op<string mnemonic, list<Trait> traits = []>
     : Op<Cosim_Dialect, mnemonic, traits> {
 }
 
