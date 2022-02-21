@@ -93,7 +93,7 @@ static std::unique_ptr<BaseWrapper> getWrapper() {
 }
 
 /// Container for the current set of loaded modules.
-static SmallVector<OwningModuleRef> modules;
+static SmallVector<mlir::OwningOpRef<mlir::ModuleOp>> modules;
 
 /// Load a module from the argument file fn into the modules vector.
 static ModuleOp getModule(MLIRContext *ctx, StringRef fn) {
