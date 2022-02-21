@@ -783,7 +783,7 @@ class DynamicMode(HLSMode, HLTMode):
       # Lower to handshake
       runIfNotExists(
           self.kernel_handshake_unbuffered, lambda: run_circt_opt([
-              "-lower-cf-to-handshake=\"source-constants\"", "--canonicalize",
+              "-lower-std-to-handshake=\"source-constants\"", "--canonicalize",
               "--handshake-materialize-forks-sinks"
           ], self.kernel_cf_max, self.kernel_handshake_unbuffered))
 
