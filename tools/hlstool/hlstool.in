@@ -261,24 +261,6 @@ class HLSMode:
     # Kernel files
     self.kernel_sv = os.path.join(args.outdir, args.kernel_name + ".sv")
     self.dotfile = os.path.join(args.outdir, args.kernel_name + ".dot")
-    self.kernel_wrapper = os.path.join(args.outdir, args.kernel_name + ".cpp")
-
-    # Testbench files
-    self.tb_poly = os.path.join(args.outdir, args.kernel_name + "_poly.mlir")
-    self.tb_poly_flat = os.path.join(args.outdir,
-                                     args.kernel_name + "_poly_flat.mlir")
-    self.tb_mlir = os.path.join(args.outdir, args.kernel_name + "_tb.mlir")
-    self.tb_llvm = os.path.join(args.outdir, args.kernel_name + "_tb_llvm.mlir")
-    self.tb_output = os.path.join(args.outdir,
-                                  args.kernel_name + "_tb_output.txt")
-    self.cosim_call = os.path.join(args.outdir,
-                                   args.kernel_name + "_tb_cosim_call.mlir")
-    self.cosim_compare = os.path.join(
-        args.outdir, args.kernel_name + "_tb_cosim_compare.mlir")
-    self.cosim_lowered = os.path.join(
-        args.outdir, args.kernel_name + "_tb_cosim_lowered.mlir")
-    self.cosim_resolved = os.path.join(
-        args.outdir, args.kernel_name + "_tb_cosim_resolved.mlir")
 
     # Analysis files
     self.resource_estimate = os.path.join(
@@ -325,11 +307,8 @@ class HLSMode:
     run_tool(vivado_args, shell=True, liveOutput=not args.silent)
 
 
-# Mode class for dynamically scheduled HLS flows
-class DynamicMode(HLSMode):
-
-  def __init__(self, name='dynamic'):
-    super().__init__(name)
+# Mode for supporting HLT simulations
+class HLTMode():
 
   def add_arguments(self, subparser):
     subparser.add_argument('--run_sim',
@@ -356,278 +335,34 @@ class DynamicMode(HLSMode):
         "Lower the testbench to MLIR, asyncify it (for HLT use), convert to LLVM IR."
     )
 
-    subparser.add_argument(
-        '--print_dot',
-        help="Prints a dot file of the "
-        "handshake circuit",
-        action='store_true',
-    )
-    subparser.add_argument('--lower',
-                           action='store_true',
-                           help="Lower the C code to hardware.")
-    subparser.add_argument(
-        '--hsdbg',
-        action='store_true',
-        help="Run HSDbg on the circuit. This"
-        " assumes that a simulation has been run prior to this.")
-
-    subparser.add_argument('--hsdbg_port',
-                           type=int,
-                           default=8080,
-                           help="Port to run HSDbg server on.")
-
-    subparser.add_argument(
-        '--hs_kernel',
-        action='store_true',
-        help="The kernel is a handshake kernel. If this is set, will skip "
-        "polygaist and standard to handshake lowering.")
-
-    subparser.add_argument(
-        '--flatten_firrtl',
-        action='store_true',
-        help="Flattens the handshake top-level FIRRTL component.",
-        default=False)
-
-    subparser.add_argument(
-        '--buffer_strategy',
-        type=str,
-        default="cycles",
-        help="Buffer strategy to use, see 'circt-opt --handshake-insert-buffers'"
-    )
-
-    subparser.add_argument(
-        '--buffer_size',
-        type=int,
-        default=2,
-        help=
-        "Number of slots in each buffer, see 'circt-opt --handshake-insert-buffers'"
-    )
-
-  def parse_arguments(self, parser):
-    if not args.vcd:
-      # Infer a default location for the VCD file based on how HLT emits it.
-      args.vcd = os.path.join(args.outdir, 'logs/vlt_dump.vcd')
-
-    if args.hsdbg:
-      # Always run print_dot
-      args.print_dot |= True
-
-      # If we are running HSDbg there must be simulation results available
-      if not os.path.exists(args.vcd):
-        parser.error(f"Expected a simulation result file at {args.vcd}. "
-                     " Please run a simulation first.")
-
-    if not args.build_sim and not args.lower and not args.run_sim and not \
-      args.build_tb and not args.synth and not args.hsdbg:
-      # If no specific end-point has been set, we'll stop at building the sim
-      # and kernel, but not running the sim.
-      print_info("enabling --build_sim due to no specific end-point set")
-      args.build_sim |= True
-      if args.tb_file:
-        print_info("enabling --build_tb due to no specific end-point set")
-        args.build_tb |= True
-
-    if args.synth:
-      args.lower |= True
-      print_info("enabling --lower required by --synth")
-
-    if args.run_sim:
-      # Running the sim requires building the sim
-      args.build_sim |= True
-      args.build_tb |= True
-      print_info("enabling --build_sim required by --run_sim")
-      print_info("enabling --build_tb required by --run_sim")
-
-    if args.build_sim:
-      # Building the sim requires lowering the kernel.
-      args.lower |= True
-      print_info("enabling --lower required by --build_sim")
-
   def gen_names_mode(self):
-    # Generate dynamic-mode specific names.
+    # Testbench files
+    self.tb_poly = os.path.join(args.outdir, args.kernel_name + "_poly.mlir")
+    self.tb_poly_flat = os.path.join(args.outdir,
+                                     args.kernel_name + "_poly_flat.mlir")
+    self.tb_mlir = os.path.join(args.outdir, args.kernel_name + "_tb.mlir")
+    self.tb_llvm = os.path.join(args.outdir, args.kernel_name + "_tb_llvm.mlir")
+    self.tb_output = os.path.join(args.outdir,
+                                  args.kernel_name + "_tb_output.txt")
+    self.cosim_call = os.path.join(args.outdir,
+                                   args.kernel_name + "_tb_cosim_call.mlir")
+    self.cosim_compare = os.path.join(
+        args.outdir, args.kernel_name + "_tb_cosim_compare.mlir")
+    self.cosim_lowered = os.path.join(
+        args.outdir, args.kernel_name + "_tb_cosim_lowered.mlir")
+    self.cosim_resolved = os.path.join(
+        args.outdir, args.kernel_name + "_tb_cosim_resolved.mlir")
+    self.kernel_wrapper = os.path.join(args.outdir, args.kernel_name + ".cpp")
 
-    # Kernel files
-    self.kernel_affine = self.genPrefixedOutputFileName("affine.mlir")
-    self.kernel_std = self.genPrefixedOutputFileName("std.mlir")
-    self.kernel_std_mem2reg = self.genPrefixedOutputFileName("std_mem2reg.mlir")
-    self.kernel_std_pushedconstants = self.genPrefixedOutputFileName(
-        "std_pushedconstants.mlir")
-    self.kernel_std_flat = self.genPrefixedOutputFileName("std_flat.mlir")
-    # A renamed version of the kernel wherein the function name does not clash with
-    # the name of the handshake kernel.
-    self.kernel_std_ref = self.genPrefixedOutputFileName("std_ref.mlir")
-    self.kernel_name_ref = args.kernel_name + "_ref"
-
-    self.kernel_std_max = self.genPrefixedOutputFileName("std_max.mlir")
-    self.kernel_handshake = self.genPrefixedOutputFileName("handshake.mlir")
-    self.kernel_handshake_buffered = self.genPrefixedOutputFileName(
-        "handshake_buffered.mlir")
-    self.kernel_handshake_unbuffered = self.genPrefixedOutputFileName(
-        "handshake_unbuffered.mlir")
-    self.kernel_firrtl = self.genPrefixedOutputFileName("firrtl.mlir")
-
-  def run_mode(self):
-    # First, generate all of the names that we'll reference during the run.
-    self.gen_names()
-
-    if args.lower:
-      self.run_lowering()
-
-    if args.build_tb:
-      self.run_build_tb()
-
-    if args.build_sim:
-      self.run_build_sim()
-
-    if args.print_dot:
-      self.run_print_dot()
-
-    if args.hsdbg:
-      self.run_hsdbg()
-      return
-
-    if args.run_sim:
-      self.run_sim()
-
-  def run_lowering(self):
-    # Handshake lowering.
-    # In cases where a handshake kernel has not been provided, we expect that an
-    # inheriting pass has written a file to self.kernel_affine.
-    print_step(f"Dynamically scheduled HLS'ing {args.kernel_file}...")
-
-    if args.hs_kernel:
-      print_info("Skipping handshake lowering due to using a handshake kernel")
-      copyAllowSame(args.kernel_file, self.kernel_handshake)
-      expectedStdKernel = os.path.join(os.path.dirname(args.kernel_file),
-                                       args.kernel_name + "_std.mlir")
-      if not os.path.exists(expectedStdKernel):
-        print_error(
-            f"Expected a standard kernel at {expectedStdKernel}. It is sufficient "
-            "for this to just be a function signature without a definition, but it must be "
-            "provided to describe the software interface of the handshake kernel."
-        )
-      else:
-        copyAllowSame(expectedStdKernel, self.kernel_std)
-        # A flattened std kernel representation is required for the simulator.
-        runIfNotExists(
-            self.kernel_std_flat, lambda: run_circt_opt(
-                ["--flatten-memref"], self.kernel_std, self.kernel_std_flat))
-    else:
-      lowerAffine = self.genPrefixedOutputFileName("scf.mlir")
-      runIfNotExists(
-          lowerAffine, lambda: run_mlir_opt(
-              ["--lower-affine"], self.kernel_affine, outputFile=lowerAffine))
-
-      runIfNotExists(
-          self.kernel_std, lambda: run_mlir_opt(["--convert-scf-to-std"],
-                                                lowerAffine, self.kernel_std))
-
-      # Run mem2reg to remove alloca's from the kernel. Then, canonicalize to
-      # simplify control flow
-      runIfNotExists(
-          self.kernel_std_mem2reg, lambda: run_polygeist_opt(
-              [
-                  "--mem2reg",
-                  "--canonicalize",
-              ],
-              self.kernel_std,
-              self.kernel_std_mem2reg,
-          ))
-
-      runIfNotExists(
-          self.kernel_std_flat,
-          lambda: run_circt_opt(["--flatten-memref"], self.kernel_std_mem2reg,
-                                self.kernel_std_flat))
-
-      runIfNotExists(
-          self.kernel_std_pushedconstants,
-          lambda: run_hls_opt(["--push-constants"], self.kernel_std_flat, self.
-                              kernel_std_pushedconstants))
-      # From hereon, we should _not_ perform canonicalization while in standard;
-      # this will undo the effects of --push-constants.
-
-      # Put into maximized SSA form (precondition for correct handshake lowering)
-      runIfNotExists(
-          self.kernel_std_max,
-          lambda: run_hls_opt(['--max-ssa=\"ignore-memref\"'], self.
-                              kernel_std_pushedconstants, self.kernel_std_max))
-      print_info(f"Lowered to standard...! ({self.kernel_std_max})")
-
-      # Lower to handshake
-      runIfNotExists(
-          self.kernel_handshake_unbuffered, lambda: run_circt_opt([
-              "-lower-std-to-handshake=\"source-constants\"", "--canonicalize",
-              "--handshake-materialize-forks-sinks"
-          ], self.kernel_std_max, self.kernel_handshake_unbuffered))
-
-      # Add buffers
-      runIfNotExists(
-          self.kernel_handshake_buffered, lambda: run_circt_opt([
-              f"-handshake-insert-buffers=\"strategy={args.buffer_strategy} buffer-size={args.buffer_size}\"",
-              "--canonicalize"
-          ], self.kernel_handshake_unbuffered, self.kernel_handshake_buffered))
-
-      # Run the add-ids pass to ensure that we have a deterministic mapping between
-      # the FIRRTL/SV code and the Handshake IR/.dot file
-      runIfNotExists(
-          self.kernel_handshake, lambda: run_circt_opt([
-              "-handshake-add-ids"
-          ], self.kernel_handshake_buffered, self.kernel_handshake))
-      print_info(f"Lowered to handshake...! ({self.kernel_handshake})")
-
-    # Lower to FIRRTL
-    lowerToFIRRTLArg = "--lower-handshake-to-firrtl"
-    if args.flatten_firrtl:
-      lowerToFIRRTLArg += "=\"flatten\""
-    runIfNotExists(
-        self.kernel_firrtl, lambda: run_circt_opt(
-            [lowerToFIRRTLArg], self.kernel_handshake, self.kernel_firrtl))
-    print_info(f"Lowered to FIRRTL...! ({self.kernel_firrtl})")
-
-    # Lower to SV
-    runIfNotExists(
-        self.kernel_sv, lambda: run_tool([
-            os.path.join(CIRCT_BIN_DIR, "firtool"), "--verilog",
-            "--format=mlir", self.kernel_firrtl
-        ],
-                                         self.kernel_sv,
-                                         shell=True))
-    print_info(f"Lowered to RTL...! ({self.kernel_sv})")
-
-  def run_print_dot(self):
-    print_step("Printing dot file of the handshake circuit...")
-    run_circt_opt(["--handshake-print-dot"], self.kernel_handshake)
-
-  def run_hsdbg(self):
-    print_step("Running HSDbg on the handshake circuit...")
-    hsdbg_cmd = [
-        os.path.join(CIRCT_HLS_BIN_DIR, "hsdbg"), "handshake", "-f dec",
-        f"-p {args.hsdbg_port}", "--dot", self.dotfile, "--vcd", args.vcd
-    ]
-    cmd = ["xterm", "-e", f'\'{" ".join(hsdbg_cmd)}\'']
-
-    print_info(f"Starting HSDbg in separate terminal")
-    proc = subprocess.Popen(" ".join(cmd),
-                            stdout=subprocess.PIPE,
-                            stderr=subprocess.PIPE,
-                            shell=True)
-
-  def run_genexec(self):
-    pass
+  def run_create_hlt_wrapper(self):
+    raise NotImplementedError("Implement me in subclass!")
 
   def run_build_sim(self):
     print_step("Building simulator")
 
     # Generate HLT wrapper. This will create a '{kernel_name}.cpp' file in the
     # output directory.
-    runIfNotExists(
-        self.kernel_wrapper, lambda: run_tool([
-            os.path.join(CIRCT_HLS_BIN_DIR, "hlt-wrapgen"
-                        ), "--func", self.kernel_std_flat, "--ref", self.
-            kernel_handshake, "--kernel", self.kernel_firrtl, "--name", args.
-            kernel_name, "--type=handshakeFIRRTL", "-o", "."
-        ],
-                                              shell=True))
+    self.run_create_hlt_wrapper()
     print_info(f"Created HLT wrapper ({self.kernel_wrapper})")
 
     # Copy the prewritten CMakeLists.txt file to the output directory.
@@ -731,11 +466,11 @@ class DynamicMode(HLSMode):
 
     # Cosimulate?
     if args.cosim:
-      # Rename the std kernel so we don't have a name collision with the RTL kernel.
+      # Rename the cf kernel so we don't have a name collision with the RTL kernel.
       runIfNotExists(
-          self.kernel_std_ref, lambda: run_hls_opt([
+          self.kernel_cf_ref, lambda: run_hls_opt([
               f"--rename-func=\"f={args.kernel_name} to={self.kernel_name_ref}\""
-          ], self.kernel_std, self.kernel_std_ref))
+          ], self.kernel_cf, self.kernel_cf_ref))
 
       # Add cosim.call to the testbench. We'll just do this inline, outside of the
       # predetermined names...
@@ -753,18 +488,18 @@ class DynamicMode(HLSMode):
                   self.cosim_lowered)
       print_info(f"Lowered cosim operations in ({self.cosim_lowered})")
 
-      # Move the std reference kernel into the test bench file. This is a simpler
-      # way of resolving the symbol than the alternative (compile std kernel to
+      # Move the cf reference kernel into the test bench file. This is a simpler
+      # way of resolving the symbol than the alternative (compile cf kernel to
       # llvmir and then into a shared library, and finally link against that dynamically
       # at runtime).
       run_tool([
           os.path.join(CIRCT_HLS_BIN_DIR, "mlir-resolve"), "--file1",
-          self.cosim_lowered, "--file2", self.kernel_std_ref
+          self.cosim_lowered, "--file2", self.kernel_cf_ref
       ],
-               stdOutFile=self.cosim_resolved,
+               cfOutFile=self.cosim_resolved,
                shell=True)
       print_info(
-          f"Merged reference kernel {self.kernel_std_ref} into testbench {self.cosim_resolved}"
+          f"Merged reference kernel {self.kernel_cf_ref} into testbench {self.cosim_resolved}"
       )
 
       # Set the current point of the testbench to the cosim-lowered testbench
@@ -780,9 +515,8 @@ class DynamicMode(HLSMode):
 
     runIfNotExists(
         self.tb_llvm, lambda: run_mlir_opt([
-            "-lower-affine", "-convert-scf-to-std", "-std-expand",
-            "-convert-memref-to-llvm", "-convert-std-to-llvm",
-            "-reconcile-unrealized-casts"
+            "-lower-affine", "-convert-scf-to-cf", "-convert-memref-to-llvm",
+            "-convert-cf-to-llvm", "-reconcile-unrealized-casts"
         ], self.tb_mlir, self.tb_llvm))
     print_info(f"Lowered testbench to LLVMIR ({self.tb_llvm})")
 
@@ -825,6 +559,288 @@ class DynamicMode(HLSMode):
         self.tb_output))
     if not args.no_trace and os.path.exists(args.vcd):
       print_info("VCD file is at: '{}'".format(args.vcd))
+
+
+# Mode class for dynamically scheduled HLS flows
+class DynamicMode(HLSMode, HLTMode):
+
+  def __init__(self, name='dynamic'):
+    super().__init__(name)
+
+  def add_arguments(self, subparser):
+    HLTMode.add_arguments(self, subparser)
+
+    subparser.add_argument(
+        '--print_dot',
+        help="Prints a dot file of the "
+        "handshake circuit",
+        action='store_true',
+    )
+    subparser.add_argument('--lower',
+                           action='store_true',
+                           help="Lower the C code to hardware.")
+    subparser.add_argument(
+        '--hsdbg',
+        action='store_true',
+        help="Run HSDbg on the circuit. This"
+        " assumes that a simulation has been run prior to this.")
+
+    subparser.add_argument('--hsdbg_port',
+                           type=int,
+                           default=8080,
+                           help="Port to run HSDbg server on.")
+
+    subparser.add_argument(
+        '--hs_kernel',
+        action='store_true',
+        help="The kernel is a handshake kernel. If this is set, will skip "
+        "polygaist and standard to handshake lowering.")
+
+    subparser.add_argument(
+        '--flatten_firrtl',
+        action='store_true',
+        help="Flattens the handshake top-level FIRRTL component.",
+        default=False)
+
+    subparser.add_argument(
+        '--buffer_strategy',
+        type=str,
+        default="cycles",
+        help="Buffer strategy to use, see 'circt-opt --handshake-insert-buffers'"
+    )
+
+    subparser.add_argument(
+        '--buffer_size',
+        type=int,
+        default=2,
+        help=
+        "Number of slots in each buffer, see 'circt-opt --handshake-insert-buffers'"
+    )
+
+  def parse_arguments(self, parser):
+    if not args.vcd:
+      # Infer a default location for the VCD file based on how HLT emits it.
+      args.vcd = os.path.join(args.outdir, 'logs/vlt_dump.vcd')
+
+    if args.hsdbg:
+      # Always run print_dot
+      args.print_dot |= True
+
+      # If we are running HSDbg there must be simulation results available
+      if not os.path.exists(args.vcd):
+        parser.error(f"Expected a simulation result file at {args.vcd}. "
+                     " Please run a simulation first.")
+
+    if not args.build_sim and not args.lower and not args.run_sim and not \
+      args.build_tb and not args.synth and not args.hsdbg:
+      # If no specific end-point has been set, we'll stop at building the sim
+      # and kernel, but not running the sim.
+      print_info("enabling --build_sim due to no specific end-point set")
+      args.build_sim |= True
+      if args.tb_file:
+        print_info("enabling --build_tb due to no specific end-point set")
+        args.build_tb |= True
+
+    if args.synth:
+      args.lower |= True
+      print_info("enabling --lower required by --synth")
+
+    if args.run_sim:
+      # Running the sim requires building the sim
+      args.build_sim |= True
+      args.build_tb |= True
+      print_info("enabling --build_sim required by --run_sim")
+      print_info("enabling --build_tb required by --run_sim")
+
+    if args.build_sim:
+      # Building the sim requires lowering the kernel.
+      args.lower |= True
+      print_info("enabling --lower required by --build_sim")
+
+  def gen_names_mode(self):
+    # Generate dynamic-mode specific names.
+
+    # Kernel files
+    self.kernel_affine = self.genPrefixedOutputFileName("affine.mlir")
+    self.kernel_cf = self.genPrefixedOutputFileName("cf.mlir")
+    self.kernel_cf_mem2reg = self.genPrefixedOutputFileName("cf_mem2reg.mlir")
+    self.kernel_cf_pushedconstants = self.genPrefixedOutputFileName(
+        "cf_pushedconstants.mlir")
+    self.kernel_cf_flat = self.genPrefixedOutputFileName("cf_flat.mlir")
+    # A renamed version of the kernel wherein the function name does not clash with
+    # the name of the handshake kernel.
+    self.kernel_cf_ref = self.genPrefixedOutputFileName("cf_ref.mlir")
+    self.kernel_name_ref = args.kernel_name + "_ref"
+
+    self.kernel_cf_max = self.genPrefixedOutputFileName("cf_max.mlir")
+    self.kernel_handshake = self.genPrefixedOutputFileName("handshake.mlir")
+    self.kernel_handshake_buffered = self.genPrefixedOutputFileName(
+        "handshake_buffered.mlir")
+    self.kernel_handshake_unbuffered = self.genPrefixedOutputFileName(
+        "handshake_unbuffered.mlir")
+    self.kernel_firrtl = self.genPrefixedOutputFileName("firrtl.mlir")
+
+    # HLT mode names
+    HLTMode.gen_names_mode(self)
+
+  def run_create_hlt_wrapper(self):
+    runIfNotExists(
+        self.kernel_wrapper, lambda: run_tool([
+            os.path.join(CIRCT_HLS_BIN_DIR, "hlt-wrapgen"
+                        ), "--func", self.kernel_cf_flat, "--ref", self.
+            kernel_handshake, "--kernel", self.kernel_firrtl, "--name", args.
+            kernel_name, "--type=handshakeFIRRTL", "-o", "."
+        ],
+                                              shell=True))
+
+  def run_mode(self):
+    # First, generate all of the names that we'll reference during the run.
+    self.gen_names()
+
+    if args.lower:
+      self.run_lowering()
+
+    if args.build_tb:
+      self.run_build_tb()
+
+    if args.build_sim:
+      self.run_build_sim()
+
+    if args.print_dot:
+      self.run_print_dot()
+
+    if args.hsdbg:
+      self.run_hsdbg()
+      return
+
+    if args.run_sim:
+      self.run_sim()
+
+  def run_lowering(self):
+    # Handshake lowering.
+    # In cases where a handshake kernel has not been provided, we expect that an
+    # inheriting pass has written a file to self.kernel_affine.
+    print_step(f"Dynamically scheduled HLS'ing {args.kernel_file}...")
+
+    if args.hs_kernel:
+      print_info("Skipping handshake lowering due to using a handshake kernel")
+      copyAllowSame(args.kernel_file, self.kernel_handshake)
+      expectedStdKernel = os.path.join(os.path.dirname(args.kernel_file),
+                                       args.kernel_name + "_cf.mlir")
+      if not os.path.exists(expectedStdKernel):
+        print_error(
+            f"Expected a standard kernel at {expectedStdKernel}. It is sufficient "
+            "for this to just be a function signature without a definition, but it must be "
+            "provided to describe the software interface of the handshake kernel."
+        )
+      else:
+        copyAllowSame(expectedStdKernel, self.kernel_cf)
+        # A flattened cf kernel representation is required for the simulator.
+        runIfNotExists(
+            self.kernel_cf_flat, lambda: run_circt_opt(
+                ["--flatten-memref"], self.kernel_cf, self.kernel_cf_flat))
+    else:
+      lowerAffine = self.genPrefixedOutputFileName("scf.mlir")
+      runIfNotExists(
+          lowerAffine, lambda: run_mlir_opt(
+              ["--lower-affine"], self.kernel_affine, outputFile=lowerAffine))
+
+      runIfNotExists(
+          self.kernel_cf, lambda: run_mlir_opt(["--convert-scf-to-cf"],
+                                               lowerAffine, self.kernel_cf))
+
+      # Run mem2reg to remove alloca's from the kernel. Then, canonicalize to
+      # simplify control flow
+      runIfNotExists(
+          self.kernel_cf_mem2reg, lambda: run_polygeist_opt(
+              [
+                  "--mem2reg",
+                  "--canonicalize",
+              ],
+              self.kernel_cf,
+              self.kernel_cf_mem2reg,
+          ))
+
+      runIfNotExists(
+          self.kernel_cf_flat,
+          lambda: run_circt_opt(["--flatten-memref"], self.kernel_cf_mem2reg,
+                                self.kernel_cf_flat))
+
+      runIfNotExists(
+          self.kernel_cf_pushedconstants,
+          lambda: run_hls_opt(["--push-constants"], self.kernel_cf_flat, self.
+                              kernel_cf_pushedconstants))
+      # From hereon, we should _not_ perform canonicalization while in standard;
+      # this will undo the effects of --push-constants.
+
+      # Put into maximized SSA form (precondition for correct handshake lowering)
+      runIfNotExists(
+          self.kernel_cf_max,
+          lambda: run_hls_opt(['--max-ssa=\"ignore-memref\"'], self.
+                              kernel_cf_pushedconstants, self.kernel_cf_max))
+      print_info(f"Lowered to standard...! ({self.kernel_cf_max})")
+
+      # Lower to handshake
+      runIfNotExists(
+          self.kernel_handshake_unbuffered, lambda: run_circt_opt([
+              "-lower-cf-to-handshake=\"source-constants\"", "--canonicalize",
+              "--handshake-materialize-forks-sinks"
+          ], self.kernel_cf_max, self.kernel_handshake_unbuffered))
+
+      # Add buffers
+      runIfNotExists(
+          self.kernel_handshake_buffered, lambda: run_circt_opt([
+              f"-handshake-insert-buffers=\"strategy={args.buffer_strategy} buffer-size={args.buffer_size}\"",
+              "--canonicalize"
+          ], self.kernel_handshake_unbuffered, self.kernel_handshake_buffered))
+
+      # Run the add-ids pass to ensure that we have a deterministic mapping between
+      # the FIRRTL/SV code and the Handshake IR/.dot file
+      runIfNotExists(
+          self.kernel_handshake, lambda: run_circt_opt([
+              "-handshake-add-ids"
+          ], self.kernel_handshake_buffered, self.kernel_handshake))
+      print_info(f"Lowered to handshake...! ({self.kernel_handshake})")
+
+    # Lower to FIRRTL
+    lowerToFIRRTLArg = "--lower-handshake-to-firrtl"
+    if args.flatten_firrtl:
+      lowerToFIRRTLArg += "=\"flatten\""
+    runIfNotExists(
+        self.kernel_firrtl, lambda: run_circt_opt(
+            [lowerToFIRRTLArg], self.kernel_handshake, self.kernel_firrtl))
+    print_info(f"Lowered to FIRRTL...! ({self.kernel_firrtl})")
+
+    # Lower to SV
+    runIfNotExists(
+        self.kernel_sv, lambda: run_tool([
+            os.path.join(CIRCT_BIN_DIR, "firtool"), "--verilog",
+            "--format=mlir", self.kernel_firrtl
+        ],
+                                         self.kernel_sv,
+                                         shell=True))
+    print_info(f"Lowered to RTL...! ({self.kernel_sv})")
+
+  def run_print_dot(self):
+    print_step("Printing dot file of the handshake circuit...")
+    run_circt_opt(["--handshake-print-dot"], self.kernel_handshake)
+
+  def run_hsdbg(self):
+    print_step("Running HSDbg on the handshake circuit...")
+    hsdbg_cmd = [
+        os.path.join(CIRCT_HLS_BIN_DIR, "hsdbg"), "handshake", "-f dec",
+        f"-p {args.hsdbg_port}", "--dot", self.dotfile, "--vcd", args.vcd
+    ]
+    cmd = ["xterm", "-e", f'\'{" ".join(hsdbg_cmd)}\'']
+
+    print_info(f"Starting HSDbg in separate terminal")
+    proc = subprocess.Popen(" ".join(cmd),
+                            stdout=subprocess.PIPE,
+                            stderr=subprocess.PIPE,
+                            shell=True)
+
+  def run_genexec(self):
+    pass
 
 
 class PolygeistMode:
@@ -872,19 +888,34 @@ class PolygeistDynamicMode(DynamicMode, PolygeistMode):
     DynamicMode.run_lowering(self)
 
 
-class StaticMode(HLSMode):
+class StaticMode(HLSMode, HLTMode):
 
   def __init__(self, name='static'):
     super().__init__(name)
 
   def add_arguments(self, subparser):
+    HLTMode.add_arguments(self, subparser)
     subparser.add_argument('--pipeline',
                            action='store_true',
                            help="Pipelines the loops at the Affine level.",
                            default=False)
 
+  def run_create_hlt_wrapper(self):
+    runIfNotExists(
+        self.kernel_wrapper, lambda: run_tool([
+            os.path.join(CIRCT_HLS_BIN_DIR, "hlt-wrapgen"), "--func", self.
+            kernel_cf_flat, "--ref", self.kernel_handshake, "--name", args.
+            kernel_name, "--type=calyx", "-o", "."
+        ],
+                                              shell=True))
+
   def parse_arguments(self, subparser):
-    pass
+    if args.run_sim:
+      # Running the sim requires building the sim
+      args.build_sim |= True
+      args.build_tb |= True
+      print_info("enabling --build_sim required by --run_sim")
+      print_info("enabling --build_tb required by --run_sim")
 
   def gen_names_mode(self):
     self.kernel_affine = self.genPrefixedOutputFileName("affine.mlir")
@@ -893,9 +924,20 @@ class StaticMode(HLSMode):
     self.kernel_calyx = self.genPrefixedOutputFileName("calyx.mlir")
     self.kernel_calyx_futil = self.genPrefixedOutputFileName("calyx.futil")
 
+    HLTMode.gen_names_mode(self)
+
   def run_mode(self):
     self.gen_names()
     self.run_lowering()
+
+    if args.build_tb:
+      self.run_build_tb()
+
+    if args.build_sim:
+      self.run_build_sim()
+
+    if args.run_sim:
+      self.run_sim()
 
   def run_lowering(self):
     print_step(f"Statically scheduled HLS'ing {args.kernel_file}...")
