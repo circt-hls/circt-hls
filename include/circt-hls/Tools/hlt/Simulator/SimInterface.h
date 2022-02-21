@@ -99,14 +99,10 @@ struct SimulatorPort : SimBase {
 
 // A SimulatorOutPort is the base class of a logical software input port.
 
-struct SimulatorInPort : public SimulatorPort {
-  virtual bool ready() = 0;
-};
+struct SimulatorInPort : public SimulatorPort {};
 
 // A SimulatorOutPort is the base class of a logical software output port.
-struct SimulatorOutPort : public SimulatorPort {
-  virtual bool valid() = 0;
-};
+struct SimulatorOutPort : public SimulatorPort {};
 
 template <typename TInput, typename TOutput>
 class SimInterface : public SimBase {

@@ -6,6 +6,7 @@ add_llvm_executable(hlt-wrapgen
   WrapGen.cpp
   StdWrapper.cpp
   HandshakeVerilatorWrapper.cpp
+  CalyxVerilatorWrapper.cpp
   CEmitterUtils.cpp
   VerilatorEmitterUtils.cpp
 )

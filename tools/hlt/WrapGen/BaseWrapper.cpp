@@ -63,7 +63,7 @@ LogicalResult BaseWrapper::wrap(mlir::FuncOp _funcOp, Operation *refOp,
   interleaveComma(
       funcOp.getType().getInputs(), callSigStream, [&](auto inType) {
         auto varName = "in" + std::to_string(i++);
-        failed |= emitType(callSigStream, kernelOp->getLoc(), inType, {varName})
+        failed |= emitType(callSigStream, _funcOp->getLoc(), inType, {varName})
                       .failed();
       });
   if (failed)
@@ -71,7 +71,7 @@ LogicalResult BaseWrapper::wrap(mlir::FuncOp _funcOp, Operation *refOp,
   callSigStream << ")";
   os() << callSignature << "{\n";
   osi().indent();
-  emitAsyncCall(kernelOp);
+  emitAsyncCall();
   osi().unindent();
   osi() << "}\n\n";
 
@@ -85,7 +85,7 @@ LogicalResult BaseWrapper::wrap(mlir::FuncOp _funcOp, Operation *refOp,
                  << "()";
   os() << awaitSignature << "{\n";
   osi().indent();
-  emitAsyncAwait(kernelOp);
+  emitAsyncAwait();
 
   // End
   osi().unindent();
@@ -145,7 +145,7 @@ LogicalResult BaseWrapper::createFile(Location loc, Twine fn) {
   return success();
 }
 
-void BaseWrapper::emitAsyncCall(Operation * /*kernelOp*/) {
+void BaseWrapper::emitAsyncCall() {
   osi() << "if (driver == nullptr)\n";
   osi() << "  init_sim();\n";
 
@@ -166,7 +166,7 @@ void BaseWrapper::emitAsyncCall(Operation * /*kernelOp*/) {
   osi() << "driver->push(input); // non-blocking\n";
 }
 
-void BaseWrapper::emitAsyncAwait(Operation * /*kernelOp*/) {
+void BaseWrapper::emitAsyncAwait() {
   osi() << "TOutput output = driver->pop(); // blocking\n";
   switch (funcOp.getNumResults()) {
   case 0: {

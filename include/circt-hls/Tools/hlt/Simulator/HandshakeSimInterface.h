@@ -1,6 +1,7 @@
 #ifndef CIRCT_TOOLS_HLT_HANDSHAKESIMINTERFACE_H
 #define CIRCT_TOOLS_HLT_HANDSHAKESIMINTERFACE_H
 
+#include "circt-hls/Tools/hlt/Simulator/MemoryInterface.h"
 #include "circt-hls/Tools/hlt/Simulator/VerilatorSimInterface.h"
 #include "llvm/ADT/STLExtras.h"
 
@@ -160,41 +161,10 @@ struct HandshakeDataOutPort : HandshakeDataPort<TData, HandshakeOutPort> {
 // their type. This is difficult to do if we dyn_cast on
 // HandshakeMemoryInterface due to TAddr (not directly known from a value that
 // is pushed onto the simulator).
-template <typename TData>
-class HandshakeMemoryInterfaceBase : public SimulatorInPort,
-                                     public TransactableTrait {
-protected:
-  // The memory pointer is set by the simulation engine during execution.
-  TData *memory_ptr = nullptr;
-
-public:
-  void setMemory(void *memory) {
-    if (memory_ptr != nullptr)
-      assert(memory_ptr == memory &&
-             "The memory should always point to the same base address "
-             "throughout simulation.");
-    memory_ptr = reinterpret_cast<TData *>(memory);
-    txState = TransactNext;
-  }
-};
 
 template <typename TData, typename TAddr>
-class HandshakeMemoryInterface : public HandshakeMemoryInterfaceBase<TData> {
-
-  // The size of the memory associated with this interface.
-  size_t memorySize;
-
-  void write(const TAddr &addr, const TData &data) {
-    assert(this->memory_ptr != nullptr && "Memory not set.");
-    assert(addr < memorySize && "Address out of bounds.");
-    this->memory_ptr[addr] = data;
-  }
-
-  TData read(const TAddr &addr) {
-    assert(this->memory_ptr != nullptr && "Memory not set.");
-    assert(addr < memorySize && "Address out of bounds.");
-    return this->memory_ptr[addr];
-  }
+class HandshakeMemoryInterface : public MemoryInterfaceBase<TData>,
+                                 public TransactableTrait {
 
   class MemoryPortBundle : public SimulatorPort {
   public:
@@ -470,6 +440,11 @@ public:
     return changed;
   }
 
+  void setMemory(void *memory) override {
+    MemoryInterfaceBase<TData>::setMemory(memory);
+    txState = TransactNext;
+  }
+
 private:
   std::vector<StorePort> storePorts;
   std::vector<LoadPort> loadPorts;
@@ -665,7 +640,7 @@ public:
         }
       }
       // Memory interface?
-      else if (auto inMemPort = dynamic_cast<HandshakeMemoryInterfaceBase<
+      else if (auto inMemPort = dynamic_cast<MemoryInterfaceBase<
                    std::remove_pointer_t<decltype(value)>> *>(p);
                inMemPort) {
         inMemPort->setMemory(reinterpret_cast<void *>(value));

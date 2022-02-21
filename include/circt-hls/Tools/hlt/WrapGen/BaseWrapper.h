@@ -45,8 +45,8 @@ protected:
   virtual SmallVector<std::string> getNamespaces() = 0;
   virtual SmallVector<std::string> getIncludes() = 0;
 
-  virtual void emitAsyncCall(Operation *kernelOp);
-  virtual void emitAsyncAwait(Operation *kernelOp);
+  virtual void emitAsyncCall();
+  virtual void emitAsyncAwait();
 
   virtual LogicalResult emitPreamble(Operation * /*kernelOp*/) {
     return success();

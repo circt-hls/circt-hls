@@ -35,6 +35,7 @@
 #include "mlir/Dialect/StandardOps/IR/Ops.h"
 
 #include "circt-hls/Tools/hlt/WrapGen/BaseWrapper.h"
+#include "circt-hls/Tools/hlt/WrapGen/calyx/CalyxVerilatorWrapper.h"
 #include "circt-hls/Tools/hlt/WrapGen/handshake/HandshakeVerilatorWrapper.h"
 #include "circt-hls/Tools/hlt/WrapGen/std/StdWrapper.h"
 
@@ -68,7 +69,7 @@ static cl::opt<std::string>
     functionName("name", cl::Required,
                  cl::desc("The name of the function to wrap"), cl::init("-"));
 
-enum class KernelType { HandshakeFIRRTL, Standard };
+enum class KernelType { HandshakeFIRRTL, Calyx, Standard };
 
 static cl::opt<KernelType> kernelType(
     "type", cl::Required,
@@ -76,10 +77,12 @@ static cl::opt<KernelType> kernelType(
              "which wrapper is used, and what operation type the "
              "source kernel operation should be."),
     cl::init(KernelType::HandshakeFIRRTL),
-    llvm::cl::values(clEnumValN(KernelType::HandshakeFIRRTL, "handshakeFIRRTL",
-                                "Use the Handshake wrapper"),
-                     clEnumValN(KernelType::Standard, "std",
-                                "Use the standard wrapper")));
+    llvm::cl::values(
+        clEnumValN(KernelType::HandshakeFIRRTL, "handshakeFIRRTL",
+                   "Use the Handshake wrapper"),
+        clEnumValN(KernelType::Calyx, "calyx", "Use the Calyx wrapper"),
+        clEnumValN(KernelType::Standard, "std", "Use the standard wrapper")));
+
 namespace circt_hls {
 
 /// Instantiates a wrapper based on the type of the kernel operation.
@@ -89,6 +92,8 @@ static std::unique_ptr<BaseWrapper> getWrapper() {
     return std::make_unique<HandshakeVerilatorWrapper>(outputDirectory);
   case KernelType::Standard:
     return std::make_unique<StdWrapper>(outputDirectory);
+  case KernelType::Calyx:
+    return std::make_unique<CalyxVerilatorWrapper>(outputDirectory);
   }
 }
 
@@ -158,6 +163,8 @@ static void registerDialects(mlir::DialectRegistry &registry) {
   registry.insert<handshake::HandshakeDialect>();
   registry.insert<firrtl::FIRRTLDialect>();
   registry.insert<LLVM::LLVMDialect>();
+  registry.insert<calyx::CalyxDialect>();
+  registry.insert<hw::HWDialect>();
 }
 
 } // namespace circt_hls
@@ -204,10 +211,12 @@ int main(int argc, char **argv) {
   if (!refOp)
     return 1;
 
-  Operation *kernelOp =
-      getOpToWrapErroring(&context, inputKernelFilename, functionName);
-  if (!kernelOp)
-    return 1;
+  Operation *kernelOp = nullptr;
+  if (inputKernelFilename.getNumOccurrences() != 0) {
+    kernelOp = getOpToWrapErroring(&context, inputKernelFilename, functionName);
+    if (!kernelOp)
+      return 1;
+  }
 
   /// Locate wrapping handler for the operation.
   auto wrapper = circt_hls::getWrapper();
