@@ -354,8 +354,34 @@ class HLTMode():
         args.outdir, args.kernel_name + "_tb_cosim_resolved.mlir")
     self.kernel_wrapper = os.path.join(args.outdir, args.kernel_name + ".cpp")
 
+  def hlt_kernel_file(self):
+    raise NotImplementedError(
+        "A subclass must return the name of the file used to drive the --kernel command in HLT wrapgen."
+    )
+
+  def hlt_func_file(self):
+    raise NotImplementedError(
+        "A subclass must return the name of the file used to drive the --func command in HLT wrapgen."
+    )
+
+  def hlt_ref_file(self):
+    raise NotImplementedError(
+        "A subclass must return the name of the file used to drive the --ref command in HLT wrapgen."
+    )
+
   def run_create_hlt_wrapper(self):
-    raise NotImplementedError("Implement me in subclass!")
+    hlt_args = [os.path.join(CIRCT_HLS_BIN_DIR, "hlt-wrapgen")]
+    if self.hlt_func_file():
+      hlt_args += ["--func", self.hlt_func_file()]
+    if self.hlt_ref_file():
+      hlt_args += ["--ref", self.hlt_ref_file()]
+    if self.hlt_kernel_file():
+      hlt_args += ["--kernel", self.hlt_kernel_file()]
+    hlt_args.append(f"--type={self.hlt_type()}")
+    hlt_args += ["--name", args.
+            kernel_name]
+    hlt_args += ["-o", "."]
+    run_tool(hlt_args, shell=True)
 
   def run_build_sim(self):
     print_step("Building simulator")
@@ -621,6 +647,18 @@ class DynamicMode(HLSMode, HLTMode):
         "Number of slots in each buffer, see 'circt-opt --handshake-insert-buffers'"
     )
 
+  def hlt_func_file(self):
+    return self.kernel_cf_flat
+
+  def hlt_kernel_file(self):
+    return self.kernel_firrtl
+
+  def hlt_ref_file(self):
+    return self.kernel_handshake
+
+  def hlt_type(self):
+    return "handshakeFIRRTL"
+
   def parse_arguments(self, parser):
     if not args.vcd:
       # Infer a default location for the VCD file based on how HLT emits it.
@@ -686,16 +724,6 @@ class DynamicMode(HLSMode, HLTMode):
 
     # HLT mode names
     HLTMode.gen_names_mode(self)
-
-  def run_create_hlt_wrapper(self):
-    runIfNotExists(
-        self.kernel_wrapper, lambda: run_tool([
-            os.path.join(CIRCT_HLS_BIN_DIR, "hlt-wrapgen"
-                        ), "--func", self.kernel_cf_flat, "--ref", self.
-            kernel_handshake, "--kernel", self.kernel_firrtl, "--name", args.
-            kernel_name, "--type=handshakeFIRRTL", "-o", "."
-        ],
-                                              shell=True))
 
   def run_mode(self):
     # First, generate all of the names that we'll reference during the run.
@@ -904,15 +932,6 @@ class StaticMode(HLSMode, HLTMode):
                            help="Pipelines the loops at the Affine level.",
                            default=False)
 
-  def run_create_hlt_wrapper(self):
-    runIfNotExists(
-        self.kernel_wrapper, lambda: run_tool([
-            os.path.join(CIRCT_HLS_BIN_DIR, "hlt-wrapgen"), "--func", self.
-            kernel_cf_flat, "--ref", self.kernel_handshake, "--name", args.
-            kernel_name, "--type=calyx", "-o", "."
-        ],
-                                              shell=True))
-
   def parse_arguments(self, subparser):
     if args.run_sim:
       # Running the sim requires building the sim
@@ -942,6 +961,21 @@ class StaticMode(HLSMode, HLTMode):
 
     if args.run_sim:
       self.run_sim()
+
+  def hlt_func_file(self):
+    # SCF defines the software interface
+    return self.kernel_scf
+
+  def hlt_kernel_file(self):
+    # No kernel file
+    return None
+
+  def hlt_ref_file(self):
+    # Calyx defines the reference file
+    return self.kernel_calyx
+
+  def hlt_type(self):
+    return "calyx"
 
   def run_lowering(self):
     print_step(f"Statically scheduled HLS'ing {args.kernel_file}...")
