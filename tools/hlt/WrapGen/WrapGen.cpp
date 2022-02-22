@@ -165,6 +165,7 @@ static void registerDialects(mlir::DialectRegistry &registry) {
   registry.insert<LLVM::LLVMDialect>();
   registry.insert<calyx::CalyxDialect>();
   registry.insert<hw::HWDialect>();
+  registry.insert<cf::ControlFlowDialect>();
 }
 
 } // namespace circt_hls

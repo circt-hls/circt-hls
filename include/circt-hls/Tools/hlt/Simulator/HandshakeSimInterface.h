@@ -50,7 +50,7 @@ struct HandshakePort : public TSimPort, public TransactableTrait {
 struct HandshakeInPort : public HandshakePort<SimulatorInPort> {
   using HandshakePort<SimulatorInPort>::HandshakePort;
   void reset() override { *(this->validSig) = !1; }
-  bool ready() override {
+  bool ready() {
     // An input port is ready to accept inputs when an input is not already
     // pushed onto the port (validSig == 1).
     return *(this->validSig) == 0;
@@ -163,7 +163,8 @@ struct HandshakeDataOutPort : HandshakeDataPort<TData, HandshakeOutPort> {
 // is pushed onto the simulator).
 
 template <typename TData, typename TAddr>
-class HandshakeMemoryInterface : public MemoryInterfaceBase<TData>,
+class HandshakeMemoryInterface : public SimulatorInPort,
+                                 public MemoryInterfaceBase<TData>,
                                  public TransactableTrait {
 
   class MemoryPortBundle : public SimulatorPort {
@@ -358,10 +359,10 @@ class HandshakeMemoryInterface : public MemoryInterfaceBase<TData>,
 public:
   // A memory interface is initialized with a static memory size. This is
   // generated during wrapper generation.
-  HandshakeMemoryInterface(size_t size) : memorySize(size) {}
+  HandshakeMemoryInterface(size_t size) : MemoryInterfaceBase<TData>(size) {}
 
   // Forward keepAlive callback to memory ports
-  void setKeepAliveCallback(const KeepAliveFunction &f) override {
+  void setKeepAliveCallback(const KeepAliveFunction &f) {
     this->keepAlive = f;
     for (auto &port : storePorts)
       port.setKeepAliveCallback(f);
@@ -398,13 +399,10 @@ public:
       *(port.done->readySig) = !1;
     }
   }
-  bool ready() override {
+  bool ready() {
     assert(false && "N/A for memory interfaces.");
     return false;
   }
-
-  // Writing to an input port implies setting the valid signal.
-  virtual void write() { assert(false && "N/A for memory interfaces."); }
 
   /// An input port transaction is fulfilled by de-asserting the valid
   /// (output)

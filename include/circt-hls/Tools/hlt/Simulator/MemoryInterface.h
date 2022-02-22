@@ -8,6 +8,10 @@ protected:
   TData *memory_ptr = nullptr;
 
 public:
+  MemoryInterfaceBase(std::optional<unsigned> memorySize = std::nullopt) {
+    memorySize = memorySize;
+  }
+
   virtual void setMemory(void *memory) {
     if (memory_ptr != nullptr)
       assert(memory_ptr == memory &&

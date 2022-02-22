@@ -87,11 +87,6 @@ public:
     return m_clockCycles;
   }
 
-  bool outValid() override {
-    return std::all_of(this->outPorts.begin(), this->outPorts.end(),
-                       [](auto &port) { return port->valid(); });
-  }
-
   void step() override {
     clock_flip();
     m_clockCycles++;
