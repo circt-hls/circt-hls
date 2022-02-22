@@ -513,11 +513,15 @@ class HLTMode():
         ], tbFile, self.tb_mlir))
     print_info(f"Async-ified the testbench ({self.tb_mlir})")
 
+    LLVM_LOWERING_ORDER = [
+        "-lower-affine", "-convert-math-to-llvm", "-convert-arith-to-llvm",
+        "-convert-scf-to-cf", "-convert-memref-to-llvm", "-convert-std-to-llvm",
+        "-reconcile-unrealized-casts"
+    ]
+
     runIfNotExists(
-        self.tb_llvm, lambda: run_mlir_opt([
-            "-lower-affine", "-convert-scf-to-cf", "-convert-memref-to-llvm",
-            "-convert-cf-to-llvm", "-reconcile-unrealized-casts"
-        ], self.tb_mlir, self.tb_llvm))
+        self.tb_llvm,
+        lambda: run_mlir_opt(LLVM_LOWERING_ORDER, self.tb_mlir, self.tb_llvm))
     print_info(f"Lowered testbench to LLVMIR ({self.tb_llvm})")
 
   def run_sim(self):
