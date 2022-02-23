@@ -53,6 +53,9 @@ class DotModel(Model):
     self.dotFile = DotFile(dot)
     self.workingImagePath = self.setupWorkingImage(dot)
 
+    # Ensure the initial state of the working image file.
+    self.dotUpdateFinished()
+
     # Port to run the image server on.
     self.port = port
 
