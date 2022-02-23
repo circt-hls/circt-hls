@@ -1,5 +1,7 @@
 # circt-hls
 
+[![Build](https://github.com/circt-hls/circt-hls/actions/workflows/build.yml/badge.svg?branch=main)](https://github.com/circt-hls/circt-hls/actions/workflows/build.yml) [![Test](https://github.com/circt-hls/circt-hls/actions/workflows/test.yml/badge.svg?branch=main)](https://github.com/circt-hls/circt-hls/actions/workflows/test.yml)
+
 **What is this?**
 A collection of repositories and tools used to realise various end-to-end high-level synthesis (HLS) flows centering around the CIRCT project. This project can be seen as an incubator for things to go into CIRCT (... which itself is an incubator project). If you're researching CIRCT/MLIR based HLS flows, feel free to contribute or push your code to this repository - there are as of now no strict review or code requirements.
 
@@ -30,8 +32,7 @@ These are the (intended) end-to-end flows that can be driven from this directory
 
 # Setup
 
-**Since things are changing rapidly, the most reliable method of setting this up and getting things to work is to [replicate the steps done in CI](https://github.com/circt-hls/circt-hls/blob/main/.github/workflows/build_and_test.yml) (minus the caching steps).**  
-[![CIRCT-HLS](https://github.com/circt-hls/circt-hls/actions/workflows/build_and_test.yml/badge.svg)](https://github.com/circt-hls/circt-hls/actions/workflows/build_and_test.yml)
+**Since things are changing rapidly, the most reliable method of setting this up and getting things to work is to [replicate the steps done in CI](https://github.com/circt-hls/circt-hls/blob/main/.github/workflows/actions/build_circt_hls/action.yml) (minus the caching steps).**
 
 ## Build CIRCT
 If you don't already have a CIRCT/MLIR build locally, checkout https://github.com/llvm/circt and go follow the instructions. We **do not** include a CIRCT submodule in `circt-hls` since we assume that most people interested in this project will already be looking into CIRCT.
