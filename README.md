@@ -87,8 +87,10 @@ $ ninja check-circt-hls-cosim
 
 # Usage
 
-CIRCT-HLS is currently best driven by using the `hlstool`, available in the `build/bin` path where you built CIRCT-HLS. A guide to using `hlstool` is available [here](tools/hlstool/README.md).
+CIRCT-HLS is driven using the `hlstool`, available in the `build/bin` path where you built CIRCT-HLS. A guide to using `hlstool` is available [here](tools/hlstool/README.md).
+
+A good starting point for getting familiar with the flow is to execute the cosimulation test suite (see below). These tests will emit all of the IR that was generated during lowering, which can be manually inspected. From here, we encourage you to write your own kernels! For inspiration on how to drive the tool, the best reference is to replicate the commands in the [cosimulation test suite](https://github.com/circt-hls/circt-hls/tree/main/cosim_test/suites/Dynamatic) (the `// RUN:` line can be executed manually, substituting the `%s` argument with the path of the source file).
 
 ## Tests:
 - integration tests can be run by executing the `ninja check-circt-hls-integration` command in the `circt-hls/build` directory. This will execute the `lit` integration test suites.
-- Extensive verification can be run by executing the `ninja check-circt-hls-cosim` command in the `circt-hls/build` directory. This will execute the `lit` extended integration test suite, HLS'ing all of the C tests in the `cosim_test` directory. Each file is progressively lowered and the intermediate representations for each file during the lowering process will be available in `build/cosim_test/suites/Dynamatic/...`. This can be very helpful if you're developing and want to inspect (or use) some of the intermediate results generated during compilation.
+- Cosimulation verification can be run by executing the `ninja check-circt-hls-cosim` command in the `circt-hls/build` directory. This will execute the `lit` extended integration test suite, HLS'ing all of the C tests in the `cosim_test` directory. Each file is progressively lowered and the intermediate representations for each file during the lowering process will be available in `build/cosim_test/suites/Dynamatic/...`. This can be very helpful if you're developing and want to inspect (or use) some of the intermediate results generated during compilation.
