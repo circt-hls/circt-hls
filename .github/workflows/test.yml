@@ -1,0 +1,49 @@
+name: Test CIRCT-HLS
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+    types: [assigned, opened, synchronize, reopened]
+  workflow_dispatch:
+  schedule: # run every day at midnight
+    - cron: "0 0 * * *"
+
+jobs:
+  build:
+    container:
+      image: ghcr.io/circt/images/circt-ci-build:20211130162811
+    name: Test ${{ matrix.build }} ${{ matrix.os }} ${{ matrix.compiler }}
+    runs-on: ${{ matrix.os }}
+
+    strategy:
+      fail-fast: false
+      matrix:
+        build: ["Release"] #, "Debug"] # "RelWithDebInfo"
+        os: [ubuntu-latest]
+        compiler:
+          - cc: clang
+            cxx: clang++
+
+    steps:
+    - uses: actions/checkout@v2
+      with:
+        fetch-depth: 1
+        submodules: 'recursive'
+
+    - name: Build CIRCT-HLS
+      uses: ./.github/workflows/actions/build_circt_hls
+      with:
+        cache-version: ${{ secrets.CIRCT_CACHE_VERSION }}
+        cc: ${{ matrix.compiler.cc }}
+        cxx: ${{ matrix.compiler.cxx }}
+        build-type: ${{ matrix.build }}
+
+    - name: Test CIRCT-HLS
+      run: |
+        echo "$(pwd)/circt/build/bin" >> $GITHUB_PATH
+        cd build
+        ninja check-circt-hls
+        ninja check-circt-hls-integration
+        ninja check-circt-hls-cosim

@@ -1,39 +1,31 @@
-name: CIRCT-HLS
+name: 'Build CIRCT-HLS'
+description: 'This action checks out and builds CIRCT-HLS and its dependencies.'
+author: 'circt-hls'
 
-on:
-  push:
-    branches:
-      - main
-  pull_request:
-    types: [assigned, opened, synchronize, reopened]
-  workflow_dispatch:
-  schedule: # run every day at midnight
-    - cron: "0 0 * * *"
+inputs:
+    cache-version:
+        required: false
+        description: 'used for refreshing the cache by simply changing value to something new'
+        default: '1'
+    cc:
+        required: false
+        description: 'C compiler to use'
+        default: 'clang'
+    cxx:
+        required: false
+        description: 'C++ compiler to use'
+        default: 'clang++'
+    build-type:
+        required: false
+        description: 'CMake build type'
+        default: 'Release'
 
-jobs:
-  build:
-    container:
-      image: ghcr.io/circt/images/circt-ci-build:20211130162811
-    name: Build ${{ matrix.build }} ${{ matrix.os }} ${{ matrix.compiler }} Tests? ${{ matrix.tests }}
-    runs-on: ${{ matrix.os }}
 
-    strategy:
-      fail-fast: false
-      matrix:
-        build: ["Release"] #, "Debug"] # "RelWithDebInfo"
-        os: [ubuntu-latest]
-        tests: [enabled, disabled]
-        compiler:
-          - cc: clang
-            cxx: clang++
-
+runs:
+    using: 'composite'
     steps:
-    - uses: actions/checkout@v2
-      with:
-        fetch-depth: 1
-        submodules: 'recursive'
-
     - name: Install Python requirements
+      shell: bash
       run: |
         pip3 install -r requirements.txt
 
@@ -61,14 +53,15 @@ jobs:
           verilator/bin
           verilator/src/obj_dbg
           verilator/src/obj_opt
-        key: ${{ matrix.build }}-${{ matrix.os }}-verilator-${{ hashFiles('verilator/.git/HEAD') }}
+        key: ${{ inputs.build-type }}-${{ runner.os }}-verilator-${{ hashFiles('verilator/.git/HEAD') }}
 
     # Build Verilator. We don't do this conditionally on the cache since we still
     # need to install it into path.
     - name: Verilator build
       env:
-          CC: ${{ matrix.compiler.cc }}
-          CXX: ${{ matrix.compiler.cxx }}
+          CC: ${{ inputs.cc }}
+          CXX: ${{ inputs.cxx }}
+      shell: bash
       run: |
         apt-get install -y git perl python3 make autoconf g++ flex bison
         apt-get install -y libgoogle-perftools-dev numactl perl-doc ccache
@@ -94,14 +87,15 @@ jobs:
       uses: actions/cache@v2
       with:
         path: circt/llvm/build
-        key: ${{ matrix.build }}-${{ matrix.os }}-circt-llvm-${{ hashFiles('circt/.git/modules/llvm/HEAD') }}
+        key: ${{ inputs.build-type }}-${{ runner.os }}-circt-llvm-${{ hashFiles('circt/.git/modules/llvm/HEAD') }}
 
     # Build LLVM+MLIR
     - name: CIRCT LLVM+MLIR build
       if: steps.cache-circt-llvm.outputs.cache-hit != 'true'
       env:
-          CC: ${{ matrix.compiler.cc }}
-          CXX: ${{ matrix.compiler.cxx }}
+          CC: ${{ inputs.cc }}
+          CXX: ${{ inputs.cxx }}
+      shell: bash
       run: |
         mkdir -p circt/llvm/build
         cd circt/llvm/build
@@ -123,14 +117,15 @@ jobs:
       uses: actions/cache@v2
       with:
         path: circt/build
-        key: ${{ matrix.build }}-${{ matrix.os }}-circt-${{ secrets.CIRCT_CACHE_VERSION }}-${{ hashFiles('circt/.git/HEAD') }}
+        key: ${{ inputs.build-type }}-${{ runner.os }}-circt-${{ inputs.cache-version }}-${{ hashFiles('circt/.git/HEAD') }}
 
     # Build CIRCT
     - name: CIRCT build
+      shell: bash
       if: steps.cache-circt.outputs.cache-hit != 'true'
       env:
-          CC: ${{ matrix.compiler.cc }}
-          CXX: ${{ matrix.compiler.cxx }}
+          CC: ${{ inputs.cc }}
+          CXX: ${{ inputs.cxx }}
       run: |
         mkdir -p circt/build
         cd circt/build
@@ -150,13 +145,14 @@ jobs:
       uses: actions/cache@v2
       with:
         path: Polygeist/llvm-project/build
-        key: ${{ matrix.build }}-${{ matrix.os }}-polygeist-llvm-v3-${{ hashFiles('.git/modules/Polygeist/modules/llvm-project/HEAD') }}
+        key: ${{ inputs.build-type }}-${{ runner.os }}-polygeist-llvm-v3-${{ hashFiles('.git/modules/Polygeist/modules/llvm-project/HEAD') }}
 
     - name: Polygeist LLVM+MLIR build
+      shell: bash
       if: steps.cache-polygeist-llvm.outputs.cache-hit != 'true'
       env:
-          CC: ${{ matrix.compiler.cc }}
-          CXX: ${{ matrix.compiler.cxx }}
+          CC: ${{ inputs.cc }}
+          CXX: ${{ inputs.cxx }}
       run: |
         mkdir -p Polygeist/llvm-project/build
         cd Polygeist/llvm-project/build
@@ -165,7 +161,7 @@ jobs:
           -DBUILD_SHARED_LIBS=ON \
           -DLLVM_ENABLE_LLD=ON \
           -DLLVM_OPTIMIZED_TABLEGEN=ON \
-          -DCMAKE_BUILD_TYPE=${{ matrix.build }} \
+          -DCMAKE_BUILD_TYPE=${{ inputs.build-type }} \
           -DCMAKE_CXX_FLAGS="-Wno-c++11-narrowing"
         ninja -j$(nproc)
 
@@ -174,13 +170,14 @@ jobs:
       uses: actions/cache@v2
       with:
         path: Polygeist/build
-        key: ${{ matrix.build }}-${{ matrix.os }}-polygeist-v2-${{ hashFiles('.git/modules/Polygeist/HEAD') }}
+        key: ${{ inputs.build-type }}-${{ runner.os }}-polygeist-v2-${{ hashFiles('.git/modules/Polygeist/HEAD') }}
 
     - name: Build Polygeist
+      shell: bash
       if: steps.cache-polygeist.outputs.cache-hit != 'true'
       env:
-            CC: ${{ matrix.compiler.cc }}
-            CXX: ${{ matrix.compiler.cxx }}
+            CC: ${{ inputs.cc }}
+            CXX: ${{ inputs.cxx }}
       run: |
         mkdir -p Polygeist/build
         cd Polygeist/build
@@ -189,7 +186,7 @@ jobs:
           -DCLANG_DIR=$PWD/../llvm-project/build/lib/cmake/clang \
           -DLLVM_TARGETS_TO_BUILD="host" \
           -DLLVM_ENABLE_ASSERTIONS=ON \
-          -DCMAKE_BUILD_TYPE=${{ matrix.build }}
+          -DCMAKE_BUILD_TYPE=${{ inputs.build-type }}
         ninja -j$(nproc)
         ninja mlir-clang
 
@@ -205,14 +202,15 @@ jobs:
       uses: actions/cache@v2
       with:
         path: build
-        key: ${{ matrix.build }}-${{ matrix.os }}-circt-hls-v2-${{ hashFiles('.git/refs/heads/main') }}
+        key: ${{ inputs.build-type }}-${{ runner.os }}-circt-hls-v2-${{ hashFiles('.git/refs/heads/main') }}
 
     # Build CIRCT-HLS
     - name: CIRCT-HLS build
+      shell: bash
       if: steps.cache-circt-hls.outputs.cache-hit != 'true'
       env:
-          CC: ${{ matrix.compiler.cc }}
-          CXX: ${{ matrix.compiler.cxx }}
+          CC: ${{ inputs.cc }}
+          CXX: ${{ inputs.cxx }}
       run: |
         ls Polygeist/build/bin
         mkdir -p build
@@ -222,12 +220,5 @@ jobs:
           -DMLIR_DIR=$PWD/../circt/llvm/build/lib/cmake/mlir \
           -DLLVM_DIR=$PWD/../circt/llvm/build/lib/cmake/llvm \
           -DLLVM_ENABLE_ASSERTIONS=ON \
-          -DCMAKE_BUILD_TYPE=${{ matrix.build }}
+          -DCMAKE_BUILD_TYPE=${{ inputs.build-type }}
         ninja -j$(nproc)
-
-    # Step conditionals are evaluated before matrix expansion, so we cannot use
-    # ${{ matrix.tests }} in the 'if'...
-    - name: Test CIRCT-HLS
-      run: |
-        echo "$(pwd)/circt/build/bin" >> $GITHUB_PATH
-        bash .github/workflows/scripts/run_tests.sh ${{ matrix.tests }}
