@@ -11,7 +11,7 @@ add_mlir_dialect_library(HLSCosim
   ${PROJECT_BINARY_DIR}/include
 
   LINK_LIBS PUBLIC
-  MLIRStandard
+  MLIRControlFlow
   MLIRSCF
   MLIRIR
 

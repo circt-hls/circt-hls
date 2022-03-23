@@ -18,7 +18,7 @@ using namespace mlir;
 
 namespace circt_hls {
 
-LogicalResult BaseWrapper::wrap(mlir::FuncOp _funcOp, Operation *refOp,
+LogicalResult BaseWrapper::wrap(mlir::func::FuncOp _funcOp, Operation *refOp,
                                 Operation *kernelOp) {
   funcOp = _funcOp;
   if (init(refOp, kernelOp).failed())
@@ -61,7 +61,7 @@ LogicalResult BaseWrapper::wrap(mlir::FuncOp _funcOp, Operation *refOp,
   int i = 0;
   bool failed = false;
   interleaveComma(
-      funcOp.getType().getInputs(), callSigStream, [&](auto inType) {
+      funcOp.getFunctionType().getInputs(), callSigStream, [&](auto inType) {
         auto varName = "in" + std::to_string(i++);
         failed |= emitType(callSigStream, _funcOp->getLoc(), inType, {varName})
                       .failed();
@@ -78,7 +78,8 @@ LogicalResult BaseWrapper::wrap(mlir::FuncOp _funcOp, Operation *refOp,
   // Emit async await
   llvm::raw_string_ostream awaitSigStream(awaitSignature);
   awaitSigStream << "extern \"C\" ";
-  if (emitTypes(awaitSigStream, funcOp.getLoc(), funcOp.getType().getResults())
+  if (emitTypes(awaitSigStream, funcOp.getLoc(),
+                funcOp.getFunctionType().getResults())
           .failed())
     return failure();
   awaitSigStream << " " << funcOp.getName().str() + "_await"
@@ -105,7 +106,7 @@ LogicalResult BaseWrapper::wrap(mlir::FuncOp _funcOp, Operation *refOp,
 }
 
 LogicalResult BaseWrapper::emitIOTypes(const TypeEmitter &emitter) {
-  auto funcType = funcOp.getType();
+  auto funcType = funcOp.getFunctionType();
 
   // Emit in types.
   for (auto &inType : enumerate(funcType.getInputs())) {
@@ -151,7 +152,7 @@ void BaseWrapper::emitAsyncCall() {
 
   // Pack arguments
   osi() << "TInput input;\n";
-  for (auto arg : llvm::enumerate(funcOp.getType().getInputs())) {
+  for (auto arg : llvm::enumerate(funcOp.getFunctionType().getInputs())) {
     // Reinterpret/static cast here is just a hack around software interface
     // providing i.e. int32_t* as pointer type, and verilator using uint32_t*.
     // Should obviously be fixed so we don't throw away type safety.

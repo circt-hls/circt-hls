@@ -120,7 +120,7 @@ LogicalResult HandshakeVerilatorWrapper::emitSimulator() {
   // one more argument and return port for the control signals.
 
   osi() << "// --- Software interface\n";
-  auto funcType = funcOp.getType();
+  auto funcType = funcOp.getFunctionType();
   osi() << "// - Input ports\n";
   for (auto &input : enumerate(funcType.getInputs())) {
     if (emitInputPort(input.value(), input.index()).failed())

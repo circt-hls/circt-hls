@@ -18,6 +18,7 @@
 #include "mlir/Support/IndentedOstream.h"
 #include "llvm/Support/FileSystem.h"
 #include "llvm/Support/Path.h"
+#include "mlir/Dialect/Func/IR/FuncOps.h"
 
 using namespace mlir;
 
@@ -36,7 +37,7 @@ public:
   /// kernel operation is wrapper-specific, whereas the source operation
   /// represents the "software" interface that a kernel is expected to adhere
   /// to.
-  LogicalResult wrap(mlir::FuncOp funcOp, Operation *refOp,
+  LogicalResult wrap(mlir::func::FuncOp funcOp, Operation *refOp,
                      Operation *kernelOp);
 
   std::string getOutputFileName() { return outputFilename; }

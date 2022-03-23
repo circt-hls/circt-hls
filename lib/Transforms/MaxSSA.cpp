@@ -11,14 +11,16 @@
 //===----------------------------------------------------------------------===//
 
 #include "PassDetail.h"
+#include "mlir/Dialect/ControlFlow/IR/ControlFlowOps.h"
+#include "mlir/Dialect/Func/IR/FuncOps.h"
 #include "mlir/Dialect/MemRef/IR/MemRef.h"
-#include "mlir/Dialect/StandardOps/IR/Ops.h"
 #include "mlir/IR/BuiltinTypes.h"
 #include "llvm/ADT/TypeSwitch.h"
 
 #include <set>
 
 using namespace mlir;
+using namespace func;
 using namespace circt_hls;
 
 using ValueFilterCallbackFn = llvm::function_ref<bool(Value)>;

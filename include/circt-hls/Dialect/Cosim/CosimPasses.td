@@ -15,7 +15,7 @@
 
 include "mlir/Pass/PassBase.td"
 
-def CosimLowerCall : Pass<"cosim-lower-call", "mlir::FuncOp"> {
+def CosimLowerCall : Pass<"cosim-lower-call", "mlir::func::FuncOp"> {
   let summary = "Lowers cosim.call operations";
   let description = [{
     This pass lowers cosim call operations into a sequence of input copying,
@@ -26,7 +26,7 @@ def CosimLowerCall : Pass<"cosim-lower-call", "mlir::FuncOp"> {
   let constructor = "circt_hls::cosim::createCosimLowerCallPass()";
 }
 
-def CosimLowerCompare : Pass<"cosim-lower-compare", "mlir::FuncOp"> {
+def CosimLowerCompare : Pass<"cosim-lower-compare", "mlir::func::FuncOp"> {
   let summary = "Lowers cosim.compare operations";
   let description = [{
     This pass lowers cosim.compare operations into operations that can be further
@@ -40,7 +40,7 @@ def CosimLowerCompare : Pass<"cosim-lower-compare", "mlir::FuncOp"> {
   ];
 }
 
-def CosimConvertCall : Pass<"cosim-convert-call", "mlir::FuncOp"> {
+def CosimConvertCall : Pass<"cosim-convert-call", "mlir::func::FuncOp"> {
   let summary = "Converts a std.call operation to a cosim.call operation";
   let description = [{
     This pass converts a std.call operation to a cosim.call operation.

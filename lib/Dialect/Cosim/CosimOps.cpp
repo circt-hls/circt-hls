@@ -18,12 +18,12 @@ using namespace mlir;
 using namespace circt_hls;
 using namespace cosim;
 
-static LogicalResult verifyCallOp(cosim::CallOp op) {
-  if (llvm::any_of(op.targets(), [&](Attribute attr) {
-        return attr.cast<StringAttr>().strref() == op.ref();
+LogicalResult CallOp::verify() {
+  if (llvm::any_of(targets(), [&](Attribute attr) {
+        return attr.cast<StringAttr>().strref() == ref();
       }))
-    return op.emitOpError() << "do not include the reference function in the "
-                               "set of target functions.";
+    return emitOpError() << "do not include the reference function in the "
+                            "set of target functions.";
 
   return success();
 }

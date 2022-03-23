@@ -28,6 +28,11 @@ namespace scf {
 class SCFDialect;
 }
 
+namespace func {
+class FuncDialect;
+class FuncOp;
+} // namespace func
+
 namespace circt_hls {
 #define GEN_PASS_CLASSES
 #include "circt-hls/Transforms/Passes.h.inc"

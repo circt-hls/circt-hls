@@ -44,7 +44,7 @@ def CallOp : Cosim_Op<"call", [
     $func `(` $operands `)` `:` functional-type($operands, results) attr-dict
   }];
 
-  let verifier = "return ::verify$cppClass(*this);";
+  let hasVerifier = 1;
   let extraClassDeclaration = [{
     /// Get the argument operands to the called function.
     operand_range getArgOperands() {

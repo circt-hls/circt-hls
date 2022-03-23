@@ -49,7 +49,7 @@ target_link_libraries(hls-opt
   MLIRMemRef
   MLIROptLib
   MLIRParser
-  MLIRStandard
+  MLIRControlFlow
   MLIRSupport
   MLIRTransforms
   MLIRSCF

@@ -9,10 +9,12 @@
 #include "PassDetails.h"
 #include "circt-hls/Dialect/Cosim/CosimOps.h"
 #include "circt-hls/Dialect/Cosim/CosimPasses.h"
+#include "mlir/Dialect/ControlFlow/IR/ControlFlow.h"
+#include "mlir/Dialect/ControlFlow/IR/ControlFlowOps.h"
+#include "mlir/Dialect/Func/IR/FuncOps.h"
 #include "mlir/Dialect/LLVMIR/LLVMDialect.h"
 #include "mlir/Dialect/MemRef/IR/MemRef.h"
 #include "mlir/Dialect/SCF/SCF.h"
-#include "mlir/Dialect/StandardOps/IR/Ops.h"
 #include "mlir/IR/BuiltinDialect.h"
 #include "mlir/IR/ImplicitLocOpBuilder.h"
 #include "mlir/IR/PatternMatch.h"
@@ -89,11 +91,11 @@ static void compareToRefAfterOp(Value ref, Value cosim, Operation *op,
   FlatSymbolRefAttr refSrc, cosimSrc;
 
   if (!refSrcOp)
-    if (auto refSrcOp = dyn_cast<mlir::CallOp>(ref.getDefiningOp()))
+    if (auto refSrcOp = dyn_cast<mlir::func::CallOp>(ref.getDefiningOp()))
       refSrc = FlatSymbolRefAttr::get(op->getContext(), refSrcOp.getCallee());
 
   if (!cosimSrcOp)
-    if (auto cosimSrcOp = dyn_cast<mlir::CallOp>(cosim.getDefiningOp()))
+    if (auto cosimSrcOp = dyn_cast<mlir::func::CallOp>(cosim.getDefiningOp()))
       cosimSrc =
           FlatSymbolRefAttr::get(op->getContext(), cosimSrcOp.getCallee());
 
@@ -114,16 +116,18 @@ struct ConvertCallPattern : OpRewritePattern<cosim::CallOp> {
     auto module = op->getParentOfType<ModuleOp>();
 
     // First, grab the function operations for the targets.
-    std::map<std::string, mlir::FuncOp> targetFunctions;
+    std::map<std::string, mlir::func::FuncOp> targetFunctions;
     for (auto target : op.targets()) {
       auto targetName = target.cast<StringAttr>().strref();
-      mlir::FuncOp targetFunc = module.lookupSymbol<mlir::FuncOp>(targetName);
+      mlir::func::FuncOp targetFunc =
+          module.lookupSymbol<mlir::func::FuncOp>(targetName);
       assert(targetFunc &&
              "expected all functions to be declared in the module");
       targetFunctions[targetName.str()] = targetFunc;
     }
     auto refName = op.ref().str();
-    mlir::FuncOp refFunc = module.lookupSymbol<mlir::FuncOp>(refName);
+    mlir::func::FuncOp refFunc =
+        module.lookupSymbol<mlir::func::FuncOp>(refName);
     assert(refFunc && "expected all functions to be declared in the module");
     targetFunctions[refName] = refFunc;
 
@@ -141,9 +145,9 @@ struct ConvertCallPattern : OpRewritePattern<cosim::CallOp> {
       }
     }
 
-    std::map<std::string, mlir::CallOp> targetCalls;
+    std::map<std::string, mlir::func::CallOp> targetCalls;
     auto emitCall = [&](StringRef callee, ValueRange operands) {
-      targetCalls[callee.str()] = rewriter.create<mlir::CallOp>(
+      targetCalls[callee.str()] = rewriter.create<mlir::func::CallOp>(
           op.getLoc(), targetFunctions.at(callee.str()), operands);
     };
 
@@ -156,7 +160,7 @@ struct ConvertCallPattern : OpRewritePattern<cosim::CallOp> {
 
     // Emit cosim comparison between the reference function and the target
     // functions.
-    mlir::CallOp refCall = targetCalls[op.ref().str()];
+    mlir::func::CallOp refCall = targetCalls[op.ref().str()];
     for (auto &call : targetCalls) {
       // Ignore the reference call; all other target calls will compare against
       // this call.
@@ -197,7 +201,7 @@ struct CosimLowerCallPass : public CosimLowerCallBase<CosimLowerCallPass> {
     target.addIllegalOp<cosim::CallOp>();
     target.addLegalDialect<memref::MemRefDialect>();
     target.addLegalDialect<mlir::BuiltinDialect>();
-    target.addLegalDialect<mlir::StandardOpsDialect>();
+    target.addLegalDialect<mlir::cf::ControlFlowDialect>();
     target.addLegalDialect<arith::ArithmeticDialect>();
     target.addLegalDialect<cosim::CosimDialect>();
 
@@ -208,19 +212,20 @@ struct CosimLowerCallPass : public CosimLowerCallBase<CosimLowerCallPass> {
 
   void createExternalSymbols(cosim::CallOp op) {
     auto module = op->getParentOfType<ModuleOp>();
-    auto funcOp = op->getParentOfType<mlir::FuncOp>();
+    auto funcOp = op->getParentOfType<mlir::func::FuncOp>();
     FunctionType opFuncType = FunctionType::get(
         op.getContext(), op.getOperandTypes(), op.getResultTypes());
     ImplicitLocOpBuilder builder(module.getLoc(), op.getContext());
     builder.setInsertionPointAfter(funcOp);
 
     auto createFunc = [&](StringRef name) {
-      mlir::FuncOp targetFunc = module.lookupSymbol<mlir::FuncOp>(name);
+      mlir::func::FuncOp targetFunc =
+          module.lookupSymbol<mlir::func::FuncOp>(name);
       if (!targetFunc) {
         // Function doesn't exist in module; create private definition.
         builder.setInsertionPoint(funcOp);
         targetFunc =
-            builder.create<mlir::FuncOp>(op.getLoc(), name, opFuncType);
+            builder.create<mlir::func::FuncOp>(op.getLoc(), name, opFuncType);
         targetFunc.setPrivate();
       }
     };
@@ -376,7 +381,7 @@ struct CosimLowerComparePass
     target.addIllegalOp<cosim::CompareOp>();
     target.addLegalDialect<memref::MemRefDialect>();
     target.addLegalDialect<mlir::BuiltinDialect>();
-    target.addLegalDialect<mlir::StandardOpsDialect>();
+    target.addLegalDialect<mlir::cf::ControlFlowDialect>();
     target.addLegalDialect<arith::ArithmeticDialect>();
     target.addLegalDialect<cosim::CosimDialect>();
     target.addLegalDialect<scf::SCFDialect>();
@@ -388,11 +393,11 @@ struct CosimLowerComparePass
   }
 };
 
-struct ConvertStdCallPattern : OpRewritePattern<mlir::CallOp> {
+struct ConvertStdCallPattern : OpRewritePattern<mlir::func::CallOp> {
   ConvertStdCallPattern(MLIRContext *ctx, StringRef from, StringRef ref,
                         const std::vector<std::string> &targets)
       : OpRewritePattern(ctx), from(from), ref(ref), targets(targets) {}
-  LogicalResult matchAndRewrite(mlir::CallOp op,
+  LogicalResult matchAndRewrite(mlir::func::CallOp op,
                                 PatternRewriter &rewriter) const override {
     if (op.getCallee() != from)
       return failure();
@@ -417,8 +422,8 @@ struct CosimConvertCallPass
     RewritePatternSet patterns(ctx);
     patterns.insert<ConvertStdCallPattern>(ctx, from, ref, targets);
     ConversionTarget target(*ctx);
-    target.addDynamicallyLegalOp<mlir::CallOp>(
-        [&](mlir::CallOp callOp) { return callOp.getCallee() != from; });
+    target.addDynamicallyLegalOp<mlir::func::CallOp>(
+        [&](mlir::func::CallOp callOp) { return callOp.getCallee() != from; });
     target.addLegalDialect<cosim::CosimDialect>();
 
     if (failed(applyPartialConversion(getOperation(), target,

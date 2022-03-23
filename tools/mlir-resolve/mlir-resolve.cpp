@@ -15,16 +15,17 @@
 #include "mlir/IR/BlockAndValueMapping.h"
 #include "mlir/IR/BuiltinOps.h"
 #include "mlir/IR/MLIRContext.h"
-#include "mlir/Parser.h"
+#include "mlir/Parser/Parser.h"
 
 #include "circt/Dialect/FIRRTL/FIRRTLDialect.h"
 #include "circt/Dialect/Handshake/HandshakeDialect.h"
 #include "circt/Dialect/Handshake/HandshakeOps.h"
 #include "mlir/Dialect/Arithmetic/IR/Arithmetic.h"
+#include "mlir/Dialect/ControlFlow/IR/ControlFlowOps.h"
+#include "mlir/Dialect/Func/IR/FuncOps.h"
 #include "mlir/Dialect/LLVMIR/LLVMDialect.h"
 #include "mlir/Dialect/MemRef/IR/MemRef.h"
 #include "mlir/Dialect/SCF/SCF.h"
-#include "mlir/Dialect/StandardOps/IR/Ops.h"
 
 #include "llvm/ADT/TypeSwitch.h"
 #include "llvm/Support/CommandLine.h"
@@ -40,6 +41,7 @@
 using namespace llvm;
 using namespace circt;
 using namespace mlir;
+using namespace func;
 
 static cl::opt<std::string> inputFile1("file1", cl::Required,
                                        cl::desc("<first file>"), cl::init("-"));
@@ -71,7 +73,7 @@ static ModuleOp getModule(MLIRContext *ctx, StringRef fn) {
 
 static void registerDialects(mlir::DialectRegistry &registry) {
   registry.insert<mlir::memref::MemRefDialect>();
-  registry.insert<mlir::StandardOpsDialect>();
+  registry.insert<mlir::cf::ControlFlowDialect>();
   registry.insert<arith::ArithmeticDialect>();
   registry.insert<scf::SCFDialect>();
   registry.insert<handshake::HandshakeDialect>();
@@ -94,12 +96,12 @@ int main(int argc, char **argv) {
   if (!mod2)
     return 1;
 
-  for (mlir::FuncOp funcOp : mod1.getOps<mlir::FuncOp>()) {
+  for (mlir::func::FuncOp funcOp : mod1.getOps<mlir::func::FuncOp>()) {
     if (funcOp.isPrivate()) {
-      auto mod2FuncOps = mod2.getOps<mlir::FuncOp>();
-      auto it = llvm::find_if(mod2FuncOps, [&](mlir::FuncOp f2FuncOp) {
+      auto mod2FuncOps = mod2.getOps<mlir::func::FuncOp>();
+      auto it = llvm::find_if(mod2FuncOps, [&](mlir::func::FuncOp f2FuncOp) {
         return f2FuncOp.getName() == funcOp.getName() &&
-               f2FuncOp.getType() == funcOp.getType();
+               f2FuncOp.getFunctionType() == funcOp.getFunctionType();
       });
       if (it != mod2FuncOps.end()) {
         // Found a match, clone the definition from f2 into f1

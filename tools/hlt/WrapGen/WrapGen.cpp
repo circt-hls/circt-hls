@@ -14,7 +14,7 @@
 
 #include "mlir/IR/BuiltinOps.h"
 #include "mlir/IR/MLIRContext.h"
-#include "mlir/Parser.h"
+#include "mlir/Parser/Parser.h"
 
 #include "llvm/ADT/TypeSwitch.h"
 #include "llvm/Support/CommandLine.h"
@@ -29,10 +29,10 @@
 #include "circt/Dialect/Handshake/HandshakeDialect.h"
 #include "circt/Dialect/Handshake/HandshakeOps.h"
 #include "mlir/Dialect/Arithmetic/IR/Arithmetic.h"
+#include "mlir/Dialect/ControlFlow/IR/ControlFlowOps.h"
 #include "mlir/Dialect/LLVMIR/LLVMDialect.h"
 #include "mlir/Dialect/MemRef/IR/MemRef.h"
 #include "mlir/Dialect/SCF/SCF.h"
-#include "mlir/Dialect/StandardOps/IR/Ops.h"
 
 #include "circt-hls/Tools/hlt/WrapGen/BaseWrapper.h"
 #include "circt-hls/Tools/hlt/WrapGen/calyx/CalyxVerilatorWrapper.h"
@@ -157,7 +157,7 @@ static mlir::Operation *getOpToWrap(mlir::MLIRContext *ctx, StringRef fn,
 
 static void registerDialects(mlir::DialectRegistry &registry) {
   registry.insert<mlir::memref::MemRefDialect>();
-  registry.insert<mlir::StandardOpsDialect>();
+  registry.insert<mlir::cf::ControlFlowDialect>();
   registry.insert<arith::ArithmeticDialect>();
   registry.insert<scf::SCFDialect>();
   registry.insert<handshake::HandshakeDialect>();
@@ -201,7 +201,7 @@ int main(int argc, char **argv) {
   if (!funcOpPtr)
     return 1;
 
-  auto funcOp = dyn_cast<mlir::FuncOp>(funcOpPtr);
+  auto funcOp = dyn_cast<mlir::func::FuncOp>(funcOpPtr);
   if (!funcOp) {
     errs() << "Expected --func to be a builtin.func\n";
     return 1;

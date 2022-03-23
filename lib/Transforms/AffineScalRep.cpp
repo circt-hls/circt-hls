@@ -12,11 +12,13 @@
 
 #include "PassDetail.h"
 #include "mlir/Dialect/Affine/IR/AffineMemoryOpInterfaces.h"
+#include "mlir/Dialect/ControlFlow/IR/ControlFlowOps.h"
+#include "mlir/Dialect/Func/IR/FuncOps.h"
 #include "mlir/Dialect/MemRef/IR/MemRef.h"
-#include "mlir/Dialect/StandardOps/IR/Ops.h"
 #include "mlir/IR/Dominance.h"
 
 using namespace mlir;
+using namespace func;
 using namespace circt_hls;
 
 namespace {
@@ -91,9 +93,9 @@ void AffineScalRepPass::forwardStoreToReturn(
 
     // Update the function return type with the stored value's type.
     auto f = returnOp->getParentOfType<FuncOp>();
-    auto argTypes = f.getType().getInputs();
-    SmallVector<Type> resultTypes(f.getType().getResults().begin(),
-                                  f.getType().getResults().end());
+    auto argTypes = f.getFunctionType().getInputs();
+    SmallVector<Type> resultTypes(f.getFunctionType().getResults().begin(),
+                                  f.getFunctionType().getResults().end());
     resultTypes[opOperand.getOperandNumber()] = storeVal.getType();
     f.setType(FunctionType::get(f.getContext(), argTypes, resultTypes));
   }

@@ -11,7 +11,7 @@ add_mlir_library(HLSTransforms
   LINK_LIBS PUBLIC
   MLIRIR
   MLIRMemRef
-  MLIRStandard
+  MLIRControlFlow
   MLIRSupport
   MLIRTransformUtils
 

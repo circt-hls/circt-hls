@@ -14,7 +14,7 @@
 #ifndef CIRCT_TOOLS_HLT_WRAPGEN_STD_STDWRAPPER_H
 #define CIRCT_TOOLS_HLT_WRAPGEN_STD_STDWRAPPER_H
 
-#include "mlir/Dialect/StandardOps/IR/Ops.h"
+#include "mlir/Dialect/ControlFlow/IR/ControlFlowOps.h"
 #include "mlir/IR/BuiltinOps.h"
 #include "mlir/IR/MLIRContext.h"
 

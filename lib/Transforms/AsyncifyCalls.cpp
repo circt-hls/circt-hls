@@ -15,10 +15,11 @@
 #include "mlir/Conversion/LLVMCommon/Pattern.h"
 #include "mlir/Dialect/Affine/IR/AffineOps.h"
 #include "mlir/Dialect/Arithmetic/IR/Arithmetic.h"
+#include "mlir/Dialect/ControlFlow/IR/ControlFlowOps.h"
+#include "mlir/Dialect/Func/IR/FuncOps.h"
 #include "mlir/Dialect/LLVMIR/LLVMDialect.h"
 #include "mlir/Dialect/MemRef/IR/MemRef.h"
 #include "mlir/Dialect/SCF/SCF.h"
-#include "mlir/Dialect/StandardOps/IR/Ops.h"
 #include "mlir/IR/BlockAndValueMapping.h"
 #include "mlir/IR/BuiltinDialect.h"
 #include "mlir/IR/BuiltinTypes.h"
@@ -32,6 +33,7 @@
 #define DEBUG_TYPE "asyncify-calls"
 
 using namespace mlir;
+using namespace func;
 using namespace circt_hls;
 
 namespace {
@@ -148,7 +150,7 @@ struct ForOpConversion : public AsyncConversionPattern<scf::ForOp> {
     // function within the loop body. We allow multiple instructions within the
     // loop body, but not calls to other functions.
 
-    auto callOps = op.getOps<mlir::CallOp>();
+    auto callOps = op.getOps<mlir::func::CallOp>();
     if (!llvm::all_of(callOps, [&](auto callOp) {
           return callOp.getCallee() == targetName;
         }))
@@ -178,8 +180,8 @@ struct ForOpConversion : public AsyncConversionPattern<scf::ForOp> {
 
     // Create the await loop after the call loop.
     rewriter.setInsertionPointAfter(op);
-    auto awaitLoop = rewriter.create<scf::ForOp>(op.getLoc(), op.getLowerBound(),
-                                                 op.getUpperBound(), op.getStep());
+    auto awaitLoop = rewriter.create<scf::ForOp>(
+        op.getLoc(), op.getLowerBound(), op.getUpperBound(), op.getStep());
 
     // Move result dependencies (and upstream dependencies of downstream ops) of
     // the call to the await loop.
@@ -205,23 +207,25 @@ struct ForOpConversion : public AsyncConversionPattern<scf::ForOp> {
   }
 };
 
-struct CallOpConversion : public AsyncConversionPattern<mlir::CallOp> {
+struct CallOpConversion : public AsyncConversionPattern<mlir::func::CallOp> {
   using AsyncConversionPattern::AsyncConversionPattern;
 
   LogicalResult
-  matchAndRewrite(mlir::CallOp op, OpAdaptor adaptor,
+  matchAndRewrite(mlir::func::CallOp op, OpAdaptor adaptor,
                   ConversionPatternRewriter &rewriter) const override {
-    assert(op.getCallee().equals(targetName) && "Legalizer should not allow this");
+    assert(op.getCallee().equals(targetName) &&
+           "Legalizer should not allow this");
     assert(isa<FuncOp>(op->getParentOp()) &&
            "Call ops nested within anything but a FuncOp should have been "
            "converted prior to this conversion pattern applying. This pattern "
            "intends to only modify CallOps nested directly within a function "
            "body.");
 
-    auto awaitCall =
-        rewriter.replaceOpWithNewOp<mlir::CallOp>(op, awaitFunc, ValueRange());
+    auto awaitCall = rewriter.replaceOpWithNewOp<mlir::func::CallOp>(
+        op, awaitFunc, ValueRange());
     rewriter.setInsertionPoint(awaitCall);
-    rewriter.create<mlir::CallOp>(op.getLoc(), callFunc, adaptor.getOperands());
+    rewriter.create<mlir::func::CallOp>(op.getLoc(), callFunc,
+                                        adaptor.getOperands());
     return success();
   }
 };
@@ -235,7 +239,7 @@ public:
     if (functionName.empty()) {
       // Try to infer the callee function.
       StringRef callee;
-      auto res = getOperation().walk([&](mlir::CallOp op) {
+      auto res = getOperation().walk([&](mlir::func::CallOp op) {
         if (!callee.empty() && !callee.equals(op.getCallee()))
           return WalkResult::interrupt();
         callee = op.getCallee();
@@ -287,10 +291,10 @@ void AsyncifyCallsPass::addTargetLegalizations(ConversionTarget &target) {
   target.addLegalDialect<scf::SCFDialect>();
   target.addLegalDialect<memref::MemRefDialect>();
   target.addLegalDialect<mlir::BuiltinDialect>();
-  target.addLegalDialect<mlir::StandardOpsDialect>();
+  target.addLegalDialect<mlir::cf::ControlFlowDialect>();
   target.addLegalDialect<arith::ArithmeticDialect>();
   target.addLegalDialect<LLVM::LLVMDialect>();
-  target.addDynamicallyLegalOp<mlir::CallOp>([&](CallOp op) {
+  target.addDynamicallyLegalOp<mlir::func::CallOp>([&](CallOp op) {
     // We expect the target function to be removed after asyncification.
     return op.getCallee() != functionName;
   });
@@ -330,7 +334,7 @@ void AsyncifyCallsPass::createExternalSymbols(FuncOp sourceOp) {
   auto *ctx = &getContext();
   auto module = getOperation();
 
-  FunctionType type = sourceOp.getType();
+  FunctionType type = sourceOp.getFunctionType();
   ImplicitLocOpBuilder builder(module.getLoc(), ctx);
   builder.setInsertionPoint(sourceOp);
   callOp = builder.create<FuncOp>(

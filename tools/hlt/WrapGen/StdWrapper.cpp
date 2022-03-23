@@ -44,7 +44,7 @@ LogicalResult StdWrapper::emitPreamble(Operation * /*kernelOp*/) {
   // Forward declare kernel function; this is an external symbol that is defined
   // in the lowered LLVMIR version of the kernel.
   std::string retType;
-  auto funcType = funcOp.getType();
+  auto funcType = funcOp.getFunctionType();
   if (funcType.getNumResults() > 1)
     retType = "TOutput";
   else if (funcType.getNumResults() == 1) {
