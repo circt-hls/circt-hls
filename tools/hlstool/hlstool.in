@@ -378,8 +378,7 @@ class HLTMode():
     if self.hlt_kernel_file():
       hlt_args += ["--kernel", self.hlt_kernel_file()]
     hlt_args.append(f"--type={self.hlt_type()}")
-    hlt_args += ["--name", args.
-            kernel_name]
+    hlt_args += ["--name", args.kernel_name]
     hlt_args += ["-o", "."]
     run_tool(hlt_args, shell=True)
 
@@ -541,7 +540,8 @@ class HLTMode():
 
     LLVM_LOWERING_ORDER = [
         "-lower-affine", "-convert-math-to-llvm", "-convert-arith-to-llvm",
-        "-convert-scf-to-cf", "-convert-memref-to-llvm", "-convert-std-to-llvm",
+        "-convert-scf-to-cf", "-convert-memref-to-llvm",
+        "-convert-func-to-llvm", "-convert-cf-to-llvm",
         "-reconcile-unrealized-casts"
     ]
 

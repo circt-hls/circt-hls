@@ -30,6 +30,7 @@
 #include "circt/Dialect/Handshake/HandshakeOps.h"
 #include "mlir/Dialect/Arithmetic/IR/Arithmetic.h"
 #include "mlir/Dialect/ControlFlow/IR/ControlFlowOps.h"
+#include "mlir/Dialect/Func/IR/FuncOps.h"
 #include "mlir/Dialect/LLVMIR/LLVMDialect.h"
 #include "mlir/Dialect/MemRef/IR/MemRef.h"
 #include "mlir/Dialect/SCF/SCF.h"
@@ -166,6 +167,7 @@ static void registerDialects(mlir::DialectRegistry &registry) {
   registry.insert<calyx::CalyxDialect>();
   registry.insert<hw::HWDialect>();
   registry.insert<cf::ControlFlowDialect>();
+  registry.insert<func::FuncDialect>();
 }
 
 } // namespace circt_hls
