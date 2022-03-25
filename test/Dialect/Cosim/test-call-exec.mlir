@@ -1,5 +1,5 @@
 // RUN: hls-opt --split-input-file --cosim-lower-compare %s > cosim_compare.mlir
-// RUN: mlir-opt --convert-scf-to-cf --convert-std-to-llvm cosim_compare.mlir > cosim_compare_llvm.mlir
+// RUN: mlir-opt --convert-scf-to-cf --convert-cf-to-llvm --convert-func-to-llvm cosim_compare.mlir > cosim_compare_llvm.mlir
 // RUN: mlir-cpu-runner \
 // RUN:    -e main -entry-point-result=i32 -O3                    \
 // RUN:    -shared-libs=%llvm_shlibdir/libmlir_c_runner_utils.so  \

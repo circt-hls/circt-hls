@@ -204,6 +204,7 @@ struct CosimLowerCallPass : public CosimLowerCallBase<CosimLowerCallPass> {
     target.addLegalDialect<mlir::cf::ControlFlowDialect>();
     target.addLegalDialect<arith::ArithmeticDialect>();
     target.addLegalDialect<cosim::CosimDialect>();
+    target.addLegalDialect<func::FuncDialect>();
 
     if (failed(applyPartialConversion(getOperation(), target,
                                       std::move(patterns))))
@@ -386,6 +387,7 @@ struct CosimLowerComparePass
     target.addLegalDialect<cosim::CosimDialect>();
     target.addLegalDialect<scf::SCFDialect>();
     target.addLegalDialect<LLVM::LLVMDialect>();
+    target.addLegalDialect<func::FuncDialect>();
 
     if (failed(applyPartialConversion(getOperation(), target,
                                       std::move(patterns))))

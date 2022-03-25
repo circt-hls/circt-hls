@@ -79,6 +79,7 @@ static void registerDialects(mlir::DialectRegistry &registry) {
   registry.insert<handshake::HandshakeDialect>();
   registry.insert<firrtl::FIRRTLDialect>();
   registry.insert<LLVM::LLVMDialect>();
+  registry.insert<mlir::func::FuncDialect>();
 }
 
 int main(int argc, char **argv) {
