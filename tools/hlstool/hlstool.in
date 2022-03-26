@@ -575,7 +575,7 @@ class HLTMode():
         "mlir-cpu-runner", f"-e {args.tb_entry} -entry-point-result=i32 -O3",
         f"-shared-libs={libdir}/libmlir_c_runner_utils.so",
         f"-shared-libs={libdir}/libmlir_runner_utils.so",
-        f"-shared-libs={simlib} {self.tb_llvm}"
+        f"-shared-libs={args.outdir}/{simlib} {self.tb_llvm}"
     ])
     print_info(
         "WARNING: It has been observed that running the simulator through "
