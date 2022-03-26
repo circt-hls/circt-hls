@@ -117,7 +117,7 @@ runs:
       uses: actions/cache@v2
       with:
         path: circt/build
-        key: ${{ inputs.build-type }}-${{ runner.os }}-circt-${{ inputs.cache-version }}-${{ hashFiles('circt/.git/HEAD') }}
+        key: ${{ inputs.build-type }}-${{ runner.os }}-circt-${{ inputs.cache-version }}-${{ hashFiles('circt/.git/refs/heads/main') }}
 
     # Build CIRCT
     - name: CIRCT build
