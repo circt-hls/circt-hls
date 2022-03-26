@@ -26,7 +26,7 @@ set(CIRCT_HLS_EXTENDED_INTEGRATION_TEST_DEPENDS
 add_lit_testsuite(check-circt-hls-cosim "Running the CIRCT HLS cosimulation test suite"
   ${CMAKE_CURRENT_BINARY_DIR}
   DEPENDS ${CIRCT_HLS_EXTENDED_INTEGRATION_TEST_DEPENDS}
-  ARGS -j${NJobs}
+  ARGS -j1 # ${NJobs}
   )
 set_target_properties(check-circt-hls-cosim PROPERTIES FOLDER "ExtendedIntegrationTests")
 
