@@ -10,59 +10,60 @@
 namespace circt {
 namespace hlt {
 
-template <typename TSig>
-class CalyxPort : public SimulatorInPort, VerilatorSignal<TSig> {
+template <typename TSig, typename TPort>
+class CalyxPort : public TPort, public VerilatorSignal<TSig> {
 public:
   using VerilatorSignal<TSig>::VerilatorSignal;
+  bool eval(bool firstInStep) override {}
+  void reset() override {}
 };
 
+template <typename TSig>
+using CalyxOutPort = CalyxPort<TSig, SimulatorOutPort>;
+
+template <typename TSig>
+using CalyxInPort = CalyxPort<TSig, SimulatorInPort>;
+
 template <typename TData, typename TAddr>
-class CalyxMemoryInterface : public MemoryInterfaceBase<TData> {
+class CalyxMemoryInterface : public SimulatorInPort,
+                             public MemoryInterfaceBase<TData> {
 
 public:
   // A memory interface is initialized with a static memory size. This is
   // generated during wrapper generation.
-  CalyxMemoryInterface(
-      size_t size, std::unique_ptr<VerilatorSignal<TData>> readDataSignal,
-      std::unique_ptr<VerilatorSignal<CData>> doneSignal,
-      std::unique_ptr<VerilatorSignal<TData>> writeDataSignal,
-      std::unique_ptr<VerilatorSignal<CData>> writeEnSignal,
-      std::vector<std::unique_ptr<VerilatorSignal<TAddr>>> addrSignals)
-      : memorySize(size), readDataSignal(readDataSignal),
-        addrSignals(addrSignals), doneSignal(doneSignal),
-        writeDataSignal(writeDataSignal), writeEnSignal(writeEnSignal){} {}
-  virtual ~HandshakeMemoryInterface() = default;
+  CalyxMemoryInterface(size_t size,
+                       std::shared_ptr<CalyxOutPort<TData>> readDataSignal,
+                       std::shared_ptr<CalyxOutPort<CData>> doneSignal,
+                       std::shared_ptr<CalyxInPort<TData>> writeDataSignal,
+                       std::shared_ptr<CalyxInPort<CData>> writeEnSignal,
+                       std::shared_ptr<CalyxInPort<TAddr>> addrSignal)
+      : MemoryInterfaceBase<TData>(size), readDataSignal(readDataSignal),
+        addrSignal(addrSignal), doneSignal(doneSignal),
+        writeDataSignal(writeDataSignal), writeEnSignal(writeEnSignal) {}
   void dump(std::ostream &os) const {}
 
-  void reset() override {
+  void reset() {
     *readDataSignal = 0;
     *writeDataSignal = 0;
     *doneSignal = 0;
     *writeEnSignal = 0;
-    for (auto &addrSignal : addrSignals)
-      *addrSignal = 0;
+    *addrSignal = 0;
   }
 
   // Writing to an input port implies setting the valid signal.
   virtual void write() { assert(false && "N/A for memory interfaces."); }
   bool eval(bool firstInStep) override {
-    if (!firstInStep)
-      return false;
-
-    if (*writeEnSignal)
-      this->write(*writeAddrSignal, *writeDataSignal);
-    else {
-      *readDoneSignal = 1;
-      *readDataSignal = this->read(*addrSignal);
-    }
+    if (this->writeEnSignal)
+      this->write(*addrSignal, *writeDataSignal);
+    *readDataSignal = this->read(*addrSignal);
   }
 
 private:
-  std::unique_ptr<VerilatorSignal<TData>> readDataSignal;
-  std::unique_ptr<VerilatorSignal<TAddr>> addrSignal;
-  std::unique_ptr<VerilatorSignal<CData>> readDoneSignal;
-  std::unique_ptr<VerilatorSignal<TData>> writeDataSignal;
-  std::unique_ptr<VerilatorSignal<CData>> writeEnSignal;
+  std::shared_ptr<CalyxOutPort<TData>> readDataSignal;
+  std::shared_ptr<CalyxOutPort<TData>> writeDataSignal;
+  std::shared_ptr<CalyxInPort<TAddr>> addrSignal;
+  std::shared_ptr<CalyxInPort<CData>> doneSignal;
+  std::shared_ptr<CalyxInPort<CData>> writeEnSignal;
 };
 
 template <typename TInput, typename TOutput, typename TModel>
@@ -73,11 +74,11 @@ class CalyxSimInterface
 public:
   CalyxSimInterface() : VerilatorSimImpl() {}
 
-  // The handshake simulator is ready to accept inputs whenever it is not
+  // The Calyx simulator is ready to accept inputs whenever it is not
   // currently transacting an input buffer.
   bool inReady() override { return !this->inBuffer.has_value(); }
 
-  // The handshake simulator is ready to provide an output whenever it has
+  // The Calyx simulator is ready to provide an output whenever it has
   // a valid output buffer.
   bool outValid() override { return this->outBuffer.has_value(); }
 
@@ -99,11 +100,7 @@ public:
 
     readToOutputBuffer();
     bool wroteInput = writeFromInputBuffer();
-    evaluate(/*risingEdge=*/true);
-
-    // Falling edge
     VerilatorSimImpl::clock_falling();
-    evaluate(/*risingEdge=*/false);
 
     if (wroteInput) {
       // Reset the 'go' signal.
@@ -124,9 +121,10 @@ public:
       inline typename std::enable_if <
       I<sizeof...(Tp), void>::type readOutputRec(std::tuple<Tp...> &tOutput) {
     using ValueType = std::remove_reference_t<decltype(std::get<I>(tOutput))>;
-    auto outPort = dynamic_cast<VerilatorSignal *>(this->outPorts.at(I).get());
+    auto outPort =
+        dynamic_cast<CalyxOutPort<ValueType> *>(this->outPorts.at(I).get());
     assert(outPort);
-    std::get<I>(tOutput) = outPort->readData();
+    std::get<I>(tOutput) = *outPort;
     readOutputRec<I + 1, Tp...>(tOutput);
   }
 
@@ -151,26 +149,19 @@ public:
                                 writeInputRec(const std::tuple<Tp...> &tInput) {
     auto value = std::get<I>(tInput);
     auto &inBufferV = inBuffer.value();
-
     // Is this a simple input port?
     auto p = this->inPorts.at(I).get();
-    if (!inBufferV.transacted[I]) {
-      // Normal port?
-      if (auto inPort = dynamic_cast<CalyxPort *>(p); inPort) {
-        // A value can be written to an input port when it is not already
-        // trying to transact a value.
-        if (!inPort->valid()) {
-          inPort->writeData(value);
-        }
-      }
-      // Memory interface?
-      else if (auto inMemPort = dynamic_cast<CalyxMemoryInterfaceBase<
-                   std::remove_pointer_t<decltype(value)>> *>(p);
-               inMemPort) {
-        inMemPort->setMemory(reinterpret_cast<void *>(value));
-      } else {
-        assert(false && "Unsupported input port type");
-      }
+    // Normal port?
+    if (auto inPort = dynamic_cast<CalyxInPort<decltype(value)> *>(p); inPort)
+      inPort->assign(value);
+    // Memory interface?
+    else if (auto inMemPort = dynamic_cast<
+                 MemoryInterfaceBase<std::remove_pointer_t<decltype(value)>> *>(
+                 p);
+             inMemPort) {
+      inMemPort->setMemory(reinterpret_cast<void *>(value));
+    } else {
+      assert(false && "Unsupported input port type");
     }
 
     writeInputRec<I + 1, Tp...>(tInput);
@@ -183,18 +174,19 @@ public:
       return false;
     assert(!this->inBuffer.has_value() && "Input buffer already has a value!");
     auto &inBufferV = inBuffer.value();
-    writeInputRec(inBufferV.data);
+    writeInputRec(inBufferV);
 
     // Finally, write the 'go' port.
-    return this->goPort.get()->assign(1);
+    return this->go.get()->assign(1);
   }
 
-private:
+protected:
   // Pointer to the "go" and "done" ports of the calyx component.
-  std::unique_ptr<CalyxPort<CData>> go, done;
-  std::optional<TInput> inputBuffer;
-  std::optional<TOutput> outputBuffer;
-}
+  std::shared_ptr<CalyxInPort<CData>> go, done;
+  std::optional<TInput> inBuffer;
+  std::optional<TOutput> outBuffer;
+  bool running = false;
+};
 
 } // namespace hlt
 } // namespace circt

@@ -49,12 +49,12 @@ if(DEFINED HLT_TRACE)
   verilate(${HLT_LIBNAME}
     TRACE
     THREADS ${HLT_THREADS}
-    VERILATOR_ARGS --trace-underscore # Generated FIRRTL names of internal modules are purely underscore'd  
+    VERILATOR_ARGS --trace-underscore --top ${HLT_TESTNAME} # Generated FIRRTL names of internal modules are purely underscore'd  
     SOURCES ${HLT_TESTNAME}.sv)
 else()
   verilate(${HLT_LIBNAME}
     THREADS ${HLT_THREADS}
-    VERILATOR_ARGS --trace-underscore # Generated FIRRTL names of internal modules are purely underscore'd  
+    VERILATOR_ARGS --trace-underscore --top ${HLT_TESTNAME} # Generated FIRRTL names of internal modules are purely underscore'd  
     SOURCES ${HLT_TESTNAME}.sv)
 endif()
 

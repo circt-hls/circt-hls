@@ -28,17 +28,17 @@ struct GroundPort : public PortMapping {
     if (isInput) {
       auto ipi = comp.getInputPortInfo()[idx];
       auto inputName = ipi.name.str();
-      osi << "addInputPort<CalyxPort<";
+      osi << "addInputPort<CalyxInPort<";
       if (failed(emitVerilatorType(osi)))
         return failure();
       osi << ">(" << dutRef() << ");\n";
     } else {
       auto opi = comp.getOutputPortInfo()[idx];
       auto outputName = opi.name.str();
-      osi << "addOutputPort<CalyxPort<";
+      osi << "addOutputPort<CalyxOutPort<";
       if (failed(emitVerilatorType(osi)))
         return failure();
-      osi << ">(" << dutRef() << ");\n";
+      osi << ">>(" << dutRef() << ");\n";
     }
 
     return success();
@@ -80,21 +80,23 @@ struct MemoryPort : public PortMapping {
     osi << ">>(/*size=*/" << memref.getNumElements() << ",\n";
     osi.indent();
 
-    auto emitSignal = [&](GroundPort &port,
-                          StringRef comment) -> raw_indented_ostream & {
-      osi << "/*" << comment << "=*/ std::make_unique<VerilatorSignal<";
+    auto emitSignal = [&](GroundPort &port, StringRef comment,
+                          bool isInput) -> raw_indented_ostream & {
+      osi << "/*" << comment << "=*/ std::make_shared<Calyx";
+      osi << (isInput ? "In" : "Out");
+      osi << "Port<";
       port.emitVerilatorType(osi);
       osi << ">>(";
       osi << port.dutRef() << ")";
       return osi;
     };
 
-    emitSignal(*rdDataSignal, "rdDataSignal") << ",\n";
-    emitSignal(*doneSignal, "doneSignal") << ",\n";
-    emitSignal(*wrDataSignal, "wrDataSignal") << ",\n";
-    emitSignal(*wrEnSignal, "wrEnSignal") << ",\n";
+    emitSignal(*rdDataSignal, "rdDataSignal", false) << ",\n";
+    emitSignal(*doneSignal, "doneSignal", false) << ",\n";
+    emitSignal(*wrDataSignal, "wrDataSignal", true) << ",\n";
+    emitSignal(*wrEnSignal, "wrEnSignal", true) << ",\n";
     for (auto it : llvm::enumerate(addrSignals)) {
-      emitSignal(it.value(), "addrSignal" + std::to_string(it.index()));
+      emitSignal(it.value(), "addrSignal" + std::to_string(it.index()), true);
       if (it.index() < addrSignals.size() - 1)
         osi << ",";
       osi << "\n";
@@ -217,8 +219,8 @@ LogicalResult CalyxVerilatorWrapper::emitSimulator() {
 
   auto outCtrlName = getResName(funcOp.getNumResults());
   osi() << "// --- Calyx interface\n";
-  osi() << "go = std::make_unique<VerilatorSignal>(&dut->go);\n";
-  osi() << "done = std::make_unique<VerilatorSignal>(&dut->done);";
+  osi() << "go = std::make_shared<CalyxInPort<CData>>(&dut->go);\n";
+  osi() << "done = std::make_shared<CalyxInPort<CData>>(&dut->done);";
   osi() << "\n\n";
 
   // We expect equivalence between the order of function arguments and the ports
