@@ -62,8 +62,7 @@ def MaxSSAForm : Pass<"max-ssa", "mlir::func::FuncOp"> {
   let options = [
     ListOption<"ignoredDialects", "ignore-dialects", "std::string",
       "List of ignored dialects. If a values' type is defined by an ignored "
-      "dialect, the value will be ignored during SSA maximization.",
-      "llvm::cl::ZeroOrMore, llvm::cl::MiscFlags::CommaSeparated">,
+      "dialect, the value will be ignored during SSA maximization.">,
     Option<"ignoreMemref", "ignore-memref", "bool", "false",
       "Ignore memref values in SSA maximization.">
   ];

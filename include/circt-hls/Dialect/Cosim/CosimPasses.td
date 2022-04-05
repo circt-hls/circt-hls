@@ -52,8 +52,7 @@ def CosimConvertCall : Pass<"cosim-convert-call", "mlir::func::FuncOp"> {
     Option<"ref", "ref", "std::string", "",
       /*description=*/"The name of the reference function to use.">,
     ListOption<"targets", "targets", "std::string",
-      /*description=*/"The names of the target functions to use.",
-      "llvm::cl::MiscFlags::CommaSeparated">
+      /*description=*/"The names of the target functions to use.">
   ];
   let dependentDialects = [
     "circt_hls::cosim::CosimDialect"

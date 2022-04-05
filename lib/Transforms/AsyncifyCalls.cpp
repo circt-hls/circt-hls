@@ -173,8 +173,7 @@ struct ForOpConversion : public AsyncConversionPattern<scf::ForOp> {
     // Create the call and await ops within the source for loop, simplifying
     // result remapping.
     rewriter.setInsertionPoint(sourceCallOp);
-    auto callOp =
-        rewriter.create<CallOp>(op.getLoc(), callFunc, sourceCallOp.operands());
+    rewriter.create<CallOp>(op.getLoc(), callFunc, sourceCallOp.operands());
     auto awaitOp = rewriter.replaceOpWithNewOp<CallOp>(sourceCallOp, awaitFunc,
                                                        ValueRange());
 
