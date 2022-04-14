@@ -42,7 +42,7 @@ static LogicalResult rewriteControlFlowToBlock(Block *from, Block *to,
   unsigned succIdx = std::distance(successors.begin(), succIt);
 
   // Add the value 'v' as a block argument.
-  branchOp.getMutableSuccessorOperands(succIdx)->append(v);
+  branchOp.getSuccessorOperands(succIdx).append(v);
   return success();
 }
 
