@@ -26,6 +26,14 @@ def AffineScalRep : Pass<"affine-scalrep", "mlir::func::FuncOp"> {
   let constructor = "circt_hls::createAffineScalRepPass()";
 }
 
+def CleanUnregisteredAttrs : Pass<"clean-unregistered-attributes"> {
+  let summary = "Removes any attributes created by unregistered dialects";
+  let description = [{
+    Removes any attributes created by unregistered dialects.
+  }];
+  let constructor = "circt_hls::createCleanUnregisteredAttrsPass()";
+}
+
 def AsyncifyCalls : Pass<"asyncify-calls", "ModuleOp"> {
   let summary = "Async-ifies calls to a function (HLT)";
   let description = [{

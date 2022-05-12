@@ -26,6 +26,7 @@ std::unique_ptr<mlir::Pass> createPushConstantsPass();
 std::unique_ptr<mlir::Pass> createAsyncifyCallsPass();
 std::unique_ptr<mlir::Pass> createMaxSSAFormPass();
 std::unique_ptr<mlir::Pass> createRenameFunctionPass();
+std::unique_ptr<mlir::Pass> createCleanUnregisteredAttrsPass();
 
 //===----------------------------------------------------------------------===//
 // Registration

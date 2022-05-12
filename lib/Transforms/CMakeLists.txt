@@ -4,6 +4,7 @@ add_mlir_library(HLSTransforms
   MaxSSA.cpp
   RenameFunc.cpp
   PushConstants.cpp
+  CleanUnregisteredAttrs.cpp
 
   ADDITIONAL_HEADER_DIRS
   ${CIRCT_HLS_MAIN_INCLUDE_DIR}/mlir/Transforms

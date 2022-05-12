@@ -219,6 +219,7 @@ def run_opt_tool(tool_dir, tool_name, args, inputFile=None, outputFile=None):
   args = [os.path.join(tool_dir, tool_name), *args]
   if inputFile:
     args.append(inputFile)
+  args.append("--allow-unregistered-dialect")
   run_tool(args, outputFile, shell=True)
 
 
@@ -847,7 +848,7 @@ class DynamicMode(HLSMode, HLTMode):
     runIfNotExists(
         self.kernel_sv, lambda: run_tool([
             os.path.join(CIRCT_BIN_DIR, "firtool"), "--verilog",
-            "--format=mlir", self.kernel_firrtl
+            "--format=mlir", "--allow-unregistered-dialect", self.kernel_firrtl
         ],
                                          self.kernel_sv,
                                          shell=True))

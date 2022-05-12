@@ -38,6 +38,7 @@ inline void registerAllDialects(mlir::DialectRegistry &registry) {
   registry.insert<
     circt::calyx::CalyxDialect,
     circt::handshake::HandshakeDialect,
+    circt::firrtl::FIRRTLDialect,
     circt_hls::cosim::CosimDialect
   >();
   // clang-format on

@@ -64,7 +64,7 @@ protected:
   std::unique_ptr<raw_indented_ostream> outputFileIndented;
   std::string outputFilename;
   StringRef outDir;
-  FuncOp funcOp;
+  func::FuncOp funcOp;
 
 private:
   /// Creates an output file with filename fn, and associates os() and osi()

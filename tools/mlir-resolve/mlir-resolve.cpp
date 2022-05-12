@@ -63,7 +63,7 @@ static ModuleOp getModule(MLIRContext *ctx, StringRef fn) {
   // Load the MLIR module.
   SourceMgr source_mgr;
   source_mgr.AddNewSourceBuffer(std::move(*file_or_err), SMLoc());
-  modules.emplace_back(mlir::parseSourceFile(source_mgr, ctx));
+  modules.emplace_back(mlir::parseSourceFile<ModuleOp>(source_mgr, ctx));
   if (!modules.back()) {
     errs() << "Error: Found no modules in input file '" << fn << "'\n";
     return nullptr;

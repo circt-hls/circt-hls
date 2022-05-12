@@ -3,11 +3,6 @@ add_mlir_doc(Cosim -gen-dialect-doc Cosim Dialects/)
 
 set(LLVM_TARGET_DEFINITIONS Cosim.td)
 
-mlir_tablegen(CosimEnums.h.inc -gen-enum-decls)
-mlir_tablegen(CosimEnums.cpp.inc -gen-enum-defs)
-add_public_tablegen_target(MLIRCosimEnumsIncGen)
-add_dependencies(mlir-headers MLIRCosimEnumsIncGen)
-
 mlir_tablegen(CosimAttrs.h.inc -gen-struct-attr-decls)
 mlir_tablegen(CosimAttrs.cpp.inc -gen-struct-attr-defs)
 add_public_tablegen_target(MLIRCosimAttrsIncGen)

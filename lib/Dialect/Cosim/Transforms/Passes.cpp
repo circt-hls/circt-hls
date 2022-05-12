@@ -9,6 +9,7 @@
 #include "PassDetails.h"
 #include "circt-hls/Dialect/Cosim/CosimOps.h"
 #include "circt-hls/Dialect/Cosim/CosimPasses.h"
+#include "mlir/Dialect/Arithmetic/IR/Arithmetic.h"
 #include "mlir/Dialect/ControlFlow/IR/ControlFlow.h"
 #include "mlir/Dialect/ControlFlow/IR/ControlFlowOps.h"
 #include "mlir/Dialect/Func/IR/FuncOps.h"
