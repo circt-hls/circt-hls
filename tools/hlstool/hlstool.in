@@ -848,7 +848,7 @@ class DynamicMode(HLSMode, HLTMode):
     runIfNotExists(
         self.kernel_sv, lambda: run_tool([
             os.path.join(CIRCT_BIN_DIR, "firtool"), "--verilog",
-            "--format=mlir", "--allow-unregistered-dialect", self.kernel_firrtl
+            "--format=mlir", self.kernel_firrtl
         ],
                                          self.kernel_sv,
                                          shell=True))
