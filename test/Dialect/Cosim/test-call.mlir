@@ -3,8 +3,8 @@
 // CHECK-LABEL:   func @wrap_simple() {
 // CHECK:           %[[VAL_0:.*]] = arith.constant 0 : i32
 // CHECK:           %[[VAL_1:.*]] = arith.constant 1 : i32
-// CHECK:           call @foo(%[[VAL_0]], %[[VAL_1]]) : (i32, i32) -> ()
-// CHECK:           call @foo_hlt(%[[VAL_0]], %[[VAL_1]]) : (i32, i32) -> ()
+// CHECK:           func.call @foo(%[[VAL_0]], %[[VAL_1]]) : (i32, i32) -> ()
+// CHECK:           func.call @foo_hlt(%[[VAL_0]], %[[VAL_1]]) : (i32, i32) -> ()
 // CHECK:           return
 // CHECK:         }
 module {
@@ -25,8 +25,8 @@ module {
 // CHECK-LABEL:   func @wrap_simple_with_ret() {
 // CHECK:           %[[VAL_0:.*]] = arith.constant 0 : i32
 // CHECK:           %[[VAL_1:.*]] = arith.constant 1 : i32
-// CHECK:           %[[VAL_2:.*]] = call @foo(%[[VAL_0]], %[[VAL_1]]) : (i32, i32) -> i32
-// CHECK:           %[[VAL_3:.*]] = call @foo_hlt(%[[VAL_0]], %[[VAL_1]]) : (i32, i32) -> i32
+// CHECK:           %[[VAL_2:.*]] = func.call @foo(%[[VAL_0]], %[[VAL_1]]) : (i32, i32) -> i32
+// CHECK:           %[[VAL_3:.*]] = func.call @foo_hlt(%[[VAL_0]], %[[VAL_1]]) : (i32, i32) -> i32
 // CHECK:           cosim.compare %[[VAL_2]], %[[VAL_3]] : i32
 // CHECK:           return
 // CHECK:         }
@@ -50,8 +50,8 @@ module {
 // CHECK:           %[[VAL_0:.*]] = memref.alloca() : memref<100xi32>
 // CHECK:           %[[VAL_1:.*]] = memref.alloc() : memref<100xi32>
 // CHECK:           memref.copy %[[VAL_0]], %[[VAL_1]] : memref<100xi32> to memref<100xi32>
-// CHECK:           call @foo(%[[VAL_0]]) : (memref<100xi32>) -> ()
-// CHECK:           call @foo_hlt(%[[VAL_1]]) : (memref<100xi32>) -> ()
+// CHECK:           func.call @foo(%[[VAL_0]]) : (memref<100xi32>) -> ()
+// CHECK:           func.call @foo_hlt(%[[VAL_1]]) : (memref<100xi32>) -> ()
 // CHECK:           cosim.compare %[[VAL_0]], %[[VAL_1]] : memref<100xi32>
 // CHECK:           return
 // CHECK:         }
@@ -81,8 +81,8 @@ module {
 // CHECK:           }
 // CHECK:           %[[VAL_6:.*]] = memref.alloc() : memref<100xi32>
 // CHECK:           memref.copy %[[VAL_0]], %[[VAL_6]] : memref<100xi32> to memref<100xi32>
-// CHECK:           %[[VAL_7:.*]] = call @foo(%[[VAL_0]]) : (memref<100xi32>) -> i32
-// CHECK:           %[[VAL_8:.*]] = call @foo_std(%[[VAL_6]]) : (memref<100xi32>) -> i32
+// CHECK:           %[[VAL_7:.*]] = func.call @foo(%[[VAL_0]]) : (memref<100xi32>) -> i32
+// CHECK:           %[[VAL_8:.*]] = func.call @foo_std(%[[VAL_6]]) : (memref<100xi32>) -> i32
 // CHECK:           cosim.compare %[[VAL_7]], %[[VAL_8]] : i32
 // CHECK:           cosim.compare %[[VAL_0]], %[[VAL_6]] : memref<100xi32>
 // CHECK:           return
@@ -109,10 +109,10 @@ module {
 // CHECK-LABEL:   func @wrap_multiple_targets() {
 // CHECK:           %[[VAL_0:.*]] = arith.constant 0 : i32
 // CHECK:           %[[VAL_1:.*]] = arith.constant 1 : i32
-// CHECK:           %[[VAL_2:.*]] = call @foo(%[[VAL_0]], %[[VAL_1]]) : (i32, i32) -> i32
-// CHECK:           %[[VAL_3:.*]] = call @foo_1(%[[VAL_0]], %[[VAL_1]]) : (i32, i32) -> i32
+// CHECK:           %[[VAL_2:.*]] = func.call @foo(%[[VAL_0]], %[[VAL_1]]) : (i32, i32) -> i32
+// CHECK:           %[[VAL_3:.*]] = func.call @foo_1(%[[VAL_0]], %[[VAL_1]]) : (i32, i32) -> i32
 // CHECK:           cosim.compare %[[VAL_2]], %[[VAL_3]] : i32
-// CHECK:           %[[VAL_4:.*]] = call @foo_2(%[[VAL_0]], %[[VAL_1]]) : (i32, i32) -> i32
+// CHECK:           %[[VAL_4:.*]] = func.call @foo_2(%[[VAL_0]], %[[VAL_1]]) : (i32, i32) -> i32
 // CHECK:           cosim.compare %[[VAL_2]], %[[VAL_4]] : i32
 // CHECK:           return
 // CHECK:         }
@@ -134,16 +134,16 @@ module {
 
 // -----
 
-// This tests a bug where the ref call was emitted after the targets (and compares)
-// to the ref call results.
+// This tests a bug where the ref func.call was emitted after the targets (and compares)
+// to the ref func.call results.
 
 // CHECK-LABEL:   func @ordering() {
 // CHECK:           %[[VAL_0:.*]] = arith.constant 0 : i32
 // CHECK:           %[[VAL_1:.*]] = arith.constant 1 : i32
-// CHECK:           %[[VAL_2:.*]] = call @foo(%[[VAL_0]], %[[VAL_1]]) : (i32, i32) -> i32
-// CHECK:           %[[VAL_3:.*]] = call @a(%[[VAL_0]], %[[VAL_1]]) : (i32, i32) -> i32
+// CHECK:           %[[VAL_2:.*]] = func.call @foo(%[[VAL_0]], %[[VAL_1]]) : (i32, i32) -> i32
+// CHECK:           %[[VAL_3:.*]] = func.call @a(%[[VAL_0]], %[[VAL_1]]) : (i32, i32) -> i32
 // CHECK:           cosim.compare %[[VAL_2]], %[[VAL_3]] : i32 {ref_src = @foo, target_src = @a}
-// CHECK:           %[[VAL_4:.*]] = call @b(%[[VAL_0]], %[[VAL_1]]) : (i32, i32) -> i32
+// CHECK:           %[[VAL_4:.*]] = func.call @b(%[[VAL_0]], %[[VAL_1]]) : (i32, i32) -> i32
 // CHECK:           cosim.compare %[[VAL_2]], %[[VAL_4]] : i32 {ref_src = @foo, target_src = @b}
 // CHECK:           return
 // CHECK:         }
