@@ -197,6 +197,7 @@ int main(int argc, char **argv) {
   mlir::DialectRegistry registry;
   circt_hls::registerDialects(registry);
   mlir::MLIRContext context(registry);
+  context.allowUnregisteredDialects();
 
   Operation *funcOpPtr =
       getOpToWrapErroring(&context, inputFunctionFilename, functionName);
