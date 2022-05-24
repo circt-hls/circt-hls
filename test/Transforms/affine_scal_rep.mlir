@@ -1,12 +1,12 @@
 // RUN: hls-opt -split-input-file -affine-scalrep %s | FileCheck %s
 
-// CHECK-LABEL: func @dead_reduction_buffer
+// CHECK-LABEL: func.func @dead_reduction_buffer
 // CHECK-NOT:     memref.alloca()
 // CHECK-NOT:     affine.store
 // CHECK:         %[[VAL:.+]] = affine.for
 // CHECK-NOT:     affine.store
 // CHECK:         return %[[VAL]] : i32
-func @dead_reduction_buffer(%arg0: memref<64xi32>,
+func.func @dead_reduction_buffer(%arg0: memref<64xi32>,
                             %arg1: memref<64xi32>) -> memref<i32> {
   %c0_i32 = arith.constant 0 : i32
   %0 = memref.alloca() : memref<i32>

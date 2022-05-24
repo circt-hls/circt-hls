@@ -148,11 +148,11 @@ module {
 // CHECK:           return
 // CHECK:         }
 module {
-  func @ordering() {
+  func.func @ordering() {
     %c0_i32 = arith.constant 0 : i32
     %c1_i32 = arith.constant 1 : i32
     %0 = cosim.call @foo(%c0_i32, %c1_i32) : (i32, i32) -> i32 {ref = "foo", targets = ["a", "b"]}
     return
   }
-  func private @foo(i32, i32) -> i32
+  func.func private @foo(i32, i32) -> i32
 }

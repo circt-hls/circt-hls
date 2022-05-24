@@ -1,27 +1,27 @@
 // RUN: hls-opt -split-input-file -asyncify-calls %s | FileCheck %s
 
 
-func private @bar()
+func.func private @bar()
 
-// CHECK-LABEL:   func private @bar_call()
-// CHECK:         func private @bar_await()
-// CHECK:         func private @bar()
+// CHECK-LABEL:   func.func private @bar_call()
+// CHECK:         func.func private @bar_await()
+// CHECK:         func.func private @bar()
 
-// CHECK-LABEL:   func @infer_callee() {
+// CHECK-LABEL:   func.func @infer_callee() {
 // CHECK:           call @bar_call() : () -> ()
 // CHECK:           call @bar_await() : () -> ()
 // CHECK:           return
 // CHECK:         }
-func @infer_callee() {
+func.func @infer_callee() {
   call @bar() : () -> ()
   return
 }
 
 // -----
 
-func private @bar(i32) -> i32
+func.func private @bar(i32) -> i32
 
-// CHECK-LABEL:   func @multiple_calls(
+// CHECK-LABEL:   func.func @multiple_calls(
 // CHECK-SAME:                         %[[VAL_0:.*]]: i32) -> i32 {
 // CHECK:           %[[VAL_1:.*]] = arith.addi %[[VAL_0]], %[[VAL_0]] : i32
 // CHECK:           call @bar_call(%[[VAL_1]]) : (i32) -> ()
@@ -31,7 +31,7 @@ func private @bar(i32) -> i32
 // CHECK:           %[[VAL_4:.*]] = call @bar_await() : () -> i32
 // CHECK:           return %[[VAL_4]] : i32
 // CHECK:         }
-func @multiple_calls(%0 : i32) -> i32 {
+func.func @multiple_calls(%0 : i32) -> i32 {
   %1 = arith.addi %0, %0 : i32
   %2 = call @bar(%1) : (i32) -> (i32)
   %3 = arith.addi %1, %2 : i32
@@ -41,9 +41,9 @@ func @multiple_calls(%0 : i32) -> i32 {
 
 // -----
 
-func private @bar(i32) -> ()
+func.func private @bar(i32) -> ()
 
-// CHECK-LABEL:   func @simple_loop(
+// CHECK-LABEL:   func.func @simple_loop(
 // CHECK-SAME:                      %[[VAL_0:.*]]: i32) {
 // CHECK:           %[[VAL_1:.*]] = memref.alloc() : memref<4xi32>
 // CHECK:           %[[VAL_2:.*]] = arith.constant 0 : index
@@ -58,7 +58,7 @@ func private @bar(i32) -> ()
 // CHECK:           }
 // CHECK:           return
 // CHECK:         }
-func @simple_loop(%0 : i32) {
+func.func @simple_loop(%0 : i32) {
   %mem = memref.alloc() : memref<4xi32>
   %lb = arith.constant 0 : index
   %ub = arith.constant 10 : index
@@ -72,9 +72,9 @@ func @simple_loop(%0 : i32) {
 
 // -----
 
-func private @bar(i32) -> (i32)
+func.func private @bar(i32) -> (i32)
 
-// CHECK-LABEL:   func @simple_loop_up_and_downstream_dep(
+// CHECK-LABEL:   func.func @simple_loop_up_and_downstream_dep(
 // CHECK-SAME:                                            %[[VAL_0:.*]]: i32) {
 // CHECK:           %[[VAL_1:.*]] = memref.alloc() : memref<4xi32>
 // CHECK:           %[[VAL_2:.*]] = arith.constant 0 : index
@@ -92,7 +92,7 @@ func private @bar(i32) -> (i32)
 // CHECK:           }
 // CHECK:           return
 // CHECK:         }
-func @simple_loop_up_and_downstream_dep(%0 : i32) {
+func.func @simple_loop_up_and_downstream_dep(%0 : i32) {
   %mem = memref.alloc() : memref<4xi32>
   %lb = arith.constant 0 : index
   %ub = arith.constant 10 : index

@@ -7,7 +7,7 @@
 // RUN:    cosim_compare_llvm.mlir | FileCheck %s
 
 // CHECK: COSIM: 0 != 1
-func @main() -> i32 {
+func.func @main() -> i32 {
     %c0_i32 = arith.constant 0 : i32
     %c1_i32 = arith.constant 1 : i32
     cosim.compare %c0_i32, %c1_i32 : i32

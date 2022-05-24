@@ -1,6 +1,6 @@
 // RUN: hls-opt --split-input-file --cosim-lower-compare %s | FileCheck %s
 
-// CHECK-LABEL:   func @compare_memref() {
+// CHECK-LABEL:   func.func @compare_memref() {
 // CHECK:           %[[VAL_0:.*]] = memref.alloca() : memref<100xi32>
 // CHECK:           %[[VAL_1:.*]] = memref.alloca() : memref<100xi32>
 // CHECK:           %[[VAL_2:.*]] = arith.constant 0 : index
@@ -19,7 +19,7 @@
 // CHECK:           }
 // CHECK:           return
 // CHECK:         }
-func @compare_arith() {
+func.func @compare_arith() {
     %c0_i32 = arith.constant 0 : i32
     %c1_i32 = arith.constant 1 : i32
     cosim.compare %c0_i32, %c1_i32 : i32
@@ -28,7 +28,7 @@ func @compare_arith() {
 
 // -----
 
-// CHECK-LABEL:   func @compare_multidim_memref() {
+// CHECK-LABEL:   func.func @compare_multidim_memref() {
 // CHECK:           %[[VAL_0:.*]] = memref.alloca() : memref<100x64xi32>
 // CHECK:           %[[VAL_1:.*]] = memref.alloca() : memref<100x64xi32>
 // CHECK:           %[[VAL_2:.*]] = arith.constant 0 : index
@@ -50,7 +50,7 @@ func @compare_arith() {
 // CHECK:           }
 // CHECK:           return
 // CHECK:         }
-func @compare_memref() {
+func.func @compare_memref() {
     %0 = memref.alloca() : memref<100xi32>
     %1 = memref.alloca() : memref<100xi32>
     cosim.compare %0, %1 : memref<100xi32>
@@ -59,7 +59,7 @@ func @compare_memref() {
 
 // -----
 
-func @compare_multidim_memref() {
+func.func @compare_multidim_memref() {
     %0 = memref.alloca() : memref<100x64xi32>
     %1 = memref.alloca() : memref<100x64xi32>
     cosim.compare %0, %1 : memref<100x64xi32>
