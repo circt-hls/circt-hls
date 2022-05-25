@@ -34,4 +34,3 @@ void CosimDialect::initialize() {
 // Provide implementations for the enums, attributes and interfaces that we use.
 #include "circt-hls/Dialect/Cosim/CosimAttrs.cpp.inc"
 #include "circt-hls/Dialect/Cosim/CosimDialect.cpp.inc"
-#include "circt-hls/Dialect/Cosim/CosimEnums.cpp.inc"

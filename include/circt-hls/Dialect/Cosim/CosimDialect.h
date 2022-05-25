@@ -22,6 +22,5 @@
 // Pull in all enum type definitions, attributes,
 // and utility function declarations.
 #include "circt-hls/Dialect/Cosim/CosimAttrs.h.inc"
-#include "circt-hls/Dialect/Cosim/CosimEnums.h.inc"
 
 #endif // CIRCT_HLS_DIALECT_COSIM_COSIMDIALECT_H
