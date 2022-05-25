@@ -151,6 +151,14 @@ static raw_indented_ostream &emitHSPortCtor(raw_indented_ostream &os,
   return os;
 }
 
+static raw_indented_ostream &emitHSTypeAssert(raw_indented_ostream &os,
+                                              StringRef type, StringRef value,
+                                              StringRef err) {
+  os << "static_assert(std::is_same<" << type << ", typeof(" << value
+     << ")>::value, \"" << err << "\");\n";
+  return os;
+}
+
 LogicalResult HandshakeVerilatorWrapper::emitExtMemPort(MemRefType memref,
                                                         unsigned idx) {
   auto shape = memref.getShape();
@@ -249,14 +257,31 @@ LogicalResult HandshakeVerilatorWrapper::emitInputPort(Type t, unsigned idx) {
     return emitExtMemPort(memref, idx);
   } else {
     auto arg = getInputName(idx);
-    osi() << "addInputPort<HandshakeDataInPort<TArg" << idx << ">>";
+    auto dataType = "TArg" + std::to_string(idx);
+
+    // Emit a static assert on the data type and the expected result type to
+    // avoid funky template errors.
+    emitHSTypeAssert(
+        osi(), dataType, "dut->" + arg + "_data",
+        "Type mismatch between handshake data port type and actual "
+        "port type. This might be a verilator version issue");
+
+    osi() << "addInputPort<HandshakeDataInPort<" << dataType << ">>";
     emitHSPortCtor(osi(), arg) << ";\n";
   }
   return success();
 }
 LogicalResult HandshakeVerilatorWrapper::emitOutputPort(Type t, unsigned idx) {
   auto arg = getResName(idx);
-  osi() << "addOutputPort<HandshakeDataOutPort<TRes" << idx << ">>";
+  auto dataType = "TRes" + std::to_string(idx);
+
+  // Emit a static assert on the data type and the expected result type to avoid
+  // funky template errors.
+  emitHSTypeAssert(osi(), dataType, "dut->" + arg + "_data",
+                   "Type mismatch between handshake data port type and actual "
+                   "port type. This might be a verilator version issue");
+
+  osi() << "addOutputPort<HandshakeDataOutPort<" << dataType << ">>";
   emitHSPortCtor(osi(), arg) << ";\n";
   return success();
 }
