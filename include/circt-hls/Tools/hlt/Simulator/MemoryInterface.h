@@ -1,6 +1,8 @@
 #ifndef CIRCT_TOOLS_HLT_MEMORYINTERFACE_H
 #define CIRCT_TOOLS_HLT_MEMORYINTERFACE_H
 
+#include <optional>
+
 template <typename TData>
 class MemoryInterfaceBase {
 protected:
