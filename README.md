@@ -41,21 +41,6 @@ If you don't already have a CIRCT/MLIR build locally, checkout https://github.co
 Polygeist is used as the primary front-end for ingesting high-level programs. While it *is* possible to build Polygeist with an external LLVM/MLIR build, it often occurs that the CIRCT and Polygeist LLVM versions have API-breaking differences. It is suggested that you try building Polygeist with an external LLVM build (reusing your CIRCT build), and as a fallback use the internal LLVM submodule of Polygeist, which is sure to work.
 Information on how to build Polygeist is available in the [Polygeist repository](https://github.com/wsmoses/Polygeist).
 
-## Setup and build Calyx and the HLS `fud` stages
-
-The `fud` driver within Calyx is used as a general driver for the entire flow.
-Run the `calyx_setup.sh` script from the root repository folder. If any step fails due to missing dependencies, download the dependencies and rerun the script.
-
-We use the setting
-> `fud config stages.circt_hls.toplevel ${toplevel}`
-
-to keep track of the top-level function to be compiled. This should match a function name in the input `.c` file. This will further be used as the top-level function when lowering `SCFToCalyx`.
-
-To initialize this, please run:
-```
-fud config stages.circt_hls.toplevel ""
-```
-
 ## Install Python dependencies
 
 Some tooling relies on certain Python packages, which can be installed using `requirements.txt`:
