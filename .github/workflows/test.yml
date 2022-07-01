@@ -6,9 +6,7 @@ on:
       - main
   pull_request:
     types: [assigned, opened, synchronize, reopened]
-  workflow_dispatch:
-  schedule: # run every day at midnight
-    - cron: "0 0 * * *"
+
 
 jobs:
   build:
