@@ -25,10 +25,10 @@
 #include "circt/Dialect/MSFT/MSFTDialect.h"
 #include "circt/Dialect/SV/SVDialect.h"
 #include "circt/Dialect/Seq/SeqDialect.h"
-#include "circt/Dialect/StaticLogic/StaticLogic.h"
+// #include "circt/Dialect/StaticLogic/StaticLogic.h"
 #include "mlir/IR/Dialect.h"
 
-#include "circt-hls/Dialect/Cosim/CosimDialect.h"
+// #include "circt-hls/Dialect/Cosim/CosimDialect.h"
 
 namespace circt_hls {
 
@@ -38,8 +38,8 @@ inline void registerAllDialects(mlir::DialectRegistry &registry) {
   registry.insert<
     circt::calyx::CalyxDialect,
     circt::handshake::HandshakeDialect,
-    circt::firrtl::FIRRTLDialect,
-    circt_hls::cosim::CosimDialect
+    circt::firrtl::FIRRTLDialect
+    // circt_hls::cosim::CosimDialect
   >();
   // clang-format on
 }

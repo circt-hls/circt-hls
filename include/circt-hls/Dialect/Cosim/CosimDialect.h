@@ -17,10 +17,10 @@
 #include "mlir/IR/Dialect.h"
 
 // Pull in the Dialect definition.
-#include "circt-hls/Dialect/Cosim/CosimDialect.h.inc"
+// #include "circt-hls/Dialect/Cosim/CosimDialect.h.inc"
 
 // Pull in all enum type definitions, attributes,
 // and utility function declarations.
-#include "circt-hls/Dialect/Cosim/CosimAttrs.h.inc"
+// #include "circt-hls/Dialect/Cosim/CosimAttrs.h.inc"
 
 #endif // CIRCT_HLS_DIALECT_COSIM_COSIMDIALECT_H

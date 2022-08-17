@@ -127,7 +127,6 @@ void AffineScalRepPass::runOnOperation() {
   // thus be completely deleted. Note: the canonicalize pass should be able
   // to do this as well, but we'll do it here since we collected these anyway.
   for (auto memref : memrefsToErase) {
-    memref.dump();
     // If the memref hasn't been alloc'ed in this function, skip.
     Operation *defOp = memref.getDefiningOp();
     if (!defOp || !isa<memref::AllocOp, memref::AllocaOp>(defOp))

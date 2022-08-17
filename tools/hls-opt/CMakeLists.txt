@@ -10,10 +10,10 @@ target_link_libraries(hls-opt
   PRIVATE
 
   HLSTransforms
-  HLSCosim
-  HLSCosimTransforms
+  # HLSCosim
+  # HLSCosimTransforms
 
-  CIRCTAffineToStaticLogic
+  # CIRCTAffineToStaticLogic
   CIRCTAnalysisTestPasses
   CIRCTCalyx
   CIRCTCalyxToHW
@@ -38,19 +38,19 @@ target_link_libraries(hls-opt
   CIRCTSchedulingTestPasses
   CIRCTSeq
   CIRCTStandardToHandshake
-  CIRCTStandardToStaticLogic
-  CIRCTStaticLogicOps
+  # CIRCTStandardToStaticLogic
+  # CIRCTStaticLogicOps
   CIRCTSV
   CIRCTSVTransforms
 
   
   MLIRIR
-  MLIRLLVMIR
-  MLIRMemRef
+  # MLIRLLVMIR
+  # MLIRMemRef
   MLIROptLib
   MLIRParser
-  MLIRControlFlow
+  # MLIRControlFlow
   MLIRSupport
   MLIRTransforms
-  MLIRSCF
+  # MLIRSCF
   )

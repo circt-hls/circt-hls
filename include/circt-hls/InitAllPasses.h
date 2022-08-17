@@ -14,7 +14,7 @@
 #ifndef CIRCT_HLS_INITALLPASSES_H_
 #define CIRCT_HLS_INITALLPASSES_H_
 
-#include "circt-hls/Dialect/Cosim/CosimPasses.h"
+// #include "circt-hls/Dialect/Cosim/CosimPasses.h"
 #include "circt-hls/Transforms/Passes.h"
 
 namespace circt_hls {
@@ -24,7 +24,7 @@ inline void registerAllPasses() {
   registerTransformsPasses();
 
   // Dialect Passes
-  cosim::registerPasses();
+  // cosim::registerPasses();
 }
 
 } // namespace circt_hls
