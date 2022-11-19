@@ -25,7 +25,7 @@
 #include "circt/Dialect/MSFT/MSFTDialect.h"
 #include "circt/Dialect/SV/SVDialect.h"
 #include "circt/Dialect/Seq/SeqDialect.h"
-#include "circt/Dialect/StaticLogic/StaticLogic.h"
+//#include "circt/Dialect/StaticLogic/StaticLogic.h"
 #include "mlir/IR/Dialect.h"
 
 #include "circt-hls/Dialect/Cosim/CosimDialect.h"

@@ -52,8 +52,8 @@ config.excludes = ['Inputs', 'CMakeLists.txt', 'README.txt', 'LICENSE.txt']
 llvm_config.with_environment('PATH', config.llvm_tools_dir, append_path=True)
 
 tool_dirs = [
+    config.circt_hls_tools_dir,
     config.circt_tools_dir, config.mlir_tools_dir, config.llvm_tools_dir,
-    config.circt_hls_tools_dir
 ]
 tools = [
     'hls-opt', 'hlt-wrapgen', 'dyn_incrementally_lower', 'dyn_hlt_lower',
@@ -62,7 +62,8 @@ tools = [
 
 # Enable Polygeist if it has been detected.
 if config.polygeist_bin_dir != "":
-  tool_dirs.append(os.path.dirname(config.polygeist_bin_dir))
+  #tool_dirs.append(os.path.dirname(config.polygeist_bin_dir))
+  tool_dirs.append(config.polygeist_bin_dir)
   tools.append('mlir-clang')
   tools.append('polygeist-opt')
 

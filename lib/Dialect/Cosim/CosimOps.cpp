@@ -19,8 +19,8 @@ using namespace circt_hls;
 using namespace cosim;
 
 LogicalResult CallOp::verify() {
-  if (llvm::any_of(targets(), [&](Attribute attr) {
-        return attr.cast<StringAttr>().strref() == ref();
+  if (llvm::any_of(getTargets(), [&](Attribute attr) {
+        return attr.cast<StringAttr>().strref() == getRef();
       }))
     return emitOpError() << "do not include the reference function in the "
                             "set of target functions.";

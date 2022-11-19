@@ -9,13 +9,13 @@
 #include "PassDetails.h"
 #include "circt-hls/Dialect/Cosim/CosimOps.h"
 #include "circt-hls/Dialect/Cosim/CosimPasses.h"
-#include "mlir/Dialect/Arithmetic/IR/Arithmetic.h"
+#include "mlir/Dialect/Arith/IR/Arith.h"
 #include "mlir/Dialect/ControlFlow/IR/ControlFlow.h"
 #include "mlir/Dialect/ControlFlow/IR/ControlFlowOps.h"
 #include "mlir/Dialect/Func/IR/FuncOps.h"
 #include "mlir/Dialect/LLVMIR/LLVMDialect.h"
 #include "mlir/Dialect/MemRef/IR/MemRef.h"
-#include "mlir/Dialect/SCF/SCF.h"
+#include "mlir/Dialect/SCF/IR/SCF.h"
 #include "mlir/IR/BuiltinDialect.h"
 #include "mlir/IR/ImplicitLocOpBuilder.h"
 #include "mlir/IR/PatternMatch.h"
@@ -118,7 +118,7 @@ struct ConvertCallPattern : OpRewritePattern<cosim::CallOp> {
 
     // First, grab the function operations for the targets.
     std::map<std::string, mlir::func::FuncOp> targetFunctions;
-    for (auto target : op.targets()) {
+    for (auto target : op.getTargets()) {
       auto targetName = target.cast<StringAttr>().strref();
       mlir::func::FuncOp targetFunc =
           module.lookupSymbol<mlir::func::FuncOp>(targetName);
@@ -126,7 +126,7 @@ struct ConvertCallPattern : OpRewritePattern<cosim::CallOp> {
              "expected all functions to be declared in the module");
       targetFunctions[targetName.str()] = targetFunc;
     }
-    auto refName = op.ref().str();
+    auto refName = op.getRef().str();
     mlir::func::FuncOp refFunc =
         module.lookupSymbol<mlir::func::FuncOp>(refName);
     assert(refFunc && "expected all functions to be declared in the module");
@@ -135,7 +135,7 @@ struct ConvertCallPattern : OpRewritePattern<cosim::CallOp> {
     std::map<std::string, SmallVector<Value>> targetOperands;
 
     // Create copies for any mutable inputs to the target functions
-    for (auto target : op.targets()) {
+    for (auto target : op.getTargets()) {
       auto targetStr = target.cast<StringAttr>().strref().str();
       for (auto operand : op.getOperands()) {
         if (isMutable(operand.getType()))
@@ -153,7 +153,7 @@ struct ConvertCallPattern : OpRewritePattern<cosim::CallOp> {
     };
 
     // Call the reference
-    emitCall(op.ref(), op.getOperands());
+    emitCall(op.getRef(), op.getOperands());
 
     // Create calls to the targets
     for (auto target : targetOperands)
@@ -161,7 +161,7 @@ struct ConvertCallPattern : OpRewritePattern<cosim::CallOp> {
 
     // Emit cosim comparison between the reference function and the target
     // functions.
-    mlir::func::CallOp refCall = targetCalls[op.ref().str()];
+    mlir::func::CallOp refCall = targetCalls[op.getRef().str()];
     for (auto &call : targetCalls) {
       // Ignore the reference call; all other target calls will compare against
       // this call.
@@ -203,7 +203,7 @@ struct CosimLowerCallPass : public CosimLowerCallBase<CosimLowerCallPass> {
     target.addLegalDialect<memref::MemRefDialect>();
     target.addLegalDialect<mlir::BuiltinDialect>();
     target.addLegalDialect<mlir::cf::ControlFlowDialect>();
-    target.addLegalDialect<arith::ArithmeticDialect>();
+    target.addLegalDialect<arith::ArithDialect>();
     target.addLegalDialect<cosim::CosimDialect>();
     target.addLegalDialect<func::FuncDialect>();
 
@@ -232,9 +232,9 @@ struct CosimLowerCallPass : public CosimLowerCallBase<CosimLowerCallPass> {
       }
     };
 
-    for (auto target : op.targets())
+    for (auto target : op.getTargets())
       createFunc(target.cast<StringAttr>().str());
-    createFunc(op.ref());
+    createFunc(op.getRef());
   }
 };
 
@@ -326,7 +326,7 @@ struct ConvertCompareIntegerLike : OpRewritePattern<cosim::CompareOp> {
       return failure();
 
     insertIntegerLikeComparison(op.getLoc(), op->getParentOfType<ModuleOp>(),
-                                rewriter, op.ref(), op.target());
+                                rewriter, op.getRef(), op.getTarget());
     rewriter.eraseOp(op);
     return success();
   }
@@ -360,9 +360,9 @@ struct ConvertCompareMemref : OpRewritePattern<cosim::CompareOp> {
 
     // Load values from the two compared memories
     auto loadRef =
-        rewriter.create<memref::LoadOp>(op.getLoc(), op.ref(), indices);
+        rewriter.create<memref::LoadOp>(op.getLoc(), op.getRef(), indices);
     auto targetRef =
-        rewriter.create<memref::LoadOp>(op.getLoc(), op.target(), indices);
+        rewriter.create<memref::LoadOp>(op.getLoc(), op.getTarget(), indices);
 
     // Insert integer comparison
     insertIntegerLikeComparison(op.getLoc(), op->getParentOfType<ModuleOp>(),
@@ -384,7 +384,7 @@ struct CosimLowerComparePass
     target.addLegalDialect<memref::MemRefDialect>();
     target.addLegalDialect<mlir::BuiltinDialect>();
     target.addLegalDialect<mlir::cf::ControlFlowDialect>();
-    target.addLegalDialect<arith::ArithmeticDialect>();
+    target.addLegalDialect<arith::ArithDialect>();
     target.addLegalDialect<cosim::CosimDialect>();
     target.addLegalDialect<scf::SCFDialect>();
     target.addLegalDialect<LLVM::LLVMDialect>();

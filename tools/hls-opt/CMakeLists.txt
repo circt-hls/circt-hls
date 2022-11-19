@@ -13,7 +13,7 @@ target_link_libraries(hls-opt
   HLSCosim
   HLSCosimTransforms
 
-  CIRCTAffineToStaticLogic
+  #CIRCTAffineToStaticLogic
   CIRCTAnalysisTestPasses
   CIRCTCalyx
   CIRCTCalyxToHW
@@ -38,19 +38,23 @@ target_link_libraries(hls-opt
   CIRCTSchedulingTestPasses
   CIRCTSeq
   CIRCTStandardToHandshake
-  CIRCTStandardToStaticLogic
-  CIRCTStaticLogicOps
+  #CIRCTStandardToStaticLogic
+  #CIRCTStaticLogicOps
   CIRCTSV
   CIRCTSVTransforms
 
   
   MLIRIR
-  MLIRLLVMIR
-  MLIRMemRef
+  #MLIRLLVMIR
+  MLIRLLVMIRTransforms
+  #MLIRMemRef
+  MLIRMemRefDialect
   MLIROptLib
   MLIRParser
-  MLIRControlFlow
+  #MLIRControlFlow
+  MLIRControlFlowDialect
   MLIRSupport
   MLIRTransforms
-  MLIRSCF
+  #MLIRSCF
+  MLIRSCFDialect
   )

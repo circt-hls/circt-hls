@@ -20,12 +20,12 @@
 #include "circt/Dialect/FIRRTL/FIRRTLDialect.h"
 #include "circt/Dialect/Handshake/HandshakeDialect.h"
 #include "circt/Dialect/Handshake/HandshakeOps.h"
-#include "mlir/Dialect/Arithmetic/IR/Arithmetic.h"
+#include "mlir/Dialect/Arith/IR/Arith.h"
 #include "mlir/Dialect/ControlFlow/IR/ControlFlowOps.h"
 #include "mlir/Dialect/Func/IR/FuncOps.h"
 #include "mlir/Dialect/LLVMIR/LLVMDialect.h"
 #include "mlir/Dialect/MemRef/IR/MemRef.h"
-#include "mlir/Dialect/SCF/SCF.h"
+#include "mlir/Dialect/SCF/IR/SCF.h"
 
 #include "llvm/ADT/TypeSwitch.h"
 #include "llvm/Support/CommandLine.h"
@@ -74,7 +74,7 @@ static ModuleOp getModule(MLIRContext *ctx, StringRef fn) {
 static void registerDialects(mlir::DialectRegistry &registry) {
   registry.insert<mlir::memref::MemRefDialect>();
   registry.insert<mlir::cf::ControlFlowDialect>();
-  registry.insert<arith::ArithmeticDialect>();
+  registry.insert<arith::ArithDialect>();
   registry.insert<scf::SCFDialect>();
   registry.insert<handshake::HandshakeDialect>();
   registry.insert<firrtl::FIRRTLDialect>();

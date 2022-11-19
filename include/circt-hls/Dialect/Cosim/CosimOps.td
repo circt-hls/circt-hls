@@ -91,7 +91,7 @@ def CompareOp : Cosim_Op<"compare", [
   let extraClassDeclaration = [{
     // Get the type of the operands that are compared
     mlir::Type type() {
-      return ref().getType();
+      return getRef().getType();
     }
   }];
 }

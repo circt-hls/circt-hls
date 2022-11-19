@@ -11,8 +11,8 @@ add_mlir_dialect_library(HLSCosim
   ${PROJECT_BINARY_DIR}/include
 
   LINK_LIBS PUBLIC
-  MLIRControlFlow
-  MLIRSCF
+  MLIRControlFlowDialect
+  MLIRSCFDialect
   MLIRIR
 
   DEPENDS
