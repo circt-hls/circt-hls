@@ -47,9 +47,7 @@ if [ ! -d "circt" ] ; then
   # Checkout CIRCT
   git clone https://github.com/llvm/circt 
   (cd circt; 
-   git reset --hard 2500cf570bbc6c6d45940466f9421e93d3a49132;
-   #git reset --hard 958a453ff737f3bf4df609da4cec1844904d266d; 
-   #git reset --hard 76e38b19f6738dfb4d3c8dd26db017ffbf432e06;
+   git reset --hard 062eab31a67c8a8418b2ba9fb4f1814cdca08783
    git submodule init; git submodule update)
   #(cd circt; 
   # git checkout sifive/1/22/0;

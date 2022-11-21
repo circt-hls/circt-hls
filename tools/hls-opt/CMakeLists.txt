@@ -38,23 +38,17 @@ target_link_libraries(hls-opt
   CIRCTSchedulingTestPasses
   CIRCTSeq
   CIRCTStandardToHandshake
-  #CIRCTStandardToStaticLogic
-  #CIRCTStaticLogicOps
   CIRCTSV
   CIRCTSVTransforms
 
   
   MLIRIR
-  #MLIRLLVMIR
   MLIRLLVMIRTransforms
-  #MLIRMemRef
   MLIRMemRefDialect
   MLIROptLib
   MLIRParser
-  #MLIRControlFlow
   MLIRControlFlowDialect
   MLIRSupport
   MLIRTransforms
-  #MLIRSCF
   MLIRSCFDialect
   )

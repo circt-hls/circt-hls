@@ -72,12 +72,19 @@ runs:
         make -j $(nproc)
         make install
 
+    - name: Read circt tag file
+      id: circt-ref
+      uses: juliangruber/read-file-action@v1
+      with:
+        path: ./circt_tag.txt
+
     # Checkout CIRCT. This also checks out CIRCTs LLVM submodule
     - name: Checkout CIRCT
       uses: actions/checkout@v2
       with:
         repository: llvm/circt
         path: circt    
+        ref: ${{ steps.circt-ref.outputs.content }}
         submodules: 'recursive'
         fetch-depth: 1
 
