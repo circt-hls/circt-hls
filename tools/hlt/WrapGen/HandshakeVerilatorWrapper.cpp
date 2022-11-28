@@ -191,7 +191,7 @@ LogicalResult HandshakeVerilatorWrapper::emitExtMemPort(MemRefType memref,
       cast<handshake::ExternalMemoryOp>(*extMemUsers.begin());
 
   // Load ports
-  for (unsigned i = 0; i < extMemOp.ldCount(); ++i) {
+  for (unsigned i = 0; i < extMemOp.getLdCount(); ++i) {
     osi() << name << "->addLoadPort(\n";
     osi().indent();
 
@@ -221,7 +221,7 @@ LogicalResult HandshakeVerilatorWrapper::emitExtMemPort(MemRefType memref,
   }
 
   // Store ports
-  for (unsigned i = 0; i < extMemOp.stCount(); ++i) {
+  for (unsigned i = 0; i < extMemOp.getStCount(); ++i) {
     osi() << name << "->addStorePort(\n";
     osi().indent();
 

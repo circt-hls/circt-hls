@@ -14,12 +14,12 @@
 #include "mlir/Conversion/LLVMCommon/ConversionTarget.h"
 #include "mlir/Conversion/LLVMCommon/Pattern.h"
 #include "mlir/Dialect/Affine/IR/AffineOps.h"
-#include "mlir/Dialect/Arithmetic/IR/Arithmetic.h"
+#include "mlir/Dialect/Arith/IR/Arith.h"
 #include "mlir/Dialect/ControlFlow/IR/ControlFlowOps.h"
 #include "mlir/Dialect/Func/IR/FuncOps.h"
 #include "mlir/Dialect/LLVMIR/LLVMDialect.h"
 #include "mlir/Dialect/MemRef/IR/MemRef.h"
-#include "mlir/Dialect/SCF/SCF.h"
+#include "mlir/Dialect/SCF/IR/SCF.h"
 #include "mlir/IR/BlockAndValueMapping.h"
 #include "mlir/IR/BuiltinDialect.h"
 #include "mlir/IR/BuiltinTypes.h"
@@ -291,7 +291,7 @@ void AsyncifyCallsPass::addTargetLegalizations(ConversionTarget &target) {
   target.addLegalDialect<memref::MemRefDialect>();
   target.addLegalDialect<mlir::BuiltinDialect>();
   target.addLegalDialect<mlir::cf::ControlFlowDialect>();
-  target.addLegalDialect<arith::ArithmeticDialect>();
+  target.addLegalDialect<arith::ArithDialect>();
   target.addLegalDialect<LLVM::LLVMDialect>();
   target.addDynamicallyLegalOp<mlir::func::CallOp>([&](CallOp op) {
     // We expect the target function to be removed after asyncification.

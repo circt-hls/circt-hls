@@ -37,6 +37,10 @@ These are the (intended) end-to-end flows that can be driven from this directory
 ## Build CIRCT
 If you don't already have a CIRCT/MLIR build locally, checkout https://github.com/llvm/circt and go follow the instructions. We **do not** include a CIRCT submodule in `circt-hls` since we assume that most people interested in this project will already be looking into CIRCT.
 
+CIRCT-HLS was successfully compiled (and mostly successfully tested) with CIRCT version [062eab31a67c8a8418b2ba9fb4f1814cdca08783](https://github.com/llvm/circt/commit/062eab31a67c8a8418b2ba9fb4f1814cdca08783).  The test failure case: cosim :: suites/Dynamatic/insertion_sort/tst_insertion_sort.c
+
+The script `build.sh` (tested under Ubuntu 22.04.1) may also provide a reference point for building the tool chain.
+
 ## Build Polygeist
 Polygeist is used as the primary front-end for ingesting high-level programs. While it *is* possible to build Polygeist with an external LLVM/MLIR build, it often occurs that the CIRCT and Polygeist LLVM versions have API-breaking differences. It is suggested that you try building Polygeist with an external LLVM build (reusing your CIRCT build), and as a fallback use the internal LLVM submodule of Polygeist, which is sure to work.
 Information on how to build Polygeist is available in the [Polygeist repository](https://github.com/wsmoses/Polygeist).

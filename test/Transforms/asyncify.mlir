@@ -8,8 +8,8 @@ func.func private @bar()
 // CHECK:         func.func private @bar()
 
 // CHECK-LABEL:   func.func @infer_callee() {
-// CHECK:           func.call @bar_call() : () -> ()
-// CHECK:           func.call @bar_await() : () -> ()
+// CHECK:           call @bar_call() : () -> ()
+// CHECK:           call @bar_await() : () -> ()
 // CHECK:           return
 // CHECK:         }
 func.func @infer_callee() {
@@ -24,11 +24,11 @@ func.func private @bar(i32) -> i32
 // CHECK-LABEL:   func.func @multiple_calls(
 // CHECK-SAME:                         %[[VAL_0:.*]]: i32) -> i32 {
 // CHECK:           %[[VAL_1:.*]] = arith.addi %[[VAL_0]], %[[VAL_0]] : i32
-// CHECK:           func.call @bar_call(%[[VAL_1]]) : (i32) -> ()
-// CHECK:           %[[VAL_2:.*]] = func.call @bar_await() : () -> i32
+// CHECK:           call @bar_call(%[[VAL_1]]) : (i32) -> ()
+// CHECK:           %[[VAL_2:.*]] = call @bar_await() : () -> i32
 // CHECK:           %[[VAL_3:.*]] = arith.addi %[[VAL_1]], %[[VAL_2]] : i32
-// CHECK:           func.call @bar_call(%[[VAL_3]]) : (i32) -> ()
-// CHECK:           %[[VAL_4:.*]] = func.call @bar_await() : () -> i32
+// CHECK:           call @bar_call(%[[VAL_3]]) : (i32) -> ()
+// CHECK:           %[[VAL_4:.*]] = call @bar_await() : () -> i32
 // CHECK:           return %[[VAL_4]] : i32
 // CHECK:         }
 func.func @multiple_calls(%0 : i32) -> i32 {

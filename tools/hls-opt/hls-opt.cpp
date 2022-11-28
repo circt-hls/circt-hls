@@ -11,19 +11,19 @@
 //
 //===----------------------------------------------------------------------===//
 
+#include "mlir/Pass/PassRegistry.h"
 #include "circt-hls/InitAllDialects.h"
 #include "circt-hls/InitAllPasses.h"
 
 #include "circt/Support/LoweringOptions.h"
 #include "mlir/Dialect/Affine/IR/AffineOps.h"
-#include "mlir/Dialect/Arithmetic/IR/Arithmetic.h"
+#include "mlir/Dialect/Arith/IR/Arith.h"
 #include "mlir/Dialect/ControlFlow/IR/ControlFlow.h"
 #include "mlir/Dialect/ControlFlow/IR/ControlFlowOps.h"
 #include "mlir/Dialect/Func/IR/FuncOps.h"
 #include "mlir/Dialect/LLVMIR/LLVMDialect.h"
 #include "mlir/Dialect/MemRef/IR/MemRef.h"
-#include "mlir/Dialect/SCF/SCF.h"
-#include "mlir/Pass/PassRegistry.h"
+#include "mlir/Dialect/SCF/IR/SCF.h"
 #include "mlir/Tools/mlir-opt/MlirOptMain.h"
 #include "mlir/Transforms/Passes.h"
 
@@ -36,7 +36,7 @@ int main(int argc, char **argv) {
   registry.insert<mlir::memref::MemRefDialect>();
   registry.insert<mlir::cf::ControlFlowDialect>();
   registry.insert<mlir::cf::ControlFlowDialect>();
-  registry.insert<mlir::arith::ArithmeticDialect>();
+  registry.insert<mlir::arith::ArithDialect>();
   registry.insert<mlir::scf::SCFDialect>();
   registry.insert<mlir::func::FuncDialect>();
 
