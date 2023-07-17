@@ -1,3 +1,13 @@
+# READ THIS FIRST
+17/07/2023: [@mortbopet](https://github.com/mortbopet):
+**Hello!** 👋! Thank you for stumbling upon `circt-hls`. This project was mainly used as a container for work done during my [thesis](https://infoscience.epfl.ch/record/292189) on a dynamically scheduled HLS flow in MLIR.
+Since then, the project has been generally unmaintained. The project itself has a `Polygeist` submodule which is tagged to the latest known-good commit, as well as a [file](https://github.com/circt-hls/circt-hls/blob/main/circt_tag.txt) indicating the last known good CIRCT version. I provide no guarantee for more recent CIRCT or Polygeist versions to work, but feel free to submit a PR that updates this repository to support newer versions of these dependencies.
+
+In general, I'd recommend that you look into using CIRCT directly for your HLS projects. This repository can essentially be boiled down to a set of ad-hoc passes that i wrote to shim together things, and a [driver tool](https://github.com/circt-hls/circt-hls/tree/main/tools/hlstool) to reduce the burden of manually calling things. However, it's now been so long since I've updated any of this, that I **do not** recommend you base your projects on this work. See it as an inspiration of how tools could be coupled together back in late 2021/early 2022, and **not** how things can/should work together at the time that you're reading this.
+
+
+-----
+
 # circt-hls
 
 [![Build](https://github.com/circt-hls/circt-hls/actions/workflows/build.yml/badge.svg?branch=main)](https://github.com/circt-hls/circt-hls/actions/workflows/build.yml) [![Test](https://github.com/circt-hls/circt-hls/actions/workflows/test.yml/badge.svg?branch=main)](https://github.com/circt-hls/circt-hls/actions/workflows/test.yml)
